@@ -4,7 +4,7 @@
 // @description bangumi anime search by dmhy
 // @include     http://bangumi.tv/subject/*
 // @include     http://bangumi.tv/index/*
-// @include     http://bangumi.tv/music/*
+// @include     http://bangumi.tv/anime/*
 // @include     http://bangumi.tv/subject_search/*
 // @exclude     http://bangumi.tv/subject/*/*
 // @version     0.1
@@ -56,17 +56,43 @@ function getChineseTitle(title) {
     return title.children[0].title;
 }
 
-try {
-    var h1 = document.getElementsByTagName("h1")[0];
-    var title = getChineseTitle(h1);
-    if (h1 && window.location.href.match("/subject/")) {
-        h1.appendChild(create_link("http://share.dmhy.org/topics/list?keyword=" + encodeURIComponent(title)));
-        h1.appendChild(create_link("http://share.popgo.org/search.php?title=" + encodeURIComponent(title)));
-//        h1.appendChild(create_link("https://camoe.org/search.php?keyword=" + encodeURIComponent(title) + encodeURIComponent("&提交=搜索")));
-        h1.appendChild(create_link("https://camoe.org/search.php?keyword=" + encodeURIComponent(title)));
-        // todo nyaa convert name to english
-        h1.appendChild(create_link("http://www.nyaa.se/?page=search&cats=1_0&filter=2&term=" + encodeURIComponent(getText(h1))));
+if (window.location.href.match("/subject/")) {
+    try {
+        var h1 = document.getElementsByTagName("h1")[0];
+        var title = getChineseTitle(h1);
+        if (h1) {
+            h1.appendChild(create_link("http://share.dmhy.org/topics/list?keyword=" + encodeURIComponent(title)));
+            h1.appendChild(create_link("http://share.popgo.org/search.php?title=" + encodeURIComponent(title)));
+            //        h1.appendChild(create_link("https://camoe.org/search.php?keyword=" + encodeURIComponent(title) + encodeURIComponent("&提交=搜索")));
+            h1.appendChild(create_link("https://camoe.org/search.php?keyword=" + encodeURIComponent(title)));
+            // todo nyaa convert name to english
+//            h1.appendChild(create_link("http://www.nyaa.se/?page=search&cats=1_0&filter=2&term=" + encodeURIComponent(getText(h1))));
+        }
+    } catch (e) {
+        /* handle error */
     }
-} catch (e) {
-    /* handle error */
+}
+
+if (window.location.href.match("/anime|index/")) {
+    try {
+        for (var i = 0, len = document.getElementsByTagName("h3").length/*len = $("h3").length*/; i < len; i++) {
+            var anime_name = document.getElementsByTagName("h3")[i];
+            //        var anime_name = $("h3")[i];
+            var title = anime_name.getElementsByTagName("a")[0].textContent;
+            var grey_title = anime_name.getElementsByClassName("grey");
+
+            if (window.location.href.match("/anime/") || anime_name.getElementsByTagName("span")[0].className == "ico_subject_type subject_type_2 ll") {
+                anime_name.appendChild(create_link("http://share.dmhy.org/topics/list?keyword=" + encodeURIComponent(title)));
+                anime_name.appendChild(create_link("https://camoe.org/search.php?keyword=" + encodeURIComponent(title)));
+                anime_name.appendChild(create_link("http://share.popgo.org/search.php?title=" + encodeURIComponent(title)));
+                //  need to convert name to English
+//                if (grey_title.length)
+//                    anime_name.appendChild(create_link("http://www.nyaa.se/?page=search&cats=1_0&filter=2&term=" + encodeURIComponent(grey_title[0].textContent)));
+//                else
+//                    anime_name.appendChild(create_link("http://www.nyaa.se/?page=search&cats=1_0&filter=2&term=" + encodeURIComponent(title)));
+            }    
+        }
+    } catch (e) {
+        /* handle error */
+    }
 }

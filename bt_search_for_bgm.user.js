@@ -89,7 +89,7 @@ var searchAPIs = {
 // Create anchor for search with a icon.
 // Codes come from Bangumi Music+(http://bgm.tv/group/topic/10395) and make some modifications.
 function createLink(link) {
-    console.log("start create link in createLink function");
+//    console.log("start create link in createLink function");
     var searchIcon = document.createElement("a");
     searchIcon.href = link;
     searchIcon.target = "_blank";
@@ -103,7 +103,7 @@ function createLink(link) {
     domain = /[\/|\.|www]*(\w+)\.[org|com|se|info]/.exec(link)[1];
     searchIcon.title = searchAPIs[domain][0];
     searchIconImg.src = searchAPIs[domain][1];
-    console.log(domain, ":createLink success");
+//    console.log(domain, ":createLink success");
     return searchIcon;
 }
 
@@ -144,7 +144,7 @@ function getLink(engineName, animeName) {
 
 // add search icon in subject page
 function addSearchIcon1() {
-    console.log("start to create link");
+//    console.log("start to create link");
     var h1 = document.getElementsByTagName("h1")[0];
     if (h1) {
         for (var i = 0, len = searchEngineLists.length; i < len; i++) {
@@ -165,11 +165,11 @@ function addSearchIcon2() {
         var h3 = document.getElementsByTagName("h3")[i];
         for (var j = 0; j < searchEngineLists.length; j++) {
             var animeName = getJanpaneseName(h3);
-            console.log("start to create link");
+//            console.log("start to create link");
             var engineName = searchEngineLists[j];
             if (contains(engineName, allSearchEngineLists[0]) || !animeName.length)
                 animeName = getChineseName(h3);
-            console.log("the animeName is:", animeName);
+//            console.log("the animeName is:", animeName);
             h3.appendChild(createLink(getLink(engineName, animeName)));
         }
     }

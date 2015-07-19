@@ -2,22 +2,8 @@
 // @name        bt_search_for_bgm
 // @namespace   http://bangumi.tv/user/a_little
 // @description add search icons in bangumi.tv for search anime 
-// @include     http://bgm.tv/subject/*
-// @include     http://bgm.tv/index/*
-// @include     http://bgm.tv/anime/*
-// @include     http://bgm.tv/subject_search/*
-// @include     http://bgm.tv/subject/*/*
-// @include     http://bangumi.tv/subject/*
-// @include     http://bangumi.tv/index/*
-// @include     http://bangumi.tv/anime/*
-// @include     http://bangumi.tv/subject_search/*
-// @include     http://bangumi.tv/subject/*/*
-// @include     http://chii.in/subject/*
-// @include     http://chii.in/index/*
-// @include     http://chii.in/anime/*
-// @include     http://chii.in/subject_search/*
-// @include     http://chii.in/subject/*/*
-// @version     0.1
+// @include     /^https?://(bangumi|bgm|chii)\.(tv|in)/(subject|index|anime|game|book|subject_search)/.*$/
+// @version     0.12
 // @grant       none
 // ==/UserScript==
 
@@ -28,15 +14,19 @@ var searchEngineLists = [
 //    "popgo",
     "google",
     "btdigg",
-//    "nyaa"
+//    "nyaa",
+//    "shousibaocai",
+//    "tokyotosho",
+//    "btcherry",
+//    "cililian",
 ];
 
 // the engines in first list will search Chinese name by default.
 // The engines in second list may need a ladder to acess them. Search Japanese name by default.
 var allSearchEngineLists = [
     ["dmhy", "camoe", "popgo"],
-    ["google", "btdigg", "nyaa"]
-]
+    ["google", "btdigg", "nyaa", "shousibaocai", "tokyotosho", "btcherry","cililian"]
+];
 
 // You can add new search engines in here.
 // Data format and order like this: name : ["title", "icon", "searchapi"].
@@ -78,38 +68,66 @@ var searchAPIs = {
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAKklEQVQ4jWNgYGD4TyEeaAP+4wDIivCBIWQANv+T5QIM/qgBQykd0MwAAK9F2kKBLEdAAAAAAElFTkSuQmCC",
         "http://www.tokyotosho.info/search.php?terms={searchTerms}&type=0&size_min=&size_max=&username="
     ],
+    shousibaocai : [
+        "shousibaocai",
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAxElEQVQ4ja2RwQ7CIAxAmyCcjH/gxd9EHcn+ULOTZw8elngyVnD1QLqxjUAPNiGQ0L6+AkAllPVUy1nF9f7aAwB0XWeUDRRBQQ5Kk9ngDwBPuftsGIdkHM4KeTcOg3Y4iC30GblwZVK1UDbEdfSjkag7AIBukJT1EyRZIgDrKxvIOKQILBTrBr/LhG2LTwbE7oX5OUk7HFLdzekznvkdqrGee3qLW9/vRJDZLyQgUfFkEr/v8ngfTCPUX1rw3OL5c5AS4Ae9i8czRVbLiwAAAABJRU5ErkJggg==",
+        "http://www.shousibaocai.com/search/{searchTerms}/"
+    ],
+    btcherry : [
+        "btcherry",
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABkUlEQVQ4jZ2TPUtCYRTHjwgmkiDS1FAGLhmXIiIKeoEarBYXTacmXfwGTkJNfYMGHaO6oVAEKlRDJESJii8heBVxeIYLOSTWfd6uTYYNcr0dOHCG8/+dF84B0DCEkIU+POyw62sfrlYXtPL/GLu6OuQ2W4dbrV28slKQZXlyLCF5eVmjj4+73Gz+4nb7B1lff2WxWHDsyookObHXe4cDgRuyuvrGwuEzXa0DAGBR9JN4PIRLJUG3GACApVIHsixPkvPzo38BSD6/qEiSkz49bffa7Wn9gEJhSZEkJwAASyZ9ugE0nd5DCFkAAFgi4dUNYMmkTxRF4ydCUyyT2UcIWca6g+9mcxaXy/M0m93Cx8cnZHMzywWhoppMimq1dr9rtbnR4kZjhptMigrAuc3WUQH63OFoUUGoqAB9FaDPLi78o+dOpdyDxGGnbvf9ICa53PJIQK/dnlaNRjIs5g5Hi7tc7ypAn3o8t5o7oJHI6S/AYGAkHg/RaPSExWLBer0+oQkAAKDPzxvs8tKHi0XN9/0BMXncGs+NNbkAAAAASUVORK5CYII=",
+        "http://www.btcherry.net/search?keyword={searchTerms}"
+    ],
+    cililian : [
+        "cililian",
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACDklEQVQ4jVWTzW7TQBSF/UKxZ0y3vAEPwCv0AcqeConMTNl0iWhhWwkkYNUisWFBU1Zd8bOiVdXamXFkmjQhNPF8LGbsJFeyrJk79+ecc28ilaO3VyJ1iTQOoR1SWaRyCG1JjUPqEqHDOetXSGURpkSYkkRoS7AGaFiwsgYPjQcfTss1rweksjGBjzfR8+58xuM3FakeIbQlV5anJ2Ou6kVM2wAgtCWRysX4BfUcto8mCFWQa0emLIdnE3aP79jSI0Tfcvr7b1dLKkcile2q73y8JVNDpKk6jMG3oJ55nnyYkGvHZT0HD7muSDI1BOBH4UOwspHI0EGLFw/ew+HplKs68NXTBUlqLB44GEyR+iYwra8RakRqLDQ+Nth0ZLYJc2VDAjzsntwitKOnLdKEDnIzDIT5FfMrxdiUcf/LBGkqMl2swbBtvVXltSRCWxJhSgA+/5whVEFqQhdCW4QabegO8GowZfvoD3hIjSORpsIDt1PPw/0qtN4fkRqHMDcALGPLg4t7hHa8Pb9bySjUdffo0685uQpjm70okM8DvO/De3ZPavK+Y+f9GB/nMszB3jBIFHF9u5jz6OUI0Y/zoC1b/UDqs+NxHLq1SUyNY9OCxqeXcw4GUw6//uP12YR6vpKxfRd3wa0FttmbDcnafWq/ZWS1WyZhAu52nYV2CFPyQAUIuQ7/drGEKrr1/g9ByU0YaeEgIwAAAABJRU5ErkJggg==",
+        "http://cililian.me/list/{searchTerms}/1.html"
+    ],
 
 };
 
 // Create anchor for search with a icon.
 // Codes come from Bangumi Music+(http://bgm.tv/group/topic/10395) and make some modifications.
-function create_link(link) {
-//    console.log("start create link in create_link function");
-    if (document.getElementById('navMenuNeue').children[0].children[0].className == "focus chl anime" || document.getElementById('navMenuNeue').children[3].children[0].className == "focus chl" || document.getElementById('navMenuNeue').children[1].children[0].className == "focus chl") {
-        var search_icon = document.createElement("a");
-        search_icon.href = link;
-        search_icon.target = "_blank";
-        var search_icon_img = document.createElement("img");
-        search_icon_img.style.border = "none";
-        search_icon_img.style.height = '12px';
-        search_icon_img.style.width = "14px";
-        search_icon_img.style.marginLeft = "3px";
-        search_icon.appendChild(search_icon_img);
-        // add title and icon
-        domain = /[\/|\.|www]*(\w+)\.[org|com|se|info]/.exec(link)[1];
-        search_icon.title = searchAPIs[domain][0];
-        search_icon_img.src = searchAPIs[domain][1];
-//        console.log(domain, ":create_link success");
-        return search_icon;
-    }
+function createLink(link) {
+    console.log("start create link in createLink function");
+    var searchIcon = document.createElement("a");
+    searchIcon.href = link;
+    searchIcon.target = "_blank";
+    var searchIconImg = document.createElement("img");
+    searchIconImg.style.border = "none";
+    searchIconImg.style.height = '12px';
+    searchIconImg.style.width = "14px";
+    searchIconImg.style.marginLeft = "3px";
+    searchIcon.appendChild(searchIconImg);
+    // add title and icon
+    domain = /[\/|\.|www]*(\w+)\.[org|com|se|info]/.exec(link)[1];
+    searchIcon.title = searchAPIs[domain][0];
+    searchIconImg.src = searchAPIs[domain][1];
+    console.log(domain, ":createLink success");
+    return searchIcon;
 }
 
 function getChineseName(title) {
-    return title.children[0].title;
+    if (window.location.href.match(/subject_search|index/))
+        return title.getElementsByClassName("l")[0].textContent;
+    if (title.getElementsByTagName("a")[0].title)
+        return title.children[0].title;
+    return title.children[0].textContent;
 }
 
 function getJanpaneseName(title) {
-    return title.children[0].text;
+    if (window.location.href.match(/subject_search/)) {
+        if (title.getElementsByClassName("grey").length)
+            return title.getElementsByClassName("grey")[0].textContent;
+        else
+            return title.getElementsByClassName("l")[0].textContent;
+    }
+    if (title.tagName === "H3" && title.children[1] !== undefined) {
+        return title.children[1].textContent;
+    }
+    else if (title.tagName === "H1")
+        return title.children[0].textContent;
+    return "";
 }
 
 function contains(val, arr) {
@@ -120,56 +138,46 @@ function contains(val, arr) {
     return false;
 }
 
+function getLink(engineName, animeName) {
+    return searchAPIs[engineName][2].replace(/\{searchTerms\}/, encodeURIComponent(animeName));
+}
+
 // add search icon in subject page
 function addSearchIcon1() {
-    if (window.location.href.match("/subject/")) {
-        try {
-            var h1 = document.getElementsByTagName("h1")[0];
-            var anime_name = getJanpaneseName(h1);
-            if (h1) {
-                for (var i = 0, len = searchEngineLists.length; i < len; i++) {
-//                    console.log("start to create link");
-                    var engine_name = searchEngineLists[i];
-                    if (contains(engine_name, allSearchEngineLists[1]))
-                        anime_name = getJanpaneseName(h1);
-                    else if (contains(engine_name, allSearchEngineLists[0]) && getChineseName(h1))
-                        anime_name = getChineseName(h1);
+    console.log("start to create link");
+    var h1 = document.getElementsByTagName("h1")[0];
+    if (h1) {
+        for (var i = 0, len = searchEngineLists.length; i < len; i++) {
+            var animeName = getChineseName(h1);
+            var engineName = searchEngineLists[i];
+            if (contains(engineName, allSearchEngineLists[1]) || !animeName.length)
+                animeName = getJanpaneseName(h1);
 
-                    h1.appendChild(create_link(searchAPIs[engine_name][2].replace(/\{searchTerms\}/, encodeURIComponent(anime_name))));
-                }
-            }
-        } catch (e) {
-            /* handle error */
+            h1.appendChild(createLink(getLink(engineName, animeName)));
         }
     }
 }
 
 // add search icon in anime or index page
 function addSearchIcon2() {
-    if (window.location.href.match("/anime|index|game|book|subject_search/")) {
-        try {
-            for (var i = 0, len = document.getElementsByTagName("h3").length; i < len; i++) {
-                var h3 = document.getElementsByTagName("h3")[i];
-                var anime_name = h3.getElementsByTagName("a")[0];
-                if (anime_name.textContent)
-                    anime_name = anime_name.textContent;
-                else if (anime_name.text)
-                    anime_name = anime_name.text;
-                var grey_anime_name = h3.getElementsByClassName("grey");
-                for (var j = 0; j < searchEngineLists.length; j++) {
-//                    console.log("start to create link");
-                    var engine_name = searchEngineLists[j];
-                    if (contains(engine_name, allSearchEngineLists[1]) && grey_anime_name.length) {
-                        h3.appendChild(create_link(searchAPIs[engine_name][2].replace(/\{searchTerms\}/, encodeURIComponent(grey_anime_name[0].textContent))));
-                    } else
-                        h3.appendChild(create_link(searchAPIs[engine_name][2].replace(/\{searchTerms\}/, encodeURIComponent(anime_name))));
-                }
-            }
-        } catch (e) {
-            /* handle error */
+//    if (window.location.href.match(/subject_search/))
+    for (var i = 0, len = document.getElementsByTagName("h3").length; i < len; i++) {
+        var h3 = document.getElementsByTagName("h3")[i];
+        for (var j = 0; j < searchEngineLists.length; j++) {
+            var animeName = getJanpaneseName(h3);
+            console.log("start to create link");
+            var engineName = searchEngineLists[j];
+            if (contains(engineName, allSearchEngineLists[0]) || !animeName.length)
+                animeName = getChineseName(h3);
+            console.log("the animeName is:", animeName);
+            h3.appendChild(createLink(getLink(engineName, animeName)));
         }
     }
-
 }
-addSearchIcon1();
-addSearchIcon2();
+
+
+// todo: fix problem that script doesn't work in book page and game page
+if (window.location.href.match("/subject/") && document.getElementById("navMenuNeue").children[2].children[0].className !== "focus chl")
+    addSearchIcon1();
+else if (window.location.href.match("/anime|index|game|book|subject_search/"))
+    addSearchIcon2();

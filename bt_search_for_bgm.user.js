@@ -9,15 +9,15 @@
 
 // Here, you can choose search engines that you want.
 var searchEngineLists = [
-    "dmhy",
+//    "dmhy",
 //    "camoe",
 //    "popgo",
-    "google",
-    "btdigg",
+//    "google",
+//    "btdigg",
 //    "nyaa",
-//    "shousibaocai",
+    "shousibaocai",
 //    "tokyotosho",
-//    "btcherry",
+    "btcherry",
 //    "cililian",
 ];
 
@@ -93,11 +93,9 @@ function createLink(link) {
     var searchIcon = document.createElement("a");
     searchIcon.href = link;
     searchIcon.target = "_blank";
+    searchIcon.className = "searchicon";
     var searchIconImg = document.createElement("img");
-    searchIconImg.style.border = "none";
-    searchIconImg.style.height = '12px';
-    searchIconImg.style.width = "14px";
-    searchIconImg.style.marginLeft = "3px";
+    searchIconImg.style.cssText = "border:none;height:12px;width:14px;margin-left:3px";
     searchIcon.appendChild(searchIconImg);
     // add title and icon
     domain = /[\/|\.|www]*(\w+)\.[org|com|se|info]/.exec(link)[1];
@@ -144,8 +142,15 @@ function getLink(engineName, animeName) {
 
 // add search icon in subject page
 function addSearchIcon1() {
-//    console.log("start to create link");
     var h1 = document.getElementsByTagName("h1")[0];
+    // add bt search text
+    var frag = document.createDocumentFragment('frag');
+    var span = document.createElement('span');
+    span.id = 'bt-search';
+    span.textContent = "BT搜索:";
+    span.style.cssText = "width:14px !important; height:12px !important; color:rgb(0,180,30);margin-left:100px";
+    frag.appendChild(span);
+    h1.appendChild(frag);
     if (h1) {
         for (var i = 0, len = searchEngineLists.length; i < len; i++) {
             var animeName = getChineseName(h1);
@@ -165,19 +170,43 @@ function addSearchIcon2() {
         var h3 = document.getElementsByTagName("h3")[i];
         for (var j = 0; j < searchEngineLists.length; j++) {
             var animeName = getJanpaneseName(h3);
-//            console.log("start to create link");
             var engineName = searchEngineLists[j];
             if (contains(engineName, allSearchEngineLists[0]) || !animeName.length)
                 animeName = getChineseName(h3);
-//            console.log("the animeName is:", animeName);
             h3.appendChild(createLink(getLink(engineName, animeName)));
         }
     }
 }
 
+//todo: add offline download by using baiducloud 
+// require jQuery
+var networkDisk = {
+    baidu: {
+        click: function(magnet) {
+            $(".icon-btn-download").click();
+            setTimeout(function () {
+                $("#_disk_id_13").click();
+                setTimeout(function () {
+                    if (!($('#share-offline-link')[0].value) && window.stop) {
+                        window.stop();
+                        $('#share-offline-link')[0].value = magnet;
+                    }
+                    $("#_disk_id_17").click();
+                }, 500);
+            }, 500);
+        },
+    }
+};
 
-// todo: fix problem that script doesn't work in book page and game page
 if (window.location.href.match("/subject/") && document.getElementById("navMenuNeue").children[2].children[0].className !== "focus chl")
     addSearchIcon1();
 else if (window.location.href.match("/anime|index|game|book|subject_search/"))
     addSearchIcon2();
+
+window.setTimeout(function() {
+    $(document).ready(function() {
+        $("#bt-search").click(function() {
+            $(".searchicon").toggle();
+        });
+    });
+}, 1000);

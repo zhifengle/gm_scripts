@@ -9,13 +9,13 @@
 
 // Here, you can choose search engines that you want.
 var searchEngineLists = [
-//    "dmhy",
+    "dmhy",
 //    "camoe",
 //    "popgo",
-//    "google",
+    "google",
 //    "btdigg",
 //    "nyaa",
-    "shousibaocai",
+//    "cilizhushou",
 //    "tokyotosho",
     "btcherry",
 //    "cililian",
@@ -25,7 +25,7 @@ var searchEngineLists = [
 // The engines in second list may need a ladder to acess them. Search Japanese name by default.
 var allSearchEngineLists = [
     ["dmhy", "camoe", "popgo"],
-    ["google", "btdigg", "nyaa", "shousibaocai", "tokyotosho", "btcherry","cililian"]
+    ["google", "btdigg", "nyaa", "cilizhushou", "tokyotosho", "btcherry","cililian"]
 ];
 
 // You can add new search engines in here.
@@ -68,10 +68,10 @@ var searchAPIs = {
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAKklEQVQ4jWNgYGD4TyEeaAP+4wDIivCBIWQANv+T5QIM/qgBQykd0MwAAK9F2kKBLEdAAAAAAElFTkSuQmCC",
         "http://www.tokyotosho.info/search.php?terms={searchTerms}&type=0&size_min=&size_max=&username="
     ],
-    shousibaocai : [
-        "shousibaocai",
+    cilizhushou : [
+        "cilizhushou",
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAxElEQVQ4ja2RwQ7CIAxAmyCcjH/gxd9EHcn+ULOTZw8elngyVnD1QLqxjUAPNiGQ0L6+AkAllPVUy1nF9f7aAwB0XWeUDRRBQQ5Kk9ngDwBPuftsGIdkHM4KeTcOg3Y4iC30GblwZVK1UDbEdfSjkag7AIBukJT1EyRZIgDrKxvIOKQILBTrBr/LhG2LTwbE7oX5OUk7HFLdzekznvkdqrGee3qLW9/vRJDZLyQgUfFkEr/v8ngfTCPUX1rw3OL5c5AS4Ae9i8czRVbLiwAAAABJRU5ErkJggg==",
-        "http://www.shousibaocai.com/search/{searchTerms}/"
+        "http://www.cilizhushou.com/search/{searchTerms}/"
     ],
     btcherry : [
         "btcherry",
@@ -95,7 +95,7 @@ function createLink(link) {
     searchIcon.target = "_blank";
     searchIcon.className = "searchicon";
     var searchIconImg = document.createElement("img");
-    searchIconImg.style.cssText = "border:none;height:12px;width:14px;margin-left:3px";
+    searchIconImg.style.cssText = "display:inline-block;border:none;height:12px;width:14px;margin-left:2px";
     searchIcon.appendChild(searchIconImg);
     // add title and icon
     domain = /[\/|\.|www]*(\w+)\.[org|com|se|info]/.exec(link)[1];
@@ -148,7 +148,7 @@ function addSearchIcon1() {
     var span = document.createElement('span');
     span.id = 'bt-search';
     span.textContent = "BT搜索:";
-    span.style.cssText = "width:14px !important; height:12px !important; color:rgb(0,180,30);margin-left:100px";
+    span.style.cssText = "width:14px !important; height:12px !important; color:rgb(0,180,30);margin-left:100px;cursor:pointer;";
     frag.appendChild(span);
     h1.appendChild(frag);
     if (h1) {

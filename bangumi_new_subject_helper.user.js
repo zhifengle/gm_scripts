@@ -8,6 +8,7 @@
 // @include     http://bangumi.tv/subject/*/edit_detail
 // @include     https://cse.google.com/cse/home?cx=008561732579436191137:pumvqkbpt6w
 // @include     http://erogamescape.ddo.jp/~ap2/ero/toukei_kaiseki/*
+// @include     http://www.dmm.co.jp/dc/pcgame/*
 // @version     0.1
 // @run-at      document-end
 // @grant       GM_setValue
@@ -21,6 +22,7 @@
     "ブランド": ["开发", "brand"],
     "定価": ["售价", "price"],
     "発売日": ["发行日期", "releaseDate"],
+    "配信開始日": ["发行日期", "releaseDate"],
     "原画": ["原画", "painter"],
     "音楽": ["音乐", "music"],
     "シナリオ": ["剧本", "scenario"],
@@ -100,15 +102,23 @@
         }
         setTimeout(function () {
           var inputtext = document.getElementById('infobox_normal').querySelectorAll("[class='inputtext prop']");
-          inputtext[4].value = subjectData.releaseDate;
-          inputtext[5].value = subjectData.price;
-          document.getElementById('subject_summary').value = subjectData.subjectStory;
-        }, 1000);
+          inputtext[1].value = 'ADV';
+          inputtext[3].value = '1';
+          if (subjectData.releaseDate) {
+            inputtext[4].value = subjectData.releaseDate;
+          }
+          if (subjectData.price) {
+            inputtext[5].value = subjectData.price;
+          }
+          if (subjectData.subjectStory) {
+            document.getElementById('subject_summary').value = subjectData.subjectStory;
+          }
+        }, 300); // 1000
         setTimeout(function (){document.getElementById("showrobot").click();},300);
       },
       enhanceSearch: function(APIs) {
         $c({
-          self: document.querySelector('.inner'),
+          self: document.querySelector('#headerSearch .inner'),
           append: [
             {
               tag: 'a',
@@ -133,7 +143,7 @@
           ],
         });
         $c({
-          self: document.querySelector('.inner'),
+          self: document.querySelector('#headerSearch .inner'),
           append: [
             {
               tag: 'a',
@@ -161,17 +171,17 @@
       handleEvent: function(event) {
         searchtext = document.getElementById('search_text');
         if (searchtext.value) {
-//          alert(searchtext.value);
+          //          alert(searchtext.value);
           if (event.target.className === "search-icon") {
             GM_setValue('subjectData', JSON.stringify({subjectName: searchtext.value}));
           } else if (event.target.className === "search-baidu") {
-              var text = searchtext.value + " site:" + window.location.hostname;
-              event.target.href = "http://www.baidu.com/s?&ie=UTF-8&oe=UTF-8&cl=3&rn=100&wd=%20%20" + encodeURIComponent(text);
+            var text = searchtext.value + " site:" + window.location.hostname;
+            event.target.href = "http://www.baidu.com/s?&ie=UTF-8&oe=UTF-8&cl=3&rn=100&wd=%20%20" + encodeURIComponent(text);
           }
         }
         else {
-//          document.querySelector('.search-icon').addEventListener('click', function(event) { event.preventDefault(); }, false);
-//          document.querySelector('.search-baidu').addEventListener('click', function(event) { event.preventDefault(); }, true);
+          //          document.querySelector('.search-icon').addEventListener('click', function(event) { event.preventDefault(); }, false);
+          //          document.querySelector('.search-baidu').addEventListener('click', function(event) { event.preventDefault(); }, true);
         }
       },
       registerEvent: function() {
@@ -217,17 +227,22 @@
   };
 
   var dbsites = {
-    getchu: { // getchu has imported jquery
+    getchu: { 
+      isGamepage: function () {
+        if (document.getElementsByClassName('genretab current').length && document.getElementsByClassName('genretab current')[0].textContent.match("ゲーム")) {
+          return true;
+        }
+      },
       softtitle: function() {
         return document.getElementById("soft-title");
       },
       getSubjectInfo: function() {
         var basicInfo = {};
-        basicInfo.subjectUrl = window.location.href;
+//        basicInfo.subjectUrl = window.location.href;
         // subject name
-        basicInfo.subjectName = document.getElementById("soft-title").textContent.split('\n')[1].replace(/\s.*版.*/,'');
+        basicInfo.subjectName = this.softtitle().textContent.split('\n')[1].replace(/\s.*版.*/,'');
 
-      if (document.getElementsByTagName("table")) {
+      if (document.getElementsByTagName("table").length) {
         var infoTable = document.getElementsByTagName("table")[2].getElementsByTagName('tr');
         // separately deal brand price and release date
         basicInfo.brand = infoTable[0].textContent.split('\n')[0].split('：')[1];
@@ -245,7 +260,10 @@
       var story = document.querySelectorAll("div.tabletitle");
       var subjectStory = "";
       for (var j = 0; j < story.length; j += 1) {
-        if (story[j].textContent.match(/ストーリー|商品紹介/)) {
+        if (story[j].textContent.match(/ストーリー/)) {
+          subjectStory = story[j].nextElementSibling.textContent.replace(/^\s*[\r\n]/gm,'');
+          break;
+        } else if(story[j].textContent.match(/商品紹介/)) {
           subjectStory = story[j].nextElementSibling.textContent.replace(/^\s*[\r\n]/gm,'');
           break;
         }
@@ -254,28 +272,31 @@
 
       return basicInfo;
       },
-        //        return replaceAll(document.getElementsByTagName("table")[2].innerHTML, {"<a":"<span","<\/a>":"<\/span>"});
+      //        return replaceAll(document.getElementsByTagName("table")[2].innerHTML, {"<a":"<span","<\/a>":"<\/span>"});
       storeData: function () {
         GM_setValue("subjectData", JSON.stringify(this.getSubjectInfo()));
-        //        GM_setValue("subjectInfoTable", getInfoTable());
-        console.log(GM_getValue("subjectData"));
       }
     },
     erogamescape: {
-      softtitle: function() {
+      isGamepage: function () {
+        if (window.location.search.match('game')) {
+          return true;
+        }
+      },
+      softtitle: function () {
         return document.getElementById("soft-title");
       },
       getSubjectInfo: function() {
         var info = {};
-        var title = softtitle().children;
+        var title = this.softtitle().children;
         info.subjectName = title[0].textContent;
         info.brand = title[1].textContent.replace(/\(.*\)/, '');
         info.releaseDate = title[2].textContent.replace(/-/g,'/');
         if (document.getElementById('genga')) {
-        info.painter = document.querySelector('#genga td').textContent;
+          info.painter = document.querySelector('#genga td').textContent;
         }
         if (document.getElementById('shinario')) {
-        info.scenario = document.querySelector('#shinario td').textContent;
+          info.scenario = document.querySelector('#shinario td').textContent;
         }
         if (document.getElementById('ongaku')) {
           info.music = document.querySelector('#ongaku td').textContent;
@@ -283,9 +304,40 @@
         if (document.getElementById('kasyu')) {
           info.singer = document.querySelector('#kasyu td').textContent;
         }
+        console.log(info);
         return info;
       },
       storeData: function() {
+        GM_setValue("subjectData", JSON.stringify(this.getSubjectInfo()));
+      },
+    },
+
+    dmm: {
+      isGamepage: function () {
+        if (window.location.pathname.match('pcgame')) {
+          return true;
+        }
+      },
+      softtitle: function () {
+        return document.getElementById('title');
+      },
+      getSubjectInfo: function () {
+        var info = {}, infoTable, re;
+        info.subjectName = this.softtitle().textContent.trim().replace(/\b.*版.*|新.*/, '');
+        if (document.querySelectorAll('.float-l.mg-b20').length > 1) {
+          infoTable = document.querySelectorAll('.float-l.mg-b20')[1].getElementsByTagName('tr');
+          re = new RegExp(Object.keys(INFO_DICT_GAME).join("|"),"gmi");
+          for (var i = 0; i < infoTable.length; i += 1) {
+            if (infoTable[i].textContent.match(re)) {
+              var alist = infoTable[i].textContent.split('：').map(String.trim);
+              info[INFO_DICT_GAME[alist[0]][1]] = alist[1];
+            }
+          }
+        }
+        info.subjectStory = document.querySelector('.mg-b20.lh4').textContent.replace(/[\s].*特集.*/,'');
+        return info;
+      },
+      storeData: function () {
         GM_setValue("subjectData", JSON.stringify(this.getSubjectInfo()));
       },
     },
@@ -298,7 +350,7 @@
     }
     else {
       GM_addStyle([
-        '.new-subject,.search-subject{color: rgb(0, 180, 30) !important;margin-left: 4px;}',
+        '.new-subject,.search-subject{color: rgb(0, 180, 30) !important;margin-left: 4px !important;}',
         '.new-subject:hover,.search-subject:hover{color:red !important;}',
       ].join(''));
     }
@@ -310,28 +362,20 @@
       sites.bangumi.enhanceSearch();
       sites.bangumi.registerEvent();
     }
+//    dbsites.dmm.getSubjectInfo();
     for (var site in dbsites) {
-      if (document.location.href.match(site) && document.getElementById('soft-title')) {
-        /*
-           for (var prop in dbsites[site]) {
-           if (typeof dbsites[site][prop] === "function") {
-           dbsites[site][prop]();
-           }
-           }
-           */
+      if (url.match(site) && dbsites[site].isGamepage()) {
         addStyle();
-        addNode(document.getElementById('soft-title'));
+        addNode(dbsites[site].softtitle());
         dbsites[site].storeData();
-        console.log("It's ok here");
         console.log(GM_getValue("subjectData"));
-        //      console.log(GM_getValue("subjectInfoTable"));
       }
     }
 
     // fillform for bangumi and google site search
-    if (document.location.href.match(/google|new_subject/)) {
+    if (url.match(/google|new_subject/)) {
       for (var asite in sites) {
-        if (document.location.href.match(asite)) {
+        if (url.match(asite)) {
           $c({
             self: document.body,
             append: [{
@@ -347,12 +391,20 @@
     }
 
     // add infotable
-    if (document.location.href.match(/person|new_subject/)) {
+    if (url.match(/person|new_subject/)) {
       addStyle([
         '.a-table{border:1px solid red;float:left;margin-top:20px;width:340px;}',
         '.a-table span:hover{color:red;cursor:pointer;}',
         '.a-table span{color:rgb(0,180,30);}',
       ].join(''));
+      var createTable = function (jsonData) {
+        for (var prop in jsonData) {
+          if (jsonData.hasOwnProperty(prop)) {
+
+
+          }
+        }
+      };
       // if in person page
       $c({
         self: document.getElementById("columnCrtRelatedA"),

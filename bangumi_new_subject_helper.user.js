@@ -18,26 +18,27 @@
 // ==/UserScript==
 
 (function () {
-  var INFO_DICT_GAME = {
-    "ブランド": ["开发", "brand"],
-    "定価": ["售价", "price"],
-    "発売日": ["发行日期", "releaseDate"],
-    "配信開始日": ["发行日期", "releaseDate"],
-    "原画": ["原画", "painter"],
-    "音楽": ["音乐", "music"],
-    "シナリオ": ["剧本", "scenario"],
-    "歌手": ["歌手", "singer"],
-  };
+  var INFO_DICT_GAME = [
+    ["ブランド", "开发", "brand"],
+    ["定価", "售价", "price"],
+    ["発売日", "发行日期", "releaseDate"],
+    ["配信開始日", "发行日期", "releaseDate"],
+    ["原画", "原画", "painter"],
+    ["音楽", "音乐", "music"],
+    ["シナリオ", "剧本", "scenario"],
+    ["歌手", "歌手", "singer"],
+    ["ジャンル", "游戏类型", "genre"],
+  ];
 
   var FILTER_LIST_GETCHU = ["ブランド","定価","発売日","原画","音楽","シナリオ"];
 
-  var replaceAll = function(str,mapObj){
+  function replaceAll (str,mapObj){
     var re = new RegExp(Object.keys(mapObj).join("|"),"gi");
 
     return str.replace(re, function(matched){
       return mapObj[matched.toLowerCase()];
     });
-  };
+  }
   // this function copy from a script named "挊"
   var $c = function(arg) {
     'use strict';
@@ -95,6 +96,47 @@
 
   var sites = {
     bangumi: {
+      fillForm2: function (subjectData) {
+        if (subjectData.subjectName && document.getElementsByTagName("tbody")) {
+          var gamename = document.getElementsByTagName("tbody")[0].children[0].children[1];
+          gamename.firstChild.value = subjectData.subjectName;
+        }
+        if (subjectData.subjectStory) {
+          document.getElementById('subject_summary').value = subjectData.subjectStory;
+        }
+        var adict = {
+          "brand": "开发",
+          "price": "售价",
+          "releaseDate": "发行日期",
+          "painter": "原画",
+          "music": "音乐",
+          "scenario": "剧本",
+          "singer": "歌手",
+          "genre": "游戏类型",
+        };
+        var aspan = document.createElement('span');
+        aspan.textContent = "填表";
+        aspan.className = 'fill-form';
+        document.getElementsByTagName("tbody")[0].children[0].children[1].appendChild(aspan);
+        // fill infobox
+        document.querySelector('.fill-form').addEventListener('click', function() {
+          NormaltoWCODE();
+          var infobox = document.getElementById('subject_infobox');
+          var infobox_game =  ["{{Infobox Game", "|中文名= ", "|别名={", "}", "|平台={", "[PC]", "}", "|游戏类型= ", "|游戏引擎= ", "|游玩人数= 1人", "|发行日期= ", "|售价= ", "|website= ", "|开发= ", "|原画= ", "|剧本= ", "|音乐= ", "}}"];
+          var info_list = INFO_DICT_GAME.map(function(arr) {return arr[1];});
+          infobox.value = infobox_game.map(function(elem) {
+            if (elem.match(/^.*=\s$/)) {
+              var name = elem.substring(1, elem.indexOf('='));
+              var pos = info_list.indexOf(name);
+              if (pos !== - 1 && subjectData[INFO_DICT_GAME[pos][2]])
+                return elem + subjectData[INFO_DICT_GAME[pos][2]];
+              else
+                return elem;
+            } else
+              return elem;
+          });
+        }, false);
+      },
       fillForm: function (subjectData) {
         if (subjectData.subjectName && document.getElementsByTagName("tbody")) {
           var gamename = document.getElementsByTagName("tbody")[0].children[0].children[1];
@@ -102,7 +144,8 @@
         }
         setTimeout(function () {
           var inputtext = document.getElementById('infobox_normal').querySelectorAll("[class='inputtext prop']");
-          inputtext[1].value = 'ADV';
+          var inputid = document.getElementById('infobox_normal').querySelectorAll("[class='inputtext id']");
+          inputtext[1].value = subjectData.genre;
           inputtext[3].value = '1';
           if (subjectData.releaseDate) {
             inputtext[4].value = subjectData.releaseDate;
@@ -114,6 +157,34 @@
             document.getElementById('subject_summary').value = subjectData.subjectStory;
           }
         }, 300); // 1000
+        [100,100,100,100].forEach(function(time) {
+          setTimeout(addoneprop, time);
+        });
+        document.querySelector('.fill-form').addEventListener('click', function (evnt) {
+//          console.log('hello');
+          var inputtext = document.getElementById('infobox_normal').querySelectorAll("[class='inputtext prop']");
+          var inputid = document.getElementById('infobox_normal').querySelectorAll("[class='inputtext id']");
+          var len = inputtext.length;
+          console.log(len);
+          if (len > 8) {
+            if (subjectData.music) {
+              inputid[len-2].value = '音乐';
+              inputtext[len-2].value = subjectData.music;
+            }
+            if (subjectData.scenario) {
+              inputid[len-3].value = '剧本';
+              inputtext[len-3].value = subjectData.scenario;
+            }
+            if (subjectData.painter) {
+              inputid[len-4].value = '原画';
+              inputtext[len-4].value = subjectData.painter;
+            }
+            if (subjectData.brand) {
+              inputid[len-5].value = '开发';
+              inputtext[len-5].value = subjectData.brand;
+            }
+          }
+        });
         setTimeout(function (){document.getElementById("showrobot").click();},300);
       },
       enhanceSearch: function(APIs) {
@@ -188,6 +259,9 @@
         document.querySelector('.search-icon').addEventListener('mouseover', this.handleEvent, false);
         document.querySelector('.search-baidu').addEventListener('mouseover', this.handleEvent, true);
       },
+      createTable: function(infoObj) {
+
+      }
     },
     google: {
       fillForm: function(data) {
@@ -238,9 +312,9 @@
       },
       getSubjectInfo: function() {
         var basicInfo = {};
-//        basicInfo.subjectUrl = window.location.href;
+        //        basicInfo.subjectUrl = window.location.href;
         // subject name
-        basicInfo.subjectName = this.softtitle().textContent.split('\n')[1].replace(/\s.*版.*/,'');
+        basicInfo.subjectName = document.getElementById('soft-title').textContent.split('\n')[1].replace(/\s.*?版.*|新.*/,'');
 
       if (document.getElementsByTagName("table").length) {
         var infoTable = document.getElementsByTagName("table")[2].getElementsByTagName('tr');
@@ -248,11 +322,12 @@
         basicInfo.brand = infoTable[0].textContent.split('\n')[0].split('：')[1];
         basicInfo.price = infoTable[1].textContent.split('：')[1];
         basicInfo.releaseDate = infoTable[2].textContent.trim().split("\n")[1];
-        var re = new RegExp(Object.keys(INFO_DICT_GAME).join("|"),"gi");
+        //        var re = new RegExp(Object.keys(INFO_DICT_GAME).join("|"),"gi");
+        var info_list = INFO_DICT_GAME.map(function(arr) {return arr[0];});
         for (var i = 3, len = infoTable.length; i < len; i += 1) {
           var alist = infoTable[i].textContent.split('：');
-          if (alist[0].match(re)) {
-            basicInfo[INFO_DICT_GAME[alist[0]][1]] = alist[1];
+          if (info_list.indexOf(alist[0]) !== -1) {
+            basicInfo[INFO_DICT_GAME[info_list.indexOf(alist[0])][2]] = alist[1];
           }
         }
 
@@ -269,13 +344,28 @@
         }
       }
       basicInfo.subjectStory = subjectStory;
+      console.log(basicInfo);
 
       return basicInfo;
       },
-      //        return replaceAll(document.getElementsByTagName("table")[2].innerHTML, {"<a":"<span","<\/a>":"<\/span>"});
+//      getInfoTable: function() {
+//        var infoTable = document.getElementsByTagName("table")[2].querySelectorAll('tr');
+//        var filtlist = ['ブランド', '原画', 'シナリオ'];
+//        return replaceAll(document.getElementsByTagName("table")[2].innerHTML, {"<a":"<span","<\/a>":"<\/span>"});
+
+//      },
       storeData: function () {
         GM_setValue("subjectData", JSON.stringify(this.getSubjectInfo()));
+      },
+      handleEvent: function (event) {
+        var searchtext = document.getElementById('soft-title').textContent.split('\n')[1].replace(/\s.*版.*|新.*/,'');
+      if (event.target.className === 'search-subject') {
+        event.target.href = "https://www.google.com/search?q=" + encodeURIComponent(searchtext) + " site:bangumi.tv";
       }
+      },
+      registerEvent: function () {
+        document.querySelector('.search-subject').addEventListener('mouseover', this.handleEvent, false);
+      },
     },
     erogamescape: {
       isGamepage: function () {
@@ -323,19 +413,23 @@
       },
       getSubjectInfo: function () {
         var info = {}, infoTable, re;
-        info.subjectName = this.softtitle().textContent.trim().replace(/\b.*版.*|新.*/, '');
-        if (document.querySelectorAll('.float-l.mg-b20').length > 1) {
-          infoTable = document.querySelectorAll('.float-l.mg-b20')[1].getElementsByTagName('tr');
-          re = new RegExp(Object.keys(INFO_DICT_GAME).join("|"),"gmi");
-          for (var i = 0; i < infoTable.length; i += 1) {
-            if (infoTable[i].textContent.match(re)) {
-              var alist = infoTable[i].textContent.split('：').map(String.trim);
-              info[INFO_DICT_GAME[alist[0]][1]] = alist[1];
-            }
+        info.subjectName = this.softtitle().textContent.trim().replace(/\b.*?版.*|新.*/, '');
+      if (document.querySelectorAll('.float-l.mg-b20').length > 1) {
+        infoTable = document.querySelectorAll('.float-l.mg-b20')[1].getElementsByTagName('tr');
+        //          re = new RegExp(Object.keys(INFO_DICT_GAME).join("|"),"gmi");
+        var info_list = [];
+        INFO_DICT_GAME.forEach(function(arr) {
+          info_list.push(arr[0]);
+        });
+        for (var i = 0; i < infoTable.length; i += 1) {
+          var alist = infoTable[i].textContent.split('：').map(String.trim);
+          if (info_list.indexOf(alist[0]) !== -1) {
+            basicInfo[INFO_DICT_GAME[info_list.indexOf(alist[0])][2]] = alist[1];
           }
         }
-        info.subjectStory = document.querySelector('.mg-b20.lh4').textContent.replace(/[\s].*特集.*/,'');
-        return info;
+      }
+      info.subjectStory = document.querySelector('.mg-b20.lh4').textContent.replace(/[\s].*特集.*/,'');
+      return info;
       },
       storeData: function () {
         GM_setValue("subjectData", JSON.stringify(this.getSubjectInfo()));
@@ -350,8 +444,8 @@
     }
     else {
       GM_addStyle([
-        '.new-subject,.search-subject{color: rgb(0, 180, 30) !important;margin-left: 4px !important;}',
-        '.new-subject:hover,.search-subject:hover{color:red !important;}',
+        '.new-subject,.search-subject,.fill-form{color: rgb(0, 180, 30) !important;margin-left: 4px !important;}',
+        '.new-subject:hover,.search-subject:hover,.fill-form:hover{color:red !important;cursor:pointer;}',
       ].join(''));
     }
   };
@@ -362,13 +456,19 @@
       sites.bangumi.enhanceSearch();
       sites.bangumi.registerEvent();
     }
-//    dbsites.dmm.getSubjectInfo();
+    //    dbsites.dmm.getSubjectInfo();
     for (var site in dbsites) {
       if (url.match(site) && dbsites[site].isGamepage()) {
         addStyle();
         addNode(dbsites[site].softtitle());
+        console.log('addNode success');
         dbsites[site].storeData();
-        console.log(GM_getValue("subjectData"));
+        console.log('storeData success');
+
+        //        if (window.stop && dbsites[site].registerEvent) {
+        //          dbsites[site].registerEvent();
+        //        }
+//        console.log(GM_getValue("subjectData"));
       }
     }
 
@@ -376,6 +476,19 @@
     if (url.match(/google|new_subject/)) {
       for (var asite in sites) {
         if (url.match(asite)) {
+          if (url.match(/new_subject\/4/)) {
+            addStyle();
+            $c({
+              self: document.getElementsByTagName("tbody")[0].children[0].children[1],
+              append: [{
+                tag: 'span',
+                prop: {
+                  className: 'fill-form',
+                  textContent: '填表',
+                }
+              }]
+            });
+          }
           $c({
             self: document.body,
             append: [{
@@ -389,49 +502,86 @@
         }
       }
     }
-
     // add infotable
-    if (url.match(/person|new_subject/)) {
+    if (url.match(/person/)) {
       addStyle([
         '.a-table{border:1px solid red;float:left;margin-top:20px;width:340px;}',
         '.a-table span:hover{color:red;cursor:pointer;}',
         '.a-table span{color:rgb(0,180,30);}',
       ].join(''));
-      var createTable = function (jsonData) {
-        for (var prop in jsonData) {
-          if (jsonData.hasOwnProperty(prop)) {
-
-
+      var createTable = function (obj) {
+        var html = '';
+        var html1 = '<td style="width:100px;" align="right" valign="top">';
+        var html2 = '<td style="width:auto;" align="top">';
+        var adict = {
+          "brand": "开发",
+          "painter": "原画",
+          "music": "音乐",
+          "scenario": "剧本",
+          "singer": "歌手",
+        };
+        for (var prop in obj) {
+          if (adict[prop]) {
+            html += '<tr>' + html1 + adict[prop] + '：</td>';
+            var td2;
+            if (obj[prop].match('、')) {
+              td2 = obj[prop].split('、').map(function(item) {
+                return '<span>' + item + '</span>';
+              }).join('、');
+            } else if(obj[prop].match(',')) {
+              td2 = obj[prop].split(',').map(function(item) {
+                return '<span>' + item + '</span>';
+              }).join(',');
+            } 
+            else {
+              td2 = '<span>' + obj[prop] + '</span>';
+            }
+            html += html2 + td2 + '</td></tr>';
           }
         }
+        return html;
       };
       // if in person page
-      $c({
-        self: document.getElementById("columnCrtRelatedA"),
-        append: [{
-          tag: "table",
-          prop: {
-            class: "a-table",
-            innerHTML: GM_getValue("subjectInfoTable"),
-          },
-        }],
-      });
-      // new subject page
-      $c({
-        self: document.getElementById("columnInSubjectB"),
-        append: [{
-          tag: "table",
-          prop: {
-            class: "a-table",
-            // innerHTML: JSON.parse(GM_getValue("subjectData")).infoTable,
-            innerHTML: GM_getValue("subjectInfoTable"),
-          },
-        }],
-      });
-    }
+      if (document.getElementById("columnCrtRelatedA")) {
+        console.log('begin createTable');
+        $c({
+          self: document.getElementById("columnCrtRelatedA"),
+          append: [{
+            tag: "table",
+            prop: {
+              className: "a-table",
+              innerHTML: createTable(JSON.parse(GM_getValue("subjectData"))),
+            },
+          }],
+        });
 
+      }
+      // new subject page
+      if (document.getElementById("columnInSubjectB")) {
+        $c({
+          self: document.getElementById("columnInSubjectB"),
+          append: [{
+            tag: "table",
+            prop: {
+              class: "a-table",
+              innerHTML: GM_getValue("subjectInfoTable"),
+            },
+          }],
+        });
+      }
+      console.log(document.querySelector('.a-table span'));
+      var span = document.getElementsByClassName('a-table')[0].getElementsByTagName('span');
+      for (var k = 0; k < span.length; k += 1) {
+        span[k].addEventListener('click', function(event) {
+          document.getElementById('subjectName').value = event.target.textContent.replace(/\(.*\)/,'');
+          window.setTimeout(function() {
+            document.getElementById('findSubject').click();
+          }, 300);
+        }, false);
+      }
+    }
   };
 
-  init();
 
+  init();
 })();

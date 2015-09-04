@@ -26,7 +26,7 @@
     ["原画", "原画", "painter"],
     ["音楽", "音乐", "music"],
     ["シナリオ", "剧本", "scenario"],
-    ["歌手", "歌手", "singer"],
+    ["アーティスト", "歌手", "singer"],
     ["ジャンル", "游戏类型", "genre"],
   ];
 
@@ -173,7 +173,7 @@
             }
             if (subjectData.scenario) {
               inputid[len-3].value = '剧本';
-              inputtext[len-3].value = subjectData.scenario;
+              inputtext[len-3].value = subjectData.scenario.replace(/、他/,'');
             }
             if (subjectData.painter) {
               inputid[len-4].value = '原画';

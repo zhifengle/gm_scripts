@@ -1,0 +1,15 @@
+.new-character,.new-subject,.search-subject,.fill-form {
+  color: rgb(0, 180, 30) !important;
+  margin-left: 4px !important;
+ }
+.new-character:hover,.new-subject:hover,.search-subject:hover,.fill-form:hover {
+  color:red !important;
+  cursor:pointer;
+}
+.a-table{border:1px solid red;float:left;margin-top:20px;width:340px;}
+.a-table span:hover{color:red;cursor:pointer;}
+.a-table span{color:rgb(0,180,30);}
+.search-baidu,.search-google{
+display:inline-block;border:none;height:16px;width:16px;
+margin-left:2px
+}

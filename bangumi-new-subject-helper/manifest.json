@@ -1,0 +1,37 @@
+{
+  "name": "bangumi new subject helper",
+  "description": "bangumi new subject helper",
+  "version": "0.0.1",
+  "content_scripts": [{
+      "js": ["js/jquery.min.js","js/bangumi.js", "js/utility.js", "js/main.js"],
+      "css": ["style.css"],
+      "matches": ["http://bgm.tv/*", "http://bangumi.tv/*", "http://chii.in/*"],
+      "run_at": "document_idle"
+  },
+  {
+      "js": ["js/jquery.min.js","js/getchu.js"],
+      "css": ["style.css"],
+      "matches": ["http://www.getchu.com/soft.phtml?id=*"],
+      "run_at": "document_idle"
+  },
+  {
+      "js": ["js/google.js"],
+      "matches": ["https://cse.google.com/cse/home?cx=008561732579436191137:pumvqkbpt6w"],
+      "run_at": "document_end"
+  },
+  {
+      "js": ["js/erogamescape.js"],
+      "css": ["style.css"],
+      "matches": ["http://erogamescape.ddo.jp/~ap2/ero/toukei_kaiseki/*"],
+      "run_at": "document_end"
+  }
+  ],
+  "web_accessible_resources": ["image/*.png"],
+  "permissions": [ "tabs", "storage", "http://bgm.tv/", "http://bangumi.tv/*"],
+  "browser_action": {
+      "default_title": "help create a game subject",
+      "default_icon": "image/icon.png",
+      "default_popup": "popup.html"
+  },
+  "manifest_version": 2
+}

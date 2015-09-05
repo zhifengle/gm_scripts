@@ -9,7 +9,8 @@
 // @include     https://cse.google.com/cse/home?cx=008561732579436191137:pumvqkbpt6w
 // @include     http://erogamescape.ddo.jp/~ap2/ero/toukei_kaiseki/*
 // @include     http://www.dmm.co.jp/dc/pcgame/*
-// @version     0.1
+// @version     0.1.1
+// @updateURL   https://raw.githubusercontent.com/22earth/gm_scripts/master/bangumi_new_subject_helper.user.js
 // @run-at      document-end
 // @grant       GM_setValue
 // @grant       GM_getValue
@@ -18,6 +19,17 @@
 // ==/UserScript==
 
 (function () {
+  var bgm_domain = GM_getValue('bgm') || '';
+//  bgm_domain = '';
+  if (!bgm_domain.length || !bgm_domain.match(/bangumi\.tv|chii\.in|bgm\.tv/)) {
+    bgm_domain = prompt (
+      '预设bangumi的域名是 "' + 'bangumi.tv' + '". 根据需要输入chii.in或者bgm.tv',
+      'bangumi.tv'
+    );
+    GM_setValue('bgm', bgm_domain);
+    bgm_domain = GM_getValue('bgm');
+  }
+  console.log(bgm_domain);
   var INFO_DICT_GAME = [
     ["ブランド", "开发", "brand"],
     ["定価", "售价", "price"],
@@ -284,7 +296,7 @@
           className: 'new-subject',
           target: '_blank',
           textContent: "新建条目",
-          href: "http://bangumi.tv/new_subject/4",
+          href: "http://" + bgm_domain + "/new_subject/4",
         }
       },
       {
@@ -314,12 +326,12 @@
         var basicInfo = {};
         //        basicInfo.subjectUrl = window.location.href;
         // subject name
-        basicInfo.subjectName = document.getElementById('soft-title').textContent.split('\n')[1].replace(/\s.*?版.*|新.*/,'');
+        basicInfo.subjectName = document.getElementById('soft-title').textContent.split('\n')[1].replace(/初回.*$|廉価.*$|新建.*$/,'').trim();
 
       if (document.getElementsByTagName("table").length) {
         var infoTable = document.getElementsByTagName("table")[2].getElementsByTagName('tr');
         // separately deal brand price and release date
-        basicInfo.brand = infoTable[0].textContent.split('\n')[0].split('：')[1];
+        basicInfo.brand = infoTable[0].textContent.split('\n')[0].replace('ブランド：','');
         basicInfo.price = infoTable[1].textContent.split('：')[1];
         basicInfo.releaseDate = infoTable[2].textContent.trim().split("\n")[1];
         //        var re = new RegExp(Object.keys(INFO_DICT_GAME).join("|"),"gi");
@@ -340,7 +352,6 @@
           break;
         } else if(story[j].textContent.match(/商品紹介/)) {
           subjectStory = story[j].nextElementSibling.textContent.replace(/^\s*[\r\n]/gm,'');
-          break;
         }
       }
       basicInfo.subjectStory = subjectStory;
@@ -360,7 +371,7 @@
       handleEvent: function (event) {
         var searchtext = document.getElementById('soft-title').textContent.split('\n')[1].replace(/\s.*版.*|新.*/,'');
       if (event.target.className === 'search-subject') {
-        event.target.href = "https://www.google.com/search?q=" + encodeURIComponent(searchtext) + " site:bangumi.tv";
+        event.target.href = "https://www.google.com/search?q=" + encodeURIComponent(searchtext) + " site:" + bgm_domain;
       }
       },
       registerEvent: function () {
@@ -474,36 +485,33 @@
 
     // fillform for bangumi and google site search
     if (url.match(/google|new_subject/)) {
-      for (var asite in sites) {
-        if (url.match(asite)) {
-          if (url.match(/new_subject\/4/)) {
-            addStyle();
-            $c({
-              self: document.getElementsByTagName("tbody")[0].children[0].children[1],
-              append: [{
-                tag: 'span',
-                prop: {
-                  className: 'fill-form',
-                  textContent: '填表',
-                }
-              }]
-            });
-          }
-          $c({
-            self: document.body,
-            append: [{
-              tag: "script",
-              prop: {
-                innerHTML: "(" + sites[asite].fillForm.toString() + ")(" + GM_getValue("subjectData") + ");",
-              },
-            }]
-          });
-
-        }
+      var asite = url.match('google') ? 'google': 'bangumi';
+      if (url.match(/new_subject\/4/)) {
+        addStyle();
+        $c({
+          self: document.getElementsByTagName("tbody")[0].children[0].children[1],
+          append: [{
+            tag: 'span',
+            prop: {
+              className: 'fill-form',
+              textContent: '填表',
+            }
+          }]
+        });
       }
+      $c({
+        self: document.body,
+        append: [{
+          tag: "script",
+          prop: {
+            innerHTML: "(" + sites[asite].fillForm.toString() + ")(" + GM_getValue("subjectData") + ");",
+          },
+        }]
+      });
+
     }
     // add infotable
-    if (url.match(/person/)) {
+    if (url.match(/add_related/)) {
       addStyle([
         '.a-table{border:1px solid red;float:left;margin-top:20px;width:340px;}',
         '.a-table span:hover{color:red;cursor:pointer;}',

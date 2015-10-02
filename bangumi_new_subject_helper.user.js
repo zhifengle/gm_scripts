@@ -1,39 +1,47 @@
-// ==UserScript==
-// @name        bangumi new subject helper
+﻿// ==UserScript==
+// @name        bangumi new game subject helper
 // @namespace   https://github.com/22earth
-// @description assist create new subject
+// @description assist to create new game subject
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @include     /^https?://(bangumi|bgm|chii)\.(tv|in)/.*$/
+// @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/.*$/
 // @include     http://bangumi.tv/subject/*/add_related/person
 // @include     http://bangumi.tv/subject/*/edit_detail
 // @include     https://cse.google.com/cse/home?cx=008561732579436191137:pumvqkbpt6w
 // @include     http://erogamescape.ddo.jp/~ap2/ero/toukei_kaiseki/*
+// @include     http://122.219.66.141/~ap2/ero/toukei_kaiseki/*
 // @include     http://www.dmm.co.jp/dc/pcgame/*
-// @version     0.2.0
+// @version     0.2.1
 // @updateURL   https://raw.githubusercontent.com/22earth/gm_scripts/master/bangumi_new_subject_helper.user.js
 // @run-at      document-end
 // @grant       GM_setValue
 // @grant       GM_getValue
 // @grant       GM_addStyle
+// @grant       GM_registerMenuCommand
 // @require     http://cdn.staticfile.org/jquery/2.1.1-beta1/jquery.min.js
 // ==/UserScript==
 
-(function () {
-  // @require
-  // var $ = unsafeWindow.$;
-  //alert($('#soft-title').text());
+if (window.top != window.self) return;
 
-  var bgm_domain = GM_getValue('bgm') || '';
-//  bgm_domain = '';
-  if (!bgm_domain.length || !bgm_domain.match(/bangumi\.tv|chii\.in|bgm\.tv/)) {
+(function () {
+  function setDomain() {
     bgm_domain = prompt (
       '预设bangumi的域名是 "' + 'bangumi.tv' + '". 根据需要输入chii.in或者bgm.tv',
       'bangumi.tv'
     );
     GM_setValue('bgm', bgm_domain);
+    return bgm_domain;
+  }
+
+  var bgm_domain = GM_getValue('bgm') || '';
+  if (!bgm_domain.length || !bgm_domain.match(/bangumi\.tv|chii\.in|bgm\.tv/)) {
+    bgm_domain = setDomain();
     bgm_domain = GM_getValue('bgm');
   }
   console.log(bgm_domain);
+
+  if (GM_registerMenuCommand) {
+    GM_registerMenuCommand("\u8bbe\u7f6e\u57df\u540d", setDomain, 'b');
+  }
 
   var addStyle = function (css) {
     if (css) {
@@ -440,6 +448,9 @@
           }
         });
       },
+    },
+    redirect: function() {
+      window.location.href.replace(/((?:bgm|bangumi)\.tv|chii\.in)/, bgm_domain); 
     }
   };
 
@@ -502,6 +513,7 @@
     init: function() {
       if (dmm.isGamepage()) {
         dmm.getSubjectInfo();
+        addStyle();
         dmm.addNode();
       }
     },
@@ -521,10 +533,10 @@
         info.subjectName = $('h1#title').text().replace(/新建.*$/,'').trim();
       if ($('.mg-b20.lh4').length)
         info.subjectStory = $('.mg-b20.lh4').text(); 
-      if ($('table.float-l.mg-b20').length) {
-        var infoTable = $('table.float-l.mg-b20 tr');
+      if ($('table.mg-b20').length) {
+        var infoTable = $('table.mg-b20 tr');
         infoTable.each(function(index, element) {
-          var alist = infoTable[i].textContent.split('：').map(String.trim);
+          var alist = infoTable[index].textContent.split('：').map(String.trim);
           if (alist[0] === "配信開始日") info['発売日'] = alist[1];
           if (alist[0] === "ゲームジャンル") info['ジャンル'] = alist[1];
           if (alist.length === 2 && adict.hasOwnProperty(alist[0])) {
@@ -533,9 +545,8 @@
         });
       }
       var astr = JSON.stringify(info);
-      chrome.storage.local.set({
-        'subjectData': astr
-      });
+      GM_setValue('subjectData', astr);
+      console.log(astr);
       return info;
     },
     addNode: function() {
@@ -554,7 +565,7 @@
 
 
   var init = function() {
-    var re = new RegExp(['getchu', 'google', 'bangumi', 'bgm', 'chii', 'erogamescape', 'dmm'].join('|'));
+    var re = new RegExp(['getchu', 'google', 'bangumi', 'bgm', 'chii', 'erogamescape', 'dmm', '219\.66'].join('|'));
     var page = document.location.href.match(re);
     if (page) {
       switch (page[0]) {
@@ -565,6 +576,9 @@
           google.init();
         break;
         case 'erogamescape':
+          erogamescape.init();
+        break;
+        case '219\.66':
           erogamescape.init();
         break;
         case 'dmm':

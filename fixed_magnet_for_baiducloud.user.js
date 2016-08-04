@@ -4,10 +4,12 @@
 // @include     https://share.dmhy.org/topics/view/*
 // @include     http://share.popgo.org/program*
 // @include     http://pan.baidu.com/disk/home
+// @include     http://pan.baidu.com/disk/home#*
 // @version     0.2
 // @grant       GM_addStyle
 // @grant       GM_setValue
 // @grant       GM_getValue
+// @run-at      document-end
 // ==/UserScript==
 
 (function () {
@@ -82,15 +84,17 @@
     },
 
     addToOffline: function (magneturl) {
-      $(".icon-btn-download").click();
+      document.querySelector(".icon.icon-offline-download").click();
       setTimeout(function () {
-        $("#_disk_id_13").click();
+        console.log('f1 is ok');
+        document.querySelector(".icon.icon-offline-normal").click();
         setTimeout(function () {
-          if (!($('#share-offline-link')[0].value) && window.stop) {
+          console.log('snd is ok');
+          if (!(document.querySelector('#share-offline-link').value) && window.stop) {
             window.stop();
-            $('#share-offline-link')[0].value = magneturl;
+            document.querySelector('#share-offline-link').value = magneturl;
           }
-          $("#_disk_id_17").click();
+          document.querySelector(".g-button.g-button-blue-large").click();
         }, 500);
       }, 500);
     },

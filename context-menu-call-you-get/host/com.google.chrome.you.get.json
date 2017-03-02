@@ -1,0 +1,9 @@
+{
+  "name": "com.google.chrome.you.get",
+  "description": "run you-get",
+  "path": "run.bat",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://gombgkalnceeheblificllhgnolpcjjf/"
+  ]
+}

@@ -15,7 +15,6 @@ Linux下向火狐添加右键菜单，调用[bilidan.py](https://github.com/m132
 
 ## [fixed_magnet_for_baiducloud.user.js](fixed_magnet_for_baiducloud.user.js?raw=true)
 修改dmhy（花园），popgo（漫游）磁力链接以便于百度云离线，对于百度云服务器没有的资源不能使用该方法离线。
-<div><img src="http://i300.photobucket.com/albums/nn2/zhifengle/anime%20screenshot/2015-08-29%20235242%20_zpskemeacrh.png" alt=""></div>
 
 点击Magnet链接后面的文字：“百度云”，可以自动辅助点击离线下载。
 
@@ -23,6 +22,5 @@ Linux下向火狐添加右键菜单，调用[bilidan.py](https://github.com/m132
 浏览getchu和批评空间时，辅助创建游戏条目，减少复制粘贴的操作。
 关键游戏条目时创建一个表格，点击表格可以辅助搜索。
 为bangumi右上角增加google和baidu站内搜的功能。
-<img src="http://i300.photobucket.com/albums/nn2/zhifengle/2015-08-29%20214651%20_zps074i8ebh.png" alt="">
-<br/>
-<img src="http://i300.photobucket.com/albums/nn2/zhifengle/anime%20screenshot/2015-08-29%20234751%20_zpsvcswtjxs.png~original" alt="">
+## [nyaa_magnet_modify.user.js](nyaa_magnet_modify.user.js?raw=true)
+替换nyaa base32编码磁力链接为base16

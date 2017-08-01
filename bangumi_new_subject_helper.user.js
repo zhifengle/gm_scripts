@@ -7,23 +7,24 @@
 // @include     http://bangumi.tv/subject/*/add_related/person
 // @include     http://bangumi.tv/subject/*/edit_detail
 // @include     https://cse.google.com/cse/home?cx=008561732579436191137:pumvqkbpt6w
-// @include     http://erogamescape.ddo.jp/~ap2/ero/toukei_kaiseki/*
-// @include     http://122.219.66.141/~ap2/ero/toukei_kaiseki/*
+// @include     /^https?:\/\/erogamescape\.(?:ddo\.jp|dyndns\.org)\/~ap2\/ero\/toukei_kaiseki\/(.*)/
+// @include     http://122.219.133.135/~ap2/ero/toukei_kaiseki/*
 // @include     http://www.dmm.co.jp/dc/pcgame/*
-// @include     /^https?:\/\/(ja|en)\.wikipedia\.org\/wiki\/.*$/
-// @version     0.2.2
+// @version     0.3.1
+// @note        0.3.0 增加上传人物肖像功能，需要和bangumi_blur_image.user.js一起使用
 // @updateURL   https://raw.githubusercontent.com/22earth/gm_scripts/master/bangumi_new_subject_helper.user.js
 // @run-at      document-end
 // @grant       GM_setValue
 // @grant       GM_getValue
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
-// @require     http://cdn.staticfile.org/jquery/2.1.1-beta1/jquery.min.js
+// @require     https://cdn.staticfile.org/jquery/2.1.4/jquery.min.js
 // ==/UserScript==
 
-if (window.top != window.self) return;
+// /^https?:\/\/(ja|en)\.wikipedia\.org\/wiki\/.*$/
 
 (function () {
+  if (window.top != window.self) return;
   function setDomain() {
     bgm_domain = prompt (
       '预设bangumi的域名是 "' + 'bangumi.tv' + '". 根据需要输入chii.in或者bgm.tv',
@@ -92,15 +93,16 @@ if (window.top != window.self) return;
       var $infoTable = $('#soft_table table').eq(0).find('tr');
       $infoTable.each(function (index, element) {
         var alist = [];
+        var elem = $(element);
         if (index === 0) {
           alist[0] = 'ブランド';
-          alist[1] = element.textContent.split('\n')[0].replace('ブランド：','');
+          alist[1] = elem.text().split('\n')[0].replace('ブランド：','');
         }
         if (index === 2) {
-          alist = element.textContent.replace(/\s*/g, '').split('：');
+          alist = elem.text().replace(/\s*/g, '').split('：');
         }
         if (!alist.length) {
-          alist = element.textContent.split('：');
+          alist = elem.text().split('：');
         }
         if (index > 8 && alist[0].match(/作詞\/作曲/)) {
           var templist1 = alist[0].split('/');
@@ -116,17 +118,19 @@ if (window.top != window.self) return;
         }
       });
       $('div.tabletitle:lt(4)').each(function (index, element) {
-        if (index === 0 && element.textContent.match(/商品紹介/)) {
+        var elem = $(element);
+        if (index === 0 && elem.text().match(/商品紹介/)) {
           info.subjectStory = $(this).next().text().replace(/^\s*[\r\n]/gm, '');
         }
-        if (element.textContent.match(/ストーリー/)) {
+        if (elem.text().match(/ストーリー/)) {
           info.subjectStory = $(this).next().text().replace(/^\s*[\r\n]/gm, '');
         }
       });
       var cvlist = [];
       $('.chara-name').each(function(index, element) {
-        if (element.textContent.match("CV")) {
-          cvlist.push(element.textContent.replace(/.*CV：|新建角色/g, ''));
+        var elem = $(element);
+        if (elem.text().match("CV")) {
+          cvlist.push(elem.text().replace(/.*CV：|新建角色/g, ''));
         }
       });
       info.cv = cvlist.join(',');
@@ -196,9 +200,24 @@ if (window.top != window.self) return;
         if (charatext.match("CV")) {
           charaData.CV = charatext.replace(/.*CV：|新建角色/g, '');
         }
+        // store img data
+        var $img = $(this).closest('tr').find('td>img');
+        var getBase64Image = function (img) {
+          var canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, img.width, img.height);
+
+          var dataURL = canvas.toDataURL("image/png");
+          return dataURL
+        }
+        if ($img.length) {
+          charaData.characterImg = getBase64Image($img[0]);
+        }
         GM_setValue('charaData', JSON.stringify(charaData));
         alert('角色信息已存储,请再次点击');
-        console.log(JSON.stringify(charaData));
         $(this).unbind('click');
         // bind second click's event
         $(this).click(function() {
@@ -321,6 +340,17 @@ if (window.top != window.self) return;
       setTimeout(function (){$('#showrobot').click();},300);
       $('.fill-form').click(function() {
         window.NormaltoWCODE();
+        if ($('#preview')) {
+          var canvas = document.getElementById('preview');
+          var ctx = canvas.getContext('2d');
+          var image = new Image();
+          image.onload = function() {
+            canvas.width = image.width;
+            canvas.height = image.height;
+            ctx.drawImage(image, 0, 0);
+          }
+          image.src = data.characterImg;
+        }
         setTimeout(function() {
           if ($('#subject_infobox')) {
             // ["{{Infobox Crt", "|简体中文名= ", "|别名={", "[第二中文名|]", "[英文名|]", "[日文名|]", "[纯假名|]", "[罗马字|]", "[昵称|]", "}", "|性别= ", "|生日= ", "|血型= ", "|身高= ", "|体重= ", "|BWH= ", "|引用来源= ", "}}"]
@@ -345,7 +375,7 @@ if (window.top != window.self) return;
             infobox.push("|体重= ");
             // deal additional information and remove that has pushed in array
             for (prop in data) {
-              if (!crt_infodict[prop] && ['characterName', 'hiraganaName', 'characterIntro', '日文名'].indexOf(prop) === -1)
+              if (!crt_infodict[prop] && ['characterName', 'hiraganaName', 'characterIntro', '日文名', 'characterImg'].indexOf(prop) === -1)
                 infobox.push("|item=".replace("item", prop) + data[prop]);
             }
             infobox.push("|引用来源= ");
@@ -518,21 +548,23 @@ if (window.top != window.self) return;
     },
     getSubjectInfo: function() {
       var info = {};
-      var title = this.softtitle().children;
-      info.subjectName = title[0].textContent;
-      info['ブランド'] = title[1].textContent.replace(/\(.*\)/, '');
-      info['発売日'] = title[2].textContent.replace(/-/g,'/');
+      var title = $('#soft-title');
+      info.subjectName = title.find('span').eq(0).text().trim();
+      info['ブランド'] = title.find('a').eq(0).text();
+      if (title.text().match(/\d{4}-\d\d-\d\d/)) {
+        info['発売日'] = title.text().match(/\d{4}-\d\d-\d\d/)[0];
+      }
       if (document.getElementById('genga')) {
-        info['原画'] = document.querySelector('#genga td').textContent;
+        info['原画'] = $('#genga td').text();
       }
       if (document.getElementById('shinario')) {
-        info['シナリオ'] = document.querySelector('#shinario td').textContent;
+        info['シナリオ'] = $('#shinario td').text();
       }
       if (document.getElementById('ongaku')) {
-        info['音楽'] = document.querySelector('#ongaku td').textContent;
+        info['音楽'] = $('#ongaku td').text();
       }
       if (document.getElementById('kasyu')) {
-        info['アーティスト'] = document.querySelector('#kasyu td').textContent;
+        info['アーティスト'] = $('#kasyu td').text();
       }
       //console.log(info);
       return info;
@@ -567,7 +599,7 @@ if (window.top != window.self) return;
       if ($('table.mg-b20').length) {
         var infoTable = $('table.mg-b20 tr');
         infoTable.each(function(index, element) {
-          var alist = infoTable[index].textContent.split('：').map(String.trim);
+          var alist = $(element).text().split('：').map(String.trim);
           if (alist[0] === "配信開始日") info['発売日'] = alist[1];
           if (alist[0] === "ゲームジャンル") info['ジャンル'] = alist[1];
           if (alist.length === 2 && adict.hasOwnProperty(alist[0])) {
@@ -615,8 +647,9 @@ if (window.top != window.self) return;
       info.subjectName = $('#firstHeading').text().replace(/新建.*$/,'');
       var $infotable = $('.infobox tbody').eq(0).find('tr');
       $infotable.each(function(index, element) {
-        var alist = [];
-        alist = element.textContent.trim().split('\n');
+        var alist = [],
+          elem = $(element);
+        alist = elem.text().trim().split('\n');
         if (alist.length === 2 && adict.hasOwnProperty(alist[0])) {
           info[adict[alist[0]]] = alist[1];
         }

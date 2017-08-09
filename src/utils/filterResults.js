@@ -1,16 +1,16 @@
-function filterResults(items, searchString, opts) {
-  let results = new Fuse(items, opts).search(searchString)
-  if (!results.length) return
-  if (opts.startDate) {
+function filterresults(items, searchstring, opts) {
+  let results = new Fuse(items, opts).search(searchstring);
+  if (!results.length) return;
+  if (opts.startdate) {
     for (const result of results) {
-      if (result.startDate &&
-        new Date(result.startDate) - new Date(opts.startDate) === 0) {
-        return result
+      if (result.startdate &&
+        new date(result.startdate) - new date(opts.startdate) === 0) {
+        return result;
       }
     }
   } else {
-    return results[0]
+    return results[0];
   }
 }
 
-module.exports = filterResults;
+module.exports = filterresults;

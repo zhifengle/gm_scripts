@@ -2,7 +2,7 @@ var path = require('path');
 var fs = require('fs');
 var webpack = require('webpack');
 
-const TARGET_SCRIPT = 'test'
+const TARGET_SCRIPT = 'bangumi_new_subject_helper'
 
 module.exports = {
   entry: {
@@ -24,7 +24,7 @@ module.exports = {
       {
         test: /\.js$/,
         exclude: /(node_modules)/,
-        loader: 'babel-loader?presets[]=es2015'
+        loader: 'babel-loader'
       },
     ]
   }

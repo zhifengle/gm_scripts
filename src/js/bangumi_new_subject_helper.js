@@ -1,3 +1,4 @@
+const searchBangumiSubject = require('../utils/searchBangumiSubject.js');
 ;(function () {
   if (window.top != window.self) return;
   function setDomain() {
@@ -8,18 +9,15 @@
     GM_setValue('bgm', bgm_domain);
     return bgm_domain;
   }
-
   var bgm_domain = GM_getValue('bgm') || '';
   if (!bgm_domain.length || !bgm_domain.match(/bangumi\.tv|chii\.in|bgm\.tv/)) {
     bgm_domain = setDomain();
     bgm_domain = GM_getValue('bgm');
   }
   console.log(bgm_domain);
-
   if (GM_registerMenuCommand) {
     GM_registerMenuCommand("\u8bbe\u7f6e\u57df\u540d", setDomain, 'b');
   }
-
   var addStyle = function (css) {
     if (css) {
       GM_addStyle(css);
@@ -31,15 +29,13 @@
       ].join(''));
     }
   };
-
-
   var getchu = {
     init: function () {
       if (getchu.isGamepage()) {
         addStyle();
         this.addNode();
         this.registerEvent();
-        GM_setValue('subjectData', JSON.stringify(this.getSubjectInfo()));
+        //GM_setValue('subjectData', JSON.stringify(this.getSubjectInfo()));
       }
     },
     isGamepage: function () {
@@ -110,6 +106,11 @@
       });
       info.cv = cvlist.join(',');
       //console.log(info);
+      // store img data
+      var $a = $('#soft_table .highslide').eq(0)
+      if ($a.length) {
+        info.subjectCoverURL = $a[0].href
+      }
       return info;
     },
     addNode: function () {
@@ -139,41 +140,30 @@
         href: 'http://' + bgm_domain + '/character/new',
       }).text('\u65b0\u5efa\u89d2\u8272'));
     },
-    registerEvent: function () {
-      $('.e-userjs-search-subject').click(function (e) {
-        e.preventDefault();
-        var subject = JSON.parse(GM_getValue('subjectData'));
-        var subjectInfo = {
-          subjectName: subject.subjectName,
-          startDate: subject['発売日']
-        };
-        fetchBangumiData(subjectInfo);
-      });
-      $('.new-character').click(function (event) {
-        // first click is to storage information
-        event.preventDefault();
-        var charaData = {};
-        var name = $(this).parent().find('charalist').text();
-        charaData.characterName = name.replace(/\s/, '');
-        charaData['日文名'] = name;
-        var $p = $(this).parent().parent().parent();
-        var intro = $p.next('dd');
-        charaData.characterIntro = intro.text();
-        var node = intro.children().eq(0);
-        //separately deal BWH
-        if (node.text().match(/B.*W.*H\d\d/))
-          charaData['スリーサイズ'] = node.text().match(/B.*W.*H\d\d/);
-        // remove flag g to improve ability
-        if (node || node.text().match('：')) {
-          node.text().split(/\s|\n/).forEach(function (element) {
-            if (!element.length)
-              return;
-            var alist = element.trim().split('：');
-            if (alist.length === 2 && alist[0] !== 'スリーサイズ')
-              charaData[alist[0]] = alist[1];
-          });
-        }
-        /*
+    getCharacterInfo: function (target) {
+      var charaData = {};
+      var $target = $(target);
+      var name = $target.parent().find('charalist').text();
+      charaData.characterName = name.replace(/\s/, '');
+      charaData['日文名'] = name;
+      var $p = $target.parent().parent().parent();
+      var intro = $p.next('dd');
+      charaData.characterIntro = intro.text();
+      var node = intro.children().eq(0);
+      //separately deal BWH
+      if (node.text().match(/B.*W.*H\d\d/))
+        charaData['スリーサイズ'] = node.text().match(/B.*W.*H\d\d/);
+      // remove flag g to improve ability
+      if (node || node.text().match('：')) {
+        node.text().split(/\s|\n/).forEach(function (element) {
+          if (!element.length)
+            return;
+          var alist = element.trim().split('：');
+          if (alist.length === 2 && alist[0] !== 'スリーサイズ')
+            charaData[alist[0]] = alist[1];
+        });
+      }
+      /*
         var templist = node.text().match(/1.*cm|B.*W.*H\d\d|\d{1,2}月\d{1,2}日|\w型/);
         if (templist) {
           templist = node.text().match(/1.*cm|B.*W.*H\d\d|\d{1,2}月\d{1,2}日|\w型/g);
@@ -181,44 +171,79 @@
           charaData.BWH = templist[1];
           charaData['生日'] = templist[2];
           charaData['血型'] = templist[3];
-          //        charaData.characterIntro = introtext.replace(/.*\n/,'');
+          charaData.characterIntro = introtext.replace(/.*\n/,'');
         }
         */
-        // get hiragana name, cv
-        var charatext = $p.text();
-        if (charatext.match(/（(.*)）/))
-          charaData.hiraganaName = charatext.match(/（(.*)）/)[1];
-        if (charatext.match("CV")) {
-          charaData.CV = charatext.replace(/.*CV：|新建角色/g, '');
-        }
-        // store img data
-        var $img = $(this).closest('tr').find('td>img');
-        var getBase64Image = function (img) {
-          var canvas = document.createElement("canvas");
-          canvas.width = img.width;
-          canvas.height = img.height;
-
-          var ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, img.width, img.height);
-
-          var dataURL = canvas.toDataURL("image/png");
-          return dataURL;
+      // get hiragana name, cv
+      var charatext = $p.text();
+      if (charatext.match(/（(.*)）/))
+        charaData.hiraganaName = charatext.match(/（(.*)）/)[1];
+      if (charatext.match("CV")) {
+        charaData.CV = charatext.replace(/.*CV：|新建角色/g, '');
+      }
+      // store img data
+      var $img = $target.closest('tr').find('td>img');
+      var getBase64Image = function (img) {
+        var canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+        var dataURL = canvas.toDataURL("image/png");
+        return dataURL;
+      };
+      if ($img.length) {
+        charaData.characterImg = getBase64Image($img[0]);
+      }
+      return charaData
+    },
+    registerEvent: function () {
+      var self = this;
+      $('.e-userjs-search-subject').click(function (e) {
+        e.preventDefault();
+        var subject = self.getSubjectInfo();
+        var subjectInfo = {
+          subjectName: subject.subjectName,
+          startDate: subject['発売日']
         };
-        if ($img.length) {
-          charaData.characterImg = getBase64Image($img[0]);
-        }
-        GM_setValue('charaData', JSON.stringify(charaData));
+        searchBangumiSubject.fetchBangumiDataBySearch(subjectInfo)
+          .then((i) => {
+            if (i) return i;
+            return search.fetchBangumiDataBySearch(subjectInfo)
+          })
+          .then((i) => {
+            console.log('搜索结果: ', i);
+            let $search = $('.e-userjs-search-subject');
+            $search.text('条目存在');
+            $search.attr('href', i.subjectURL);
+            $search.attr('target', '_blank');
+            $search.unbind('click');
+            GM_openInTab(i.subjectURL);
+          })
+          .catch((r) => {
+            console.log(r);
+          })
+        //fetchBangumiData(subjectInfo);
+      });
+      $('.new-subject').click(function(e) {
+        e.preventDefault();
+        var s = self.getSubjectInfo()
+        console.log('条目信息: ', s);
+        GM_setValue('subjectData', JSON.stringify(s));
+        //GM_setValue('subjectData', JSON.stringify(self.getSubjectInfo()));
+        alert('条目信息已存储,请再次点击');
+        $(this).unbind('click');
+        $(this).click();
+      })
+      $('.new-character').click(function (event) {
+        event.preventDefault();
+        GM_setValue('charaData', JSON.stringify(self.getCharacterInfo(this)));
         alert('角色信息已存储,请再次点击');
         $(this).unbind('click');
-        // bind second click's event
-        $(this).click(function () {
-          //        alert($(this).text());
-        });
+        $(this).click();
       });
     }
   };
-
-
   var google = {
     init: function () {
       var selfInvokeScript = document.createElement("script");
@@ -234,8 +259,6 @@
       };
     }
   };
-
-
   var bangumi = {
     init: function () {
       addStyle();
@@ -469,7 +492,6 @@
       document.body.appendChild(selfInvokeScript);
       //$('body').append($('<script>').html("(" + this.fillFormCharacter.toString() + ")(" + GM_getValue('charaData') + ");"));
     },
-
     subjectSearch: {
       init: function () {
         this.addIcon();
@@ -505,8 +527,6 @@
       window.location.href.replace(/((?:bgm|bangumi)\.tv|chii\.in)/, bgm_domain);
     }
   };
-
-
   var erogamescape = {
     init: function () {
       if (erogamescape.isGamepage()) {
@@ -561,8 +581,6 @@
       return info;
     },
   };
-
-
   var dmm = {
     init: function () {
       if (dmm.isGamepage()) {
@@ -616,7 +634,6 @@
       }).text('搜索条目'));
     }
   };
-
   var wikipedia = {
     init: function () {
       // wikipedia use different way to fill form
@@ -663,133 +680,6 @@
     },
   };
 
-  function searchSubjectHTML(url) {
-    const TIMEOUT = 10 * 1000;
-    return new Promise((resolve, reject) => {
-      GM_xmlhttpRequest({
-        method: "GET",
-        timeout: TIMEOUT || 10 * 1000,
-        url: url,
-        onreadystatechange: function (response) {
-          if (response.readyState === 4 && response.status === 200) {
-            //let parser = new DOMParser();
-            //let $doc = parser.parseFromString(response.responseText, "text/html");
-            resolve(response.responseText);
-          }
-        },
-        onerror: function (err) {
-          reject(err);
-        },
-        ontimeout: function (err) {
-          reject(err);
-        }
-      });
-    });
-  }
-  function dealDate(dateStr) {
-    return dateStr.replace(/年|月|日/g, '/').replace(/\/$/, '');
-  }
-
-  function fetchBangumiData(subjectInfo, pageNumber, type) {
-    if (!subjectInfo || !subjectInfo.startDate) return;
-    const startDate = new Date(subjectInfo.startDate);
-    const SUBJECT_TYPE = type || 'game';
-    const sort = startDate.getDate() > 15 ? 'sort=date' : '';
-    const page = pageNumber ? `page=${pageNumber}` : '';
-    let query = '';
-    if (sort && page) {
-      query = '?' + sort + '&' + page;
-    } else if (sort) {
-      query = '?' + sort;
-    } else if (page) {
-      query = '?' + page;
-    }
-    const url = `https://bgm.tv/${SUBJECT_TYPE}/browser/airtime/${startDate.getFullYear()}-${startDate.getMonth() + 1}${query}`;
-    console.log('uuuuuuuu', url);
-    searchSubjectHTML(url).then((info) => {
-      var rawInfoList = [];
-      let $doc = (new DOMParser()).parseFromString(info, "text/html");
-      let items = $doc.querySelectorAll('#browserItemList>li>div.inner');
-      // get number of page
-      let numOfPage = null;
-      let pList = $doc.querySelectorAll('.page_inner>.p');
-      if (pList && pList.length > 1) {
-        let tempNum = parseInt(pList[pList.length - 2].href.match(/page=(\d*)/)[1]);
-        numOfPage = parseInt(pList[pList.length - 1].href.match(/page=(\d*)/)[1]);
-        numOfPage = numOfPage > tempNum ? numOfPage : tempNum;
-      }
-      pList = null;
-      //var items = document.querySelectorAll('#browserItemList>li>div.inner')
-      if (items && items.length) {
-        for (const item of items) {
-          let $subjectTitle = item.querySelector('h3>a.l');
-          let itemSubject = {
-            subjectTitle: $subjectTitle.textContent.trim(),
-            subjectURL: 'https://bgm.tv' + $subjectTitle.getAttribute('href'),
-            subjectGreyTitle: item.querySelector('h3>.grey') ?
-              item.querySelector('h3>.grey').textContent.trim() : '',
-          };
-          let matchDate = item.querySelector('.info').textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
-          if (matchDate) {
-            itemSubject.startDate = dealDate(matchDate[0]);
-          }
-          let $rateInfo = item.querySelector('.rateInfo');
-          if ($rateInfo) {
-            if ($rateInfo.querySelector('.fade')) {
-              itemSubject.averageScore = $rateInfo.querySelector('.fade').textContent;
-              itemSubject.ratingsCount = $rateInfo.querySelector('.tip_j').textContent.replace(/[^0-9]/g, '');
-            } else {
-              itemSubject.averageScore = '0';
-              itemSubject.ratingsCount = '少于10';
-            }
-          } else {
-            itemSubject.averageScore = '0';
-            itemSubject.ratingsCount = '0';
-          }
-          rawInfoList.push(itemSubject);
-        }
-      } else {
-        throw new 'empty';
-      }
-      // filter results
-      const opts = {
-        keys: ['subjectTitle', 'subjectGreyTitle']
-      };
-      let results = (new Fuse(rawInfoList, opts)).search(subjectInfo.subjectName);
-      if (!results.length) {
-        if (items.length === 24 && (!pageNumber || pageNumber < numOfPage)) {
-          return fetchBangumiData(subjectInfo, pageNumber ? pageNumber + 1 : 2);
-        }
-        throw 'notmatched';
-      }
-      let finalResults = results[0];
-      for (const result of results) {
-        if (result.startDate && new Date(result.startDate) - startDate === 0) {
-          finalResults = result;
-        }
-      }
-      finalResults.site = 'bangumi';
-      console.log('搜索结果: ' + pageNumber, finalResults);
-      let $search = $('.e-userjs-search-subject');
-      $search.text('条目存在');
-      $search.attr('href', finalResults.subjectURL)
-      $search.unbind('click');
-      GM_openInTab(finalResults.subjectURL);
-
-      //return finalResults
-      // GM_openInTab(finalResults.subjectURL)
-    })
-      .catch((err) => {
-        console.log('err', err);
-        if (err.match(/notmatched|empty/)) {
-          $('.e-userjs-search-subject').text('条目不存在');
-        } else {
-          $('.e-userjs-search-subject').text('发生错误，请尝试重新点击');
-        }
-      });
-  }
-
-
   var init = function () {
     var re = new RegExp(['getchu', 'google', 'bangumi', 'bgm', 'chii', 'erogamescape', 'dmm', '219\.66', 'wikipedia'].join('|'));
     var page = document.location.href.match(re);
@@ -818,7 +708,5 @@
       }
     }
   };
-
-
   init();
 })();

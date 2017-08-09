@@ -1,21 +1,25 @@
 const gmFetch = require('./gmFetch');
-const filterResults = require('./filterResults')
-
-let G_BANGUMI_RETRY_COUNT = 0;
+const delayPromise = require('./delayPromise');
+const filterResults = require('./filterResults');
 
 function dealDate(dateStr) {
   return dateStr.replace(/年|月|日/g, '/').replace(/\/$/, '');
 }
 
-function dealRawDOM(info) {
+/**
+ * @return {array}
+ */
+function dealRawHTML(info) {
   var rawInfoList = [];
   let $doc = (new DOMParser()).parseFromString(info, "text/html");
   let items = $doc.querySelectorAll('#browserItemList>li>div.inner');
   // get number of page
-  let numOfPage = null;
+  let numOfPage = 1;
   let pList = $doc.querySelectorAll('.page_inner>.p');
   if (pList && pList.length) {
-    numOfPage = parseInt(pList[pList.length - 1].href.split('?page=')[1]);
+    let tempNum = parseInt(pList[pList.length - 2].href.match(/page=(\d*)/)[1]);
+    numOfPage = parseInt(pList[pList.length - 1].href.match(/page=(\d*)/)[1]);
+    numOfPage = numOfPage > tempNum ? numOfPage : tempNum;
   }
   if (items && items.length) {
     for (var item of items) {
@@ -46,32 +50,28 @@ function dealRawDOM(info) {
       rawInfoList.push(itemSubject);
     }
   } else {
-    return;
+    return [];
   }
   return [rawInfoList, numOfPage];
 }
 
-function fetchBangumiDataBySearch(subjectInfo) {
-  if (!subjectInfo || !subjectInfo.startDate) return;
+function fetchBangumiDataBySearch(subjectInfo, typeNumber) {
+  if (!subjectInfo || !subjectInfo.startDate) throw 'no date info';
   const startDate = new Date(subjectInfo.startDate);
-  const url = `https://bgm.tv/subject_search/${encodeURIComponent(subjectInfo.subjectName)}?cat=4`;
-  gmFetch(url).then((info) => {
-    [rawInfoList, numOfPage] = dealRawDOM(info);
-    let results = filterResults(rawInfoList, subjectInfo.subjectName, {
+  typeNumber = typeNumber || 4; // 4 game
+  const url = `https://bgm.tv/subject_search/${encodeURIComponent(subjectInfo.subjectName)}?cat=${typeNumber}`;
+  return gmFetch(url).then((info) => {
+    var [rawInfoList, numOfPage] = dealRawHTML(info);
+    return filterResults(rawInfoList, subjectInfo.subjectName, {
       keys: ['subjectTitle', 'subjectGreyTitle'],
-      startDate
-    })
-    if (!results.length) {
-      return Promise.resolve().then(() => {
-        return fetchBangumiDataByDate(subjectInfo);
-      })
-    }
-    return results[0];
-  })
+      startDate: subjectInfo.startDate
+    });
+  });
 }
 
-function fetchBangumiDataByDate(subjectInfo, pageNumber, type) {
-  if (!subjectInfo || !subjectInfo.startDate) return;
+
+function fetchBangumiDataByDate(subjectInfo, pageNumber, type, allInfoList) {
+  if (!subjectInfo || !subjectInfo.startDate) throw 'no date info';
   const startDate = new Date(subjectInfo.startDate);
   const SUBJECT_TYPE = type || 'game';
   const sort = startDate.getDate() > 15 ? 'sort=date' : '';
@@ -86,31 +86,40 @@ function fetchBangumiDataByDate(subjectInfo, pageNumber, type) {
   }
   const url = `https://bgm.tv/${SUBJECT_TYPE}/browser/airtime/${startDate.getFullYear()}-${startDate.getMonth() + 1}${query}`;
 
-  gmFetch(url).then((info) => {
-    [rawInfoList, numOfPage] = dealRawDOM(info);
-    let results = filterResults(rawInfoList, subjectInfo.subjectName, {
-      keys: ['subjectTitle', 'subjectGreyTitle'],
-      startDate
-    })
-    if (!results.length) {
-      if (items.length === 24 && (!pageNumber || pageNumber < numOfPage)) {
-        return Promise.resolve().then(() => {
-          return fetchBangumiDataByDate(subjectInfo, pageNumber ? pageNumber + 1 : 2);
+  return gmFetch(url).then((info) => {
+    var [rawInfoList, numOfPage] = dealRawHTML(info);
+    pageNumber = pageNumber || 1;
+
+    if (allInfoList) {
+      numOfPage = 3
+      allInfoList = [...allInfoList, ...rawInfoList];
+      if (pageNumber < numOfPage) {
+        return delayPromise(1000).then(() => {
+          return fetchBangumiDataByDate(subjectInfo, pageNumber + 1, SUBJECT_TYPE, allInfoList)
         })
       }
-      throw 'notmatched';
+      return allInfoList;
     }
-    let finalResults = results[0];
-    for (var result of results) {
-      if (result.startDate && new Date(result.startDate) - startDate === 0) {
-        finalResults = result;
+
+    let result = filterResults(rawInfoList, subjectInfo.subjectName, {
+      keys: ['subjectTitle', 'subjectGreyTitle'],
+      startDate: subjectInfo.startDate
+    });
+    pageNumber = pageNumber || 1;
+    if (!result) {
+      if (pageNumber < numOfPage) {
+        return delayPromise(300).then(() => {
+          return fetchBangumiDataByDate(subjectInfo, pageNumber + 1, SUBJECT_TYPE);
+        });
+      } else {
+        throw 'notmatched';
       }
     }
-    return finalResults;
-  })
+    return result;
+  });
 }
 
 module.exports = {
   fetchBangumiDataByDate,
   fetchBangumiDataBySearch
-}
+};

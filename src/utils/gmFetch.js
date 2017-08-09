@@ -1,5 +1,4 @@
 function gmFetch(url, TIMEOUT) {
-  const TIMEOUT = 10 * 1000;
   return new Promise((resolve, reject) => {
     GM_xmlhttpRequest({
       method: "GET",

@@ -3,6 +3,7 @@ var fs = require('fs');
 var webpack = require('webpack');
 
 const TARGET_SCRIPT = 'bangumi_new_subject_helper'
+//const TARGET_SCRIPT = 'bangumi_blur_image'
 
 module.exports = {
   entry: {

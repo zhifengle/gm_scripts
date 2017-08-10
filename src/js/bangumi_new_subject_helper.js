@@ -1,4 +1,6 @@
 const searchBangumiSubject = require('../utils/searchBangumiSubject.js');
+const getImageBase64 = require('../utils/getImageBase64');
+
 ;(function () {
   if (window.top != window.self) return;
   function setDomain() {
@@ -34,7 +36,7 @@ const searchBangumiSubject = require('../utils/searchBangumiSubject.js');
       if (getchu.isGamepage()) {
         addStyle();
         this.addNode();
-        this.registerEvent();
+        registerEvent(this);
         //GM_setValue('subjectData', JSON.stringify(this.getSubjectInfo()));
       }
     },
@@ -123,7 +125,7 @@ const searchBangumiSubject = require('../utils/searchBangumiSubject.js');
       }).text('\u65b0\u5efa\u6761\u76ee'));
       // search subject
       $th.append($('<a>').attr({
-        class: 'search-subject',
+        class: 'search-subject e-userjs-search-cse',
         target: '_blank',
         href: 'https://cse.google.com/cse/home?cx=008561732579436191137:pumvqkbpt6w',
       }).text('Google CSE\u641c\u7d22\u6761\u76ee'));
@@ -197,53 +199,59 @@ const searchBangumiSubject = require('../utils/searchBangumiSubject.js');
       }
       return charaData
     },
-    registerEvent: function () {
-      var self = this;
-      $('.e-userjs-search-subject').click(function (e) {
-        e.preventDefault();
-        var subject = self.getSubjectInfo();
-        var subjectInfo = {
-          subjectName: subject.subjectName,
-          startDate: subject['発売日']
-        };
-        searchBangumiSubject.fetchBangumiDataBySearch(subjectInfo)
-          .then((i) => {
-            if (i) return i;
-            return search.fetchBangumiDataBySearch(subjectInfo)
-          })
-          .then((i) => {
-            console.log('搜索结果: ', i);
-            let $search = $('.e-userjs-search-subject');
-            $search.text('条目存在');
-            $search.attr('href', i.subjectURL);
-            $search.attr('target', '_blank');
-            $search.unbind('click');
-            GM_openInTab(i.subjectURL);
-          })
-          .catch((r) => {
-            console.log(r);
-          })
-        //fetchBangumiData(subjectInfo);
-      });
-      $('.new-subject').click(function(e) {
-        e.preventDefault();
-        var s = self.getSubjectInfo()
-        console.log('条目信息: ', s);
-        GM_setValue('subjectData', JSON.stringify(s));
-        //GM_setValue('subjectData', JSON.stringify(self.getSubjectInfo()));
-        alert('条目信息已存储,请再次点击');
-        $(this).unbind('click');
-        $(this).click();
-      })
-      $('.new-character').click(function (event) {
-        event.preventDefault();
-        GM_setValue('charaData', JSON.stringify(self.getCharacterInfo(this)));
-        alert('角色信息已存储,请再次点击');
-        $(this).unbind('click');
-        $(this).click();
-      });
-    }
   };
+
+  function registerEvent(self) {
+    $('.e-userjs-search-cse').click(function (e) {
+      e.preventDefault();
+      var s = self.getSubjectInfo()
+      var name = encodeURIComponent(s.subjectName)
+      GM_openInTab('https://cse.google.com/cse/publicurl?cx=008561732579436191137:pumvqkbpt6w&query=' + name)
+    })
+    $('.e-userjs-search-subject').click(function (e) {
+      e.preventDefault();
+      var subject = self.getSubjectInfo();
+      var subjectInfo = {
+        subjectName: subject.subjectName,
+        startDate: subject['発売日']
+      };
+      searchBangumiSubject.fetchBangumiDataBySearch(subjectInfo)
+        .then((i) => {
+          if (i) return i;
+          return search.fetchBangumiDataBySearch(subjectInfo)
+        })
+        .then((i) => {
+          console.log('搜索结果: ', i);
+          let $search = $('.e-userjs-search-subject');
+          $search.text('条目存在');
+          $search.attr('href', i.subjectURL);
+          $search.attr('target', '_blank');
+          $search.unbind('click');
+          GM_openInTab(i.subjectURL);
+        })
+        .catch((r) => {
+          console.log(r);
+        })
+      //fetchBangumiData(subjectInfo);
+    });
+    $('.new-subject').click(function(e) {
+      e.preventDefault();
+      var s = self.getSubjectInfo()
+      console.log('条目信息: ', s);
+      GM_setValue('subjectData', JSON.stringify(s));
+      //GM_setValue('subjectData', JSON.stringify(self.getSubjectInfo()));
+      alert('条目信息已存储,请再次点击');
+      $(this).unbind('click');
+      $(this).click();
+    })
+    $('.new-character').click(function (event) {
+      event.preventDefault();
+      GM_setValue('charaData', JSON.stringify(self.getCharacterInfo(this)));
+      alert('角色信息已存储,请再次点击');
+      $(this).unbind('click');
+      $(this).click();
+    });
+  }
   var google = {
     init: function () {
       var selfInvokeScript = document.createElement("script");
@@ -263,7 +271,7 @@ const searchBangumiSubject = require('../utils/searchBangumiSubject.js');
     init: function () {
       addStyle();
       this.subjectSearch.init();
-      var re = new RegExp(['new_subject', 'add_related', 'character\/new'].join('|'));
+      var re = new RegExp(['new_subject', 'add_related', 'character\/new', 'upload_img'].join('|'));
       var page = document.location.href.match(re);
       if (page) {
         switch (page[0]) {
@@ -275,6 +283,9 @@ const searchBangumiSubject = require('../utils/searchBangumiSubject.js');
             break;
           case 'character\/new':
             this.newCharacter();
+            break;
+          case 'upload_img':
+            this.addSubjectCover();
             break;
         }
       }
@@ -525,6 +536,32 @@ const searchBangumiSubject = require('../utils/searchBangumiSubject.js');
     },
     redirect: function () {
       window.location.href.replace(/((?:bgm|bangumi)\.tv|chii\.in)/, bgm_domain);
+    },
+    addSubjectCover: function () {
+      var $form = $('form[name=img_upload]')
+      var $btn = $('<input class="inputBtn" style="margin-top: 10px;" value="获取游戏封面" name="fetchImage" type="button">')
+      $form.after($btn)
+      $btn.click(function() {
+        var $blur = $('.blur-info');
+        if (!$blur.length) {
+          alert('该功能需要配合bangumi_blur_image.user.js才能使用');
+          return;
+        }
+        var subjectData = JSON.parse(GM_getValue('subjectData'));
+        getImageBase64(subjectData.subjectCoverURL).then((data) => {
+          console.log(subjectData);
+          var $canvas = document.querySelector('#preview');
+          var ctx = $canvas.getContext('2d');
+          var $img = new Image();
+          $img.addEventListener('load', function () {
+            $canvas.width = $img.width;
+            $canvas.height = $img.height;
+            ctx.drawImage($img, 0, 0);
+              window.dispatchEvent(new Event('resize'));  // let img cut tool at right position
+            }, false);
+          $img.src = data
+        });
+      })
     }
   };
   var erogamescape = {
@@ -532,7 +569,8 @@ const searchBangumiSubject = require('../utils/searchBangumiSubject.js');
       if (erogamescape.isGamepage()) {
         addStyle();
         this.addNode(erogamescape.softtitle());
-        GM_setValue('subjectData', JSON.stringify(this.getSubjectInfo()));
+        registerEvent(this);
+        //GM_setValue('subjectData', JSON.stringify(this.getSubjectInfo()));
       }
     },
     isGamepage: function () {
@@ -549,10 +587,15 @@ const searchBangumiSubject = require('../utils/searchBangumiSubject.js');
       }).text('\u65b0\u5efa\u6761\u76ee'));
       // search subject
       $('#soft-title').append($('<a>').attr({
-        class: 'search-subject',
+        class: 'search-subject e-userjs-search-cse',
         target: '_blank',
         href: 'https://cse.google.com/cse/home?cx=008561732579436191137:pumvqkbpt6w',
       }).text('\u641c\u7d22\u6761\u76ee'));
+      $('#soft-title').append($('<a>').attr({
+        class: 'search-subject e-userjs-search-subject',
+        title: '检测条目是否存在',
+        href: '#',
+      }).text('检测条目是否存在'));
     },
     softtitle: function () {
       return document.getElementById("soft-title");

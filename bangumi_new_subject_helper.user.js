@@ -94,7 +94,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 0);
+/******/ 	return __webpack_require__(__webpack_require__.s = 1);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -104,9 +104,66 @@
 "use strict";
 
 
+function gmFetchBinary(url, TIMEOUT) {
+  return new Promise(function (resolve, reject) {
+    GM_xmlhttpRequest({
+      method: "GET",
+      timeout: TIMEOUT || 10 * 1000,
+      url: url,
+      overrideMimeType: "text\/plain; charset=x-user-defined",
+      onreadystatechange: function onreadystatechange(response) {
+        if (response.readyState === 4 && response.status === 200) {
+          resolve(response.responseText);
+        }
+      },
+      onerror: function onerror(err) {
+        reject(err);
+      },
+      ontimeout: function ontimeout(err) {
+        reject(err);
+      }
+    });
+  });
+}
+
+function gmFetch(url, TIMEOUT) {
+  return new Promise(function (resolve, reject) {
+    GM_xmlhttpRequest({
+      method: "GET",
+      timeout: TIMEOUT || 10 * 1000,
+      url: url,
+      onreadystatechange: function onreadystatechange(response) {
+        if (response.readyState === 4 && response.status === 200) {
+          resolve(response.responseText);
+        }
+      },
+      onerror: function onerror(err) {
+        reject(err);
+      },
+      ontimeout: function ontimeout(err) {
+        reject(err);
+      }
+    });
+  });
+}
+
+module.exports = {
+  gmFetch: gmFetch,
+  gmFetchBinary: gmFetchBinary
+};
+
+/***/ }),
+/* 1 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-var searchBangumiSubject = __webpack_require__(1);
+var searchBangumiSubject = __webpack_require__(2);
+var getImageBase64 = __webpack_require__(5);
+
 ;(function () {
   if (window.top != window.self) return;
   function setDomain() {
@@ -135,7 +192,7 @@ var searchBangumiSubject = __webpack_require__(1);
       if (getchu.isGamepage()) {
         addStyle();
         this.addNode();
-        this.registerEvent();
+        registerEvent(this);
         //GM_setValue('subjectData', JSON.stringify(this.getSubjectInfo()));
       }
     },
@@ -220,7 +277,7 @@ var searchBangumiSubject = __webpack_require__(1);
       }).text('\u65B0\u5EFA\u6761\u76EE'));
       // search subject
       $th.append($('<a>').attr({
-        class: 'search-subject',
+        class: 'search-subject e-userjs-search-cse',
         target: '_blank',
         href: 'https://cse.google.com/cse/home?cx=008561732579436191137:pumvqkbpt6w'
       }).text('Google CSE\u641C\u7D22\u6761\u76EE'));
@@ -289,51 +346,57 @@ var searchBangumiSubject = __webpack_require__(1);
         charaData.characterImg = getBase64Image($img[0]);
       }
       return charaData;
-    },
-    registerEvent: function registerEvent() {
-      var self = this;
-      $('.e-userjs-search-subject').click(function (e) {
-        e.preventDefault();
-        var subject = self.getSubjectInfo();
-        var subjectInfo = {
-          subjectName: subject.subjectName,
-          startDate: subject['発売日']
-        };
-        searchBangumiSubject.fetchBangumiDataBySearch(subjectInfo).then(function (i) {
-          if (i) return i;
-          return search.fetchBangumiDataBySearch(subjectInfo);
-        }).then(function (i) {
-          console.log('搜索结果: ', i);
-          var $search = $('.e-userjs-search-subject');
-          $search.text('条目存在');
-          $search.attr('href', i.subjectURL);
-          $search.attr('target', '_blank');
-          $search.unbind('click');
-          GM_openInTab(i.subjectURL);
-        }).catch(function (r) {
-          console.log(r);
-        });
-        //fetchBangumiData(subjectInfo);
-      });
-      $('.new-subject').click(function (e) {
-        e.preventDefault();
-        var s = self.getSubjectInfo();
-        console.log('条目信息: ', s);
-        GM_setValue('subjectData', JSON.stringify(s));
-        //GM_setValue('subjectData', JSON.stringify(self.getSubjectInfo()));
-        alert('条目信息已存储,请再次点击');
-        $(this).unbind('click');
-        $(this).click();
-      });
-      $('.new-character').click(function (event) {
-        event.preventDefault();
-        GM_setValue('charaData', JSON.stringify(self.getCharacterInfo(this)));
-        alert('角色信息已存储,请再次点击');
-        $(this).unbind('click');
-        $(this).click();
-      });
     }
   };
+
+  function registerEvent(self) {
+    $('.e-userjs-search-cse').click(function (e) {
+      e.preventDefault();
+      var s = self.getSubjectInfo();
+      var name = encodeURIComponent(s.subjectName);
+      GM_openInTab('https://cse.google.com/cse/publicurl?cx=008561732579436191137:pumvqkbpt6w&query=' + name);
+    });
+    $('.e-userjs-search-subject').click(function (e) {
+      e.preventDefault();
+      var subject = self.getSubjectInfo();
+      var subjectInfo = {
+        subjectName: subject.subjectName,
+        startDate: subject['発売日']
+      };
+      searchBangumiSubject.fetchBangumiDataBySearch(subjectInfo).then(function (i) {
+        if (i) return i;
+        return search.fetchBangumiDataBySearch(subjectInfo);
+      }).then(function (i) {
+        console.log('搜索结果: ', i);
+        var $search = $('.e-userjs-search-subject');
+        $search.text('条目存在');
+        $search.attr('href', i.subjectURL);
+        $search.attr('target', '_blank');
+        $search.unbind('click');
+        GM_openInTab(i.subjectURL);
+      }).catch(function (r) {
+        console.log(r);
+      });
+      //fetchBangumiData(subjectInfo);
+    });
+    $('.new-subject').click(function (e) {
+      e.preventDefault();
+      var s = self.getSubjectInfo();
+      console.log('条目信息: ', s);
+      GM_setValue('subjectData', JSON.stringify(s));
+      //GM_setValue('subjectData', JSON.stringify(self.getSubjectInfo()));
+      alert('条目信息已存储,请再次点击');
+      $(this).unbind('click');
+      $(this).click();
+    });
+    $('.new-character').click(function (event) {
+      event.preventDefault();
+      GM_setValue('charaData', JSON.stringify(self.getCharacterInfo(this)));
+      alert('角色信息已存储,请再次点击');
+      $(this).unbind('click');
+      $(this).click();
+    });
+  }
   var google = {
     init: function init() {
       var selfInvokeScript = document.createElement("script");
@@ -353,7 +416,7 @@ var searchBangumiSubject = __webpack_require__(1);
     init: function init() {
       addStyle();
       this.subjectSearch.init();
-      var re = new RegExp(['new_subject', 'add_related', 'character\/new'].join('|'));
+      var re = new RegExp(['new_subject', 'add_related', 'character\/new', 'upload_img'].join('|'));
       var page = document.location.href.match(re);
       if (page) {
         switch (page[0]) {
@@ -365,6 +428,9 @@ var searchBangumiSubject = __webpack_require__(1);
             break;
           case 'character\/new':
             this.newCharacter();
+            break;
+          case 'upload_img':
+            this.addSubjectCover();
             break;
         }
       }
@@ -615,6 +681,32 @@ var searchBangumiSubject = __webpack_require__(1);
     },
     redirect: function redirect() {
       window.location.href.replace(/((?:bgm|bangumi)\.tv|chii\.in)/, bgm_domain);
+    },
+    addSubjectCover: function addSubjectCover() {
+      var $form = $('form[name=img_upload]');
+      var $btn = $('<input class="inputBtn" style="margin-top: 10px;" value="获取游戏封面" name="fetchImage" type="button">');
+      $form.after($btn);
+      $btn.click(function () {
+        var $blur = $('.blur-info');
+        if (!$blur.length) {
+          alert('该功能需要配合bangumi_blur_image.user.js才能使用');
+          return;
+        }
+        var subjectData = JSON.parse(GM_getValue('subjectData'));
+        getImageBase64(subjectData.subjectCoverURL).then(function (data) {
+          console.log(subjectData);
+          var $canvas = document.querySelector('#preview');
+          var ctx = $canvas.getContext('2d');
+          var $img = new Image();
+          $img.addEventListener('load', function () {
+            $canvas.width = $img.width;
+            $canvas.height = $img.height;
+            ctx.drawImage($img, 0, 0);
+            window.dispatchEvent(new Event('resize')); // let img cut tool at right position
+          }, false);
+          $img.src = data;
+        });
+      });
     }
   };
   var erogamescape = {
@@ -622,7 +714,8 @@ var searchBangumiSubject = __webpack_require__(1);
       if (erogamescape.isGamepage()) {
         addStyle();
         this.addNode(erogamescape.softtitle());
-        GM_setValue('subjectData', JSON.stringify(this.getSubjectInfo()));
+        registerEvent(this);
+        //GM_setValue('subjectData', JSON.stringify(this.getSubjectInfo()));
       }
     },
     isGamepage: function isGamepage() {
@@ -639,10 +732,15 @@ var searchBangumiSubject = __webpack_require__(1);
       }).text('\u65B0\u5EFA\u6761\u76EE'));
       // search subject
       $('#soft-title').append($('<a>').attr({
-        class: 'search-subject',
+        class: 'search-subject e-userjs-search-cse',
         target: '_blank',
         href: 'https://cse.google.com/cse/home?cx=008561732579436191137:pumvqkbpt6w'
       }).text('\u641C\u7D22\u6761\u76EE'));
+      $('#soft-title').append($('<a>').attr({
+        class: 'search-subject e-userjs-search-subject',
+        title: '检测条目是否存在',
+        href: '#'
+      }).text('检测条目是否存在'));
     },
     softtitle: function softtitle() {
       return document.getElementById("soft-title");
@@ -800,7 +898,7 @@ var searchBangumiSubject = __webpack_require__(1);
 })();
 
 /***/ }),
-/* 1 */
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -810,7 +908,7 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
-var gmFetch = __webpack_require__(2);
+var gmFetch = __webpack_require__(0).gmFetch;
 var delayPromise = __webpack_require__(3);
 var filterResults = __webpack_require__(4);
 
@@ -964,36 +1062,6 @@ module.exports = {
 };
 
 /***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-function gmFetch(url, TIMEOUT) {
-  return new Promise(function (resolve, reject) {
-    GM_xmlhttpRequest({
-      method: "GET",
-      timeout: TIMEOUT || 10 * 1000,
-      url: url,
-      onreadystatechange: function onreadystatechange(response) {
-        if (response.readyState === 4 && response.status === 200) {
-          resolve(response.responseText);
-        }
-      },
-      onerror: function onerror(err) {
-        reject(err);
-      },
-      ontimeout: function ontimeout(err) {
-        reject(err);
-      }
-    });
-  });
-}
-
-module.exports = gmFetch;
-
-/***/ }),
 /* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1054,6 +1122,46 @@ function filterresults(items, searchstring, opts) {
 }
 
 module.exports = filterresults;
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var gmFetchBinary = __webpack_require__(0).gmFetchBinary;
+
+function getImageSuffix(url) {
+  var m = url.match(/png|jpg|jpeg|gif|bmp/);
+  if (m) {
+    switch (m[0]) {
+      case 'png':
+        return 'png';
+      case 'jpg':
+      case 'jpeg':
+        return 'jpeg';
+      case 'gif':
+        return 'gif';
+      case 'bmp':
+        return 'bmp';
+    }
+  }
+  return '';
+}
+
+function getImageBase64(url) {
+  return gmFetchBinary(url).then(function (info) {
+    var bytes = [];
+    for (var i = 0; i < info.length; i++) {
+      bytes[i] = info.charCodeAt(i) & 0xff;
+    }
+    var binary = String.fromCharCode.apply(String, bytes);
+    return 'data:image/' + getImageSuffix(url) + ';base64,' + btoa(binary);
+  });
+}
+
+module.exports = getImageBase64;
 
 /***/ })
 /******/ ]);

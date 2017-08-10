@@ -1,4 +1,4 @@
-const gmFetch = require('./gmFetch');
+const gmFetch = require('./gmFetch').gmFetch;
 const delayPromise = require('./delayPromise');
 const filterResults = require('./filterResults');
 

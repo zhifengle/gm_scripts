@@ -86,6 +86,7 @@ function fetchBangumiDataByDate(subjectInfo, pageNumber, type, allInfoList) {
   }
   const url = `https://bgm.tv/${SUBJECT_TYPE}/browser/airtime/${startDate.getFullYear()}-${startDate.getMonth() + 1}${query}`;
 
+  console.log('uuuuuuuu', url)
   return gmFetch(url).then((info) => {
     var [rawInfoList, numOfPage] = dealRawHTML(info);
     pageNumber = pageNumber || 1;

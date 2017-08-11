@@ -1,4 +1,4 @@
-const searchBangumiSubject = require('../utils/searchBangumiSubject.js');
+const searchBangumiSubject = require('../utils/searchBangumiSubject');
 const getImageBase64 = require('../utils/getImageBase64');
 
 ;(function () {
@@ -16,7 +16,6 @@ const getImageBase64 = require('../utils/getImageBase64');
     bgm_domain = setDomain();
     bgm_domain = GM_getValue('bgm');
   }
-  console.log(bgm_domain);
   if (GM_registerMenuCommand) {
     GM_registerMenuCommand("\u8bbe\u7f6e\u57df\u540d", setDomain, 'b');
   }
@@ -81,7 +80,7 @@ const getImageBase64 = require('../utils/getImageBase64');
           var templist1 = alist[0].split('/');
           var templist2 = alist[1].split('／');
           info[templist1[0]] = templist2[0];
-          info[templist1[1]] = templist2[1];
+          info[templist1[1]] = templist2[1] ? templist2[1] : templist2[0];
         }
         if (!adict[0].hasOwnProperty(alist[0]) && !adict[1].hasOwnProperty(alist[0])) {
           return;
@@ -218,7 +217,7 @@ const getImageBase64 = require('../utils/getImageBase64');
       searchBangumiSubject.fetchBangumiDataBySearch(subjectInfo)
         .then((i) => {
           if (i) return i;
-          return search.fetchBangumiDataBySearch(subjectInfo)
+          return searchBangumiSubject.fetchBangumiDataByDate(subjectInfo)
         })
         .then((i) => {
           console.log('搜索结果: ', i);
@@ -549,7 +548,7 @@ const getImageBase64 = require('../utils/getImageBase64');
         }
         var subjectData = JSON.parse(GM_getValue('subjectData'));
         getImageBase64(subjectData.subjectCoverURL).then((data) => {
-          console.log(subjectData);
+          console.log('cover: ', subjectData);
           var $canvas = document.querySelector('#preview');
           var ctx = $canvas.getContext('2d');
           var $img = new Image();

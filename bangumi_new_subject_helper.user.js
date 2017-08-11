@@ -17,7 +17,7 @@
 // @version     0.3.3
 // @note        0.3.0 增加上传人物肖像功能，需要和bangumi_blur_image.user.js一起使用
 // @note        0.3.1 增加在Getchu上点击检测条目是否功能存在，若条目存在，自动打开条目页面。
-// @note        0.3.3 增加添加封面的功能，需要和bangumi_blur_image.user.js一起使用
+// @note        0.3.3 增加添加Getchu游戏封面的功能，需要和bangumi_blur_image.user.js一起使用
 // @updateURL   https://raw.githubusercontent.com/bangumi/scripts/master/a_little/bangumi_new_subject_helper.user.js
 // @run-at      document-end
 // @grant       GM_setValue
@@ -176,7 +176,6 @@ var getImageBase64 = __webpack_require__(5);
     bgm_domain = setDomain();
     bgm_domain = GM_getValue('bgm');
   }
-  console.log(bgm_domain);
   if (GM_registerMenuCommand) {
     GM_registerMenuCommand('\u8BBE\u7F6E\u57DF\u540D', setDomain, 'b');
   }
@@ -233,7 +232,7 @@ var getImageBase64 = __webpack_require__(5);
           var templist1 = alist[0].split('/');
           var templist2 = alist[1].split('／');
           info[templist1[0]] = templist2[0];
-          info[templist1[1]] = templist2[1];
+          info[templist1[1]] = templist2[1] ? templist2[1] : templist2[0];
         }
         if (!adict[0].hasOwnProperty(alist[0]) && !adict[1].hasOwnProperty(alist[0])) {
           return;
@@ -365,7 +364,7 @@ var getImageBase64 = __webpack_require__(5);
       };
       searchBangumiSubject.fetchBangumiDataBySearch(subjectInfo).then(function (i) {
         if (i) return i;
-        return search.fetchBangumiDataBySearch(subjectInfo);
+        return searchBangumiSubject.fetchBangumiDataByDate(subjectInfo);
       }).then(function (i) {
         console.log('搜索结果: ', i);
         var $search = $('.e-userjs-search-subject');
@@ -694,7 +693,7 @@ var getImageBase64 = __webpack_require__(5);
         }
         var subjectData = JSON.parse(GM_getValue('subjectData'));
         getImageBase64(subjectData.subjectCoverURL).then(function (data) {
-          console.log(subjectData);
+          console.log('cover: ', subjectData);
           var $canvas = document.querySelector('#preview');
           var ctx = $canvas.getContext('2d');
           var $img = new Image();
@@ -1019,6 +1018,7 @@ function fetchBangumiDataByDate(subjectInfo, pageNumber, type, allInfoList) {
   }
   var url = 'https://bgm.tv/' + SUBJECT_TYPE + '/browser/airtime/' + startDate.getFullYear() + '-' + (startDate.getMonth() + 1) + query;
 
+  console.log('uuuuuuuu', url);
   return gmFetch(url).then(function (info) {
     var _dealRawHTML3 = dealRawHTML(info),
         _dealRawHTML4 = _slicedToArray(_dealRawHTML3, 2),
@@ -1086,7 +1086,8 @@ module.exports = delayPromise;
 "use strict";
 
 
-function filterresults(items, searchstring, opts) {
+function filterResults(items, searchstring, opts) {
+  if (!items) return;
   var results = new Fuse(items, opts).search(searchstring);
   if (!results.length) return;
   if (opts.startdate) {
@@ -1121,7 +1122,7 @@ function filterresults(items, searchstring, opts) {
   }
 }
 
-module.exports = filterresults;
+module.exports = filterResults;
 
 /***/ }),
 /* 5 */

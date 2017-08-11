@@ -1,4 +1,5 @@
-function filterresults(items, searchstring, opts) {
+function filterResults(items, searchstring, opts) {
+  if (!items) return;
   let results = new Fuse(items, opts).search(searchstring);
   if (!results.length) return;
   if (opts.startdate) {
@@ -13,4 +14,4 @@ function filterresults(items, searchstring, opts) {
   }
 }
 
-module.exports = filterresults;
+module.exports = filterResults;

@@ -1,5 +1,6 @@
 const search = require('../utils/searchBangumiSubject');
 
+
 const subjectInfo = {
     subjectName: '夜蝶の未来',
     startDate: '2017/6/23'

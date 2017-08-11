@@ -2,30 +2,45 @@ var path = require('path');
 var fs = require('fs');
 var webpack = require('webpack');
 
-const TARGET_SCRIPT = 'bangumi_new_subject_helper'
-//const TARGET_SCRIPT = 'bangumi_blur_image'
+const TARGET_SCRIPT_LIST = ['bangumi_new_subject_helper']
+
+function genEntry(list) {
+  var entryObj = {}
+  var p = []
+  for (let script of list) {
+    if (!script) {
+      break
+    }
+    entryObj[script] = `./js/${script}.js`
+    p.push(
+      new webpack.BannerPlugin({
+        banner: fs.readFileSync(path.join(__dirname, `./header/${script}.js`), 'utf8'),
+        raw: true,
+        entryOnly: true,
+      })
+    )
+  }
+  return [entryObj, p]
+}
+
+var entry = genEntry(TARGET_SCRIPT_LIST)
+
 
 module.exports = {
-  entry: {
-    [TARGET_SCRIPT]: `./js/${TARGET_SCRIPT}.js`
-  },
+  entry: entry[0],
   output:  {
     path: path.resolve(__dirname, '../'),
     filename: '[name].user.js'
   },
   plugins: [
-    new webpack.BannerPlugin({
-      banner: fs.readFileSync(path.join(__dirname, `./header/${TARGET_SCRIPT}.js`), 'utf8'),
-      raw: true,
-      entryOnly: true,
-    })
+    ...entry[1]
   ],
   module: {
     loaders: [
       {
         test: /\.js$/,
         exclude: /(node_modules)/,
-        loader: 'babel-loader'
+        loader: 'babel-loader?presets[]=es2015'
       },
     ]
   }

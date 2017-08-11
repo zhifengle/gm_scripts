@@ -12,6 +12,40 @@
 // @grant       GM_openInTab
 // ==/UserScript==
 
+// ==UserScript==
+// @name        bangumi new game subject helper
+// @name:zh-CN  bangumi创建黄油条目助手
+// @namespace   https://github.com/22earth
+// @description assist to create new game subject
+// @description:zh-cn 辅助创建Bangumi黄油条目
+// @include     http://www.getchu.com/soft.phtml?id=*
+// @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/.*$/
+// @include     http://bangumi.tv/subject/*/add_related/person
+// @include     http://bangumi.tv/subject/*/edit_detail
+// @include     https://bgm.tv/subject/*/add_related/person
+// @include     https://bgm.tv/subject/*/edit_detail
+// @include     https://cse.google.com/cse/home?cx=008561732579436191137:pumvqkbpt6w
+// @include     /^https?:\/\/erogamescape\.(?:ddo\.jp|dyndns\.org)\/~ap2\/ero\/toukei_kaiseki\/(.*)/
+// @include     http://122.219.133.135/~ap2/ero/toukei_kaiseki/*
+// @include     http://www.dmm.co.jp/dc/pcgame/*
+// @version     0.3.3
+// @note        0.3.0 增加上传人物肖像功能，需要和bangumi_blur_image.user.js一起使用
+// @note        0.3.1 增加在Getchu上点击检测条目是否功能存在，若条目存在，自动打开条目页面。
+// @note        0.3.3 增加添加Getchu游戏封面的功能，需要和bangumi_blur_image.user.js一起使用
+// @updateURL   https://raw.githubusercontent.com/bangumi/scripts/master/a_little/bangumi_new_subject_helper.user.js
+// @run-at      document-end
+// @grant       GM_setValue
+// @grant       GM_getValue
+// @grant       GM_addStyle
+// @grant       GM_openInTab
+// @grant       GM_registerMenuCommand
+// @grant       GM_xmlhttpRequest
+// @require     https://cdn.staticfile.org/jquery/2.1.4/jquery.min.js
+// @require     https://cdn.staticfile.org/fuse.js/2.6.2/fuse.min.js
+// ==/UserScript==
+
+// /^https?:\/\/(ja|en)\.wikipedia\.org\/wiki\/.*$/
+
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -74,7 +108,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 0);
+/******/ 	return __webpack_require__(__webpack_require__.s = 6);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -84,28 +118,53 @@
 "use strict";
 
 
-var search = __webpack_require__(1);
+function gmFetchBinary(url, TIMEOUT) {
+  return new Promise(function (resolve, reject) {
+    GM_xmlhttpRequest({
+      method: "GET",
+      timeout: TIMEOUT || 10 * 1000,
+      url: url,
+      overrideMimeType: "text\/plain; charset=x-user-defined",
+      onreadystatechange: function onreadystatechange(response) {
+        if (response.readyState === 4 && response.status === 200) {
+          resolve(response.responseText);
+        }
+      },
+      onerror: function onerror(err) {
+        reject(err);
+      },
+      ontimeout: function ontimeout(err) {
+        reject(err);
+      }
+    });
+  });
+}
 
-var subjectInfo = {
-  subjectName: '夜蝶の未来',
-  startDate: '2017/6/23'
+function gmFetch(url, TIMEOUT) {
+  return new Promise(function (resolve, reject) {
+    GM_xmlhttpRequest({
+      method: "GET",
+      timeout: TIMEOUT || 10 * 1000,
+      url: url,
+      onreadystatechange: function onreadystatechange(response) {
+        if (response.readyState === 4 && response.status === 200) {
+          resolve(response.responseText);
+        }
+      },
+      onerror: function onerror(err) {
+        reject(err);
+      },
+      ontimeout: function ontimeout(err) {
+        reject(err);
+      }
+    });
+  });
+}
+
+module.exports = {
+  gmFetch: gmFetch,
+  gmFetchBinary: gmFetchBinary
 };
-
-search.fetchBangumiDataBySearch(subjectInfo).then(function (i) {
-  if (i) return i;
-  return search.fetchBangumiDataBySearch(subjectInfo);
-}).then(function (i) {
-  console.log(i);
-}).catch(function (r) {
-  console.log(r);
-});
-
-/*
- *search.fetchBangumiDataByDate(subjectInfo, null, 'game')
- *  .then((i) => {
- *    console.log(i);
- *  })
- */
 
 /***/ }),
 /* 1 */
@@ -118,9 +177,9 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
-var gmFetch = __webpack_require__(2);
-var delayPromise = __webpack_require__(3);
-var filterResults = __webpack_require__(4);
+var gmFetch = __webpack_require__(0).gmFetch;
+var delayPromise = __webpack_require__(2);
+var filterResults = __webpack_require__(3);
 
 function dealDate(dateStr) {
   return dateStr.replace(/年|月|日/g, '/').replace(/\/$/, '');
@@ -229,6 +288,7 @@ function fetchBangumiDataByDate(subjectInfo, pageNumber, type, allInfoList) {
   }
   var url = 'https://bgm.tv/' + SUBJECT_TYPE + '/browser/airtime/' + startDate.getFullYear() + '-' + (startDate.getMonth() + 1) + query;
 
+  console.log('uuuuuuuu', url);
   return gmFetch(url).then(function (info) {
     var _dealRawHTML3 = dealRawHTML(info),
         _dealRawHTML4 = _slicedToArray(_dealRawHTML3, 2),
@@ -278,37 +338,10 @@ module.exports = {
 "use strict";
 
 
-function gmFetch(url, TIMEOUT) {
-  return new Promise(function (resolve, reject) {
-    GM_xmlhttpRequest({
-      method: "GET",
-      timeout: TIMEOUT || 10 * 1000,
-      url: url,
-      onreadystatechange: function onreadystatechange(response) {
-        if (response.readyState === 4 && response.status === 200) {
-          resolve(response.responseText);
-        }
-      },
-      onerror: function onerror(err) {
-        reject(err);
-      },
-      ontimeout: function ontimeout(err) {
-        reject(err);
-      }
-    });
-  });
-}
-
-module.exports = gmFetch;
-
-/***/ }),
-/* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
 function delayPromise(t) {
+  var max = 400;
+  var min = 200;
+  t = t || Math.floor(Math.random() * (max - min + 1)) + min;
   return new Promise(function (resolve) {
     setTimeout(resolve, t);
   });
@@ -317,13 +350,14 @@ function delayPromise(t) {
 module.exports = delayPromise;
 
 /***/ }),
-/* 4 */
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-function filterresults(items, searchstring, opts) {
+function filterResults(items, searchstring, opts) {
+  if (!items) return;
   var results = new Fuse(items, opts).search(searchstring);
   if (!results.length) return;
   if (opts.startdate) {
@@ -358,7 +392,39 @@ function filterresults(items, searchstring, opts) {
   }
 }
 
-module.exports = filterresults;
+module.exports = filterResults;
+
+/***/ }),
+/* 4 */,
+/* 5 */,
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var search = __webpack_require__(1);
+
+var subjectInfo = {
+  subjectName: '夜蝶の未来',
+  startDate: '2017/6/23'
+};
+
+search.fetchBangumiDataBySearch(subjectInfo).then(function (i) {
+  if (i) return i;
+  return search.fetchBangumiDataBySearch(subjectInfo);
+}).then(function (i) {
+  console.log(i);
+}).catch(function (r) {
+  console.log(r);
+});
+
+/*
+ *search.fetchBangumiDataByDate(subjectInfo, null, 'game')
+ *  .then((i) => {
+ *    console.log(i);
+ *  })
+ */
 
 /***/ })
 /******/ ]);

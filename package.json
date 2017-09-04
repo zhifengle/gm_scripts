@@ -1,0 +1,30 @@
+{
+  "name": "gm_scripts",
+  "version": "1.0.0",
+  "description": "UserScripts",
+  "main": "index.js",
+  "scripts": {
+    "phantomjs": "phantomjs qiandao_v2ex.js",
+    "v2ex": "casperjs qiandao_v2ex.js $v2ex_name $v2ex_pw",
+    "kf": "casperjs ./qiandao_2dkf.js $kf_name $kf_pw",
+    "test1": "casperjs test.user.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/22earth/gm_scripts.git"
+  },
+  "keywords": [
+    "UserScripts"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/22earth/gm_scripts/issues"
+  },
+  "homepage": "https://github.com/22earth/gm_scripts#readme",
+  "dependencies": {
+    "casperjs": "^1.1.4",
+    "phantomjs-prebuilt": "^2.1.15"
+  }
+}

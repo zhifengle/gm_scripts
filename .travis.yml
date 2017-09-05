@@ -6,4 +6,3 @@ cache:
     - "node_modules"
 script:
   - npm run v2ex
-  - npm run kf

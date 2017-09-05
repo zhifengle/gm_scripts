@@ -15,6 +15,6 @@ casper.then(function() {
 });
 casper.wait(3000);
 casper.thenOpen('https://www.v2ex.com/mission/daily', function() {
-  this.echo(this.getTitle());
+  this.click('.cell>input');
 });
 casper.run();

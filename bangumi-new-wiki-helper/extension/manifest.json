@@ -1,0 +1,42 @@
+{
+  "manifest_version": 2,
+  "name": "bangumi-new-wiki-helper",
+  "version": "0.1",
+
+  "browser_action": {
+    "browser_style": true,
+    "default_icon": {
+      "48": "images/Watermelon-48.png",
+      "96": "images/Watermelon-96.png"
+    },
+    "default_title": "Setting",
+    "default_popup": "popup.html"
+  },
+
+  "background": {
+    "scripts": ["dist/background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.bgm.tv/*",
+        "*://*.bangumi.tv/*",
+        "*://*.chii.in/*"
+      ],
+      "js": ["dist/bangumi.js"]
+    }, {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "dist/content.js"
+      ]
+    }
+  ],
+  "permissions": [
+    "activeTab",
+    "webRequest",
+    "<all_urls>",
+    "menus"
+  ]
+}

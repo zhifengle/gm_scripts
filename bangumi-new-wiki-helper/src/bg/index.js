@@ -1,4 +1,13 @@
 import 'webextension-polyfill'
+import models from '../models'
+
+browser.storage.local.set(models);
+browser.storage.local.set({
+  currentModel: {
+    name: 'getchu',
+    descrition: 'Getchu game'
+  }
+});
 
 function onCreated() {
   if (browser.runtime.lastError) {
@@ -25,31 +34,26 @@ function onError(error) {
 }
 
 browser.menus.create({
-  id: "remove-me",
+  id: "bangumi-new-wiki",
   title: 'test bg',
   contexts: ["all"]
 }, onCreated);
 
 browser.menus.onClicked.addListener((info, tab) => {
   switch (info.menuItemId) {
-    case "remove-me":
-      var makeItGreen = 'document.body.style.border = "5px solid green"';
-      browser.tabs.query({ 'active': true, 'lastFocusedWindow': true })
-        .then(
-        function (tabs) {
-          var url = tabs[0].url;
-            console.log(url)
-        });
-      var executing = browser.tabs.executeScript({
+    case "bangumi-new-wiki":
+      /*
+       * browser.tabs.query({ 'active': true, 'lastFocusedWindow': true })
+       *   .then(tabs => tabs[0].url)
+       *   .then(url => {
+       *     return browser.tabs.executeScript({
+       *       code: 'var testfff = 1;'
+       *     })
+       *   });
+       */
+      browser.tabs.executeScript({
         file: '/dist/content.js'
-        // code: makeItGreen
       });
-      executing.then(onCreated, onError);
-      // var removing = browser.menus.remove(info.menuItemId);
-      // removing.then(onRemoved, onError);
-      // return browser.tabs.executeScript(tab.id, {
-      //   file: "clipboard-helper.js",
-      // });
       break;
     case "bluify":
       borderify(tab.id, blue);

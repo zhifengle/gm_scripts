@@ -1,3 +1,5 @@
+import 'webextension-polyfill'
+
 export default class Bangumi {
   constructor(subjectType = 1) {
     this.subjectType = subjectType;

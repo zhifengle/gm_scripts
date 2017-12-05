@@ -29,12 +29,13 @@
         "<all_urls>"
       ],
       "js": [
-        "dist/content.js"
+        "dist/conent.js"
       ]
     }
   ],
   "permissions": [
     "tabs",
+    "storage",
     "webRequest",
     "<all_urls>",
     "menus"

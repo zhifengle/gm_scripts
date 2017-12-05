@@ -1,7 +1,9 @@
-import amazon from './amazon'
+import 'webextension-polyfill'
 
-var arr = [];
-console.log(amazon.itemList.map(i => getWikiItem(i)))
+browser.storage.local.get()
+  .then(obj => {
+    console.log(obj[obj.currentModel.name].itemList.map(i => getWikiItem(i)))
+  })
 /**
  * dollar 选择符
  * @param {string} selector 
@@ -52,6 +54,12 @@ function getItemByKeyWord(itemConfig) {
   }
   targets = contains(itemConfig.subSelector, itemConfig.keyWord)
   if (targets && targets.length) {
+    if (itemConfig.sibling) {
+      return {
+        name: itemConfig.name,
+        data: dealRawText(targets[targets.length - 1].nextElementSibling.textContent)
+      }
+    }
     return {
       name: itemConfig.name,
       data: dealRawText(targets[targets.length - 1].textContent, [itemConfig.keyWord])

@@ -34,7 +34,7 @@
     }
   ],
   "permissions": [
-    "activeTab",
+    "tabs",
     "webRequest",
     "<all_urls>",
     "menus"

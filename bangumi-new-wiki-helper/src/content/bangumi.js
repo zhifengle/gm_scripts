@@ -1,7 +1,3 @@
-import $ from 'jquery'
-
-document.body.style.border = "5px solid green";
-
 export default class Bangumi {
   constructor(subjectType = 1) {
     this.subjectType = subjectType;
@@ -30,38 +26,5 @@ export default class Bangumi {
     infobox.push('}}');
     console.log('infobox', infobox)
     return infobox.join('\n')
-  }
-  /**
-   * 生成wiki的项目
-   * @param {Object} itemConfig 
-   * @returns {Object}
-   * @TODO
-   */
-  getWikiItem(itemConfig) {
-    var $d = $(itemConfig.selector)
-    $d.textContent
-    return {
-      name: itemConfig.name,
-      data: ''
-    }
-  }
-  /**
-   * 处理无关字符
-   * @param {string} str 
-   * @param {Object[]} filterArry
-   */
-  dealRawText(str, filterArray = []) {
-    const textList = [':', '：', '\\(.*\\)', '（.*）', ...filterArray]
-    return str.replace(new RegExp(textList.join('|'), 'g'), '').trim()
-  }
-  fetchHTML(url) {
-      console.log('dddddddddddddd')
-    $.ajax({
-      url: url,
-      crossDomain: true
-
-    }).then((d) => {
-      console.log(d)
-    })
   }
 }

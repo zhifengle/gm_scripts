@@ -1,3 +1,5 @@
+import 'webextension-polyfill'
+
 function onCreated() {
   if (browser.runtime.lastError) {
     console.log(`Error: ${browser.runtime.lastError}`);
@@ -32,10 +34,17 @@ browser.menus.onClicked.addListener((info, tab) => {
   switch (info.menuItemId) {
     case "remove-me":
       var makeItGreen = 'document.body.style.border = "5px solid green"';
+      browser.tabs.query({ 'active': true, 'lastFocusedWindow': true })
+        .then(
+        function (tabs) {
+          var url = tabs[0].url;
+            console.log(url)
+        });
       var executing = browser.tabs.executeScript({
-        code: makeItGreen
+        file: '/dist/content.js'
+        // code: makeItGreen
       });
-      executing.then(onExecuted, onError);
+      executing.then(onCreated, onError);
       // var removing = browser.menus.remove(info.menuItemId);
       // removing.then(onRemoved, onError);
       // return browser.tabs.executeScript(tab.id, {

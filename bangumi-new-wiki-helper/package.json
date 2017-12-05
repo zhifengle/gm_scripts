@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "webpack -w -v --display-error-details --progress --colors",
+    "build": "webpack -w",
     "start": "web-ext run -f \"E:\\Program Files\\Mozilla Firefox\\firefox.exe\" -s extension/"
   },
   "author": "",
@@ -23,5 +23,8 @@
     "web-ext": "1.6.0",
     "webextension-polyfill": "0.2.1",
     "webpack": "1.14.0"
+  },
+  "dependencies": {
+    "webpack": "3.10.0"
   }
 }

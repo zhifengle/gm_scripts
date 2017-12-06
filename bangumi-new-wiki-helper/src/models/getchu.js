@@ -1,8 +1,8 @@
 import SubjectConfigModel from './SubjectConfigModel.js'
 
 var getchuSubjectModel = new SubjectConfigModel({
-  name: 'getchu',
-  descrition: 'Getchu游戏',
+  key: 'getchu_game',
+  description: 'Getchu游戏',
   entrySelector: 'xx',
   targetURL: 'xx'
 })

@@ -3,12 +3,11 @@ import models from '../models'
 import { gmFetch } from './utils/gmFetch'
 import { fetchBangumiDataBySearch } from './utils/searchBangumiSubject'
 
+// browser.storage.local.clear()
 browser.storage.local.set(models);
 browser.storage.local.set({
-  currentModel: {
-    name: 'amazon_jp',
-    descrition: 'Getchu game'
-  }
+  currentConfig: 'amazon_jp_book',
+  searchSubject: false
 });
 
 

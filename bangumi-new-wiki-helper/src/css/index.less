@@ -49,7 +49,7 @@ h1, h2 {
     height: @checkbox-width;
     border-radius: 50%;
     position: relative;
-    background-color: @circle-color;
+    background-color: #ccc;
     float: right;
   }
   .checkbox-circle:after{
@@ -69,13 +69,16 @@ h1, h2 {
     -webkit-transform: rotate(-45deg);
     transform: rotate(-45deg);
   }
-  input[type='checkbox']:checked + label > .checkbox-circle {
+  input[type='checkbox']:checked + label  .checkbox-circle {
     opacity: 1;
+    background-color: @circle-color;
   }
   .checkbox-circle.checked {
-    background-color: #ccc;
+    background-color: @circle-color;
   }
-  #bangumiDomain {
+  #model-config {
+    width: 50%;
+    overflow: hidden;
     float: right;
   }
 }

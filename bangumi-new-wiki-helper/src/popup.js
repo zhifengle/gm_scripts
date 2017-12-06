@@ -9,46 +9,88 @@ import CheckList from './CheckList'
 class Popup extends React.Component {
   constructor(props) {
     super(props);
+    this.handleInputChange = this.handleInputChange.bind(this);
     this.state = {
-      activeTab: null,
-      configs: null
+      configs: null,
+      currentConfig: null,
+      searchSubject: true
     };
   }
 
+  handleInputChange(e) {
+    if (e.target.id === "search-subject") {
+      browser.storage.local.set({
+        searchSubject: e.target.checked
+      });
+      this.setState({
+        searchSubject: e.target.checked
+      })
+    }
+  }
+  handleSelectChange(e) {
+    browser.storage.local.set({
+      currentConfig: e.target.value
+    });
+    this.setState({
+      currentConfig: e.target.value
+    })
+  }
+
   componentDidMount() {
-    // Get the active tab and store it in component state.
     browser.tabs.query({active: true}).then(tabs => {
       this.setState({activeTab: tabs[0]});
     });
     browser.storage.local.get()
       .then(obj => {
-        var configs = [];
+        var configs = {};
         for (const prop in obj) {
           if (obj[prop].type === 'config') {
-            configs.push(obj[prop])
+            configs[prop] = obj[prop];
           }
         }
         this.setState({
-          configs
+          configs,
+          currentConfig: obj.currentConfig,
+          searchSubject: obj.searchSubject
         });
       })
   }
 
   render() {
     const {activeTab, configs} = this.state;
+    let options = null;
+    if (this.state.configs) {
+      let c = { ...this.state.configs };
+      options = Object.keys(c).map((key) => {
+        return (<option
+          value={key}
+          key={key}>
+          {c[key].description}
+          </option>
+      )
+      })
+    }
     return (
       <div>
         <h1>设置</h1>
         <div className="setting-container">
           <ul>
-            <CheckList pageId="search-subject" name="测试" />
+            <CheckList
+              onChange={(e) => this.handleInputChange(e)}
+              pageId="search-subject"
+              name="检测条目是否存在"
+              checked={this.state.searchSubject}
+            />
             <li>
-              <label htmlFor="bangumiDomain">
-                <span>Bangumi域名</span>
-                <select class="select-list" id="bangumiDomain">
-                  <option value="bangumi.tv">bangumi.tv</option>
-                  <option value="bgm.tv">bgm.tv</option>
-                  <option value="chii.in">chii.in</option>
+              <label htmlFor="model-config">
+                <span>选择配置</span>
+                <select
+                  class="select-list"
+                  id="model-config"
+                  value={this.state.currentConfig}
+                  onChange={this.handleSelectChange}
+                >
+                  {options}
                 </select>
               </label>
             </li>

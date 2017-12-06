@@ -1,10 +1,10 @@
 import SubjectConfigModel from './SubjectConfigModel.js'
 
 var amazonSubjectModel = new SubjectConfigModel({
-  name: 'amazon',
-  descrition: '日亚图书',
+  key: 'amazon_jp_book',
+  description: '日亚图书',
   entrySelector: 'xx',
-  targetURL: 'https://www.amazon.co.jp/gp/product/4040694155/'
+  targetURL: 'xxx'
 })
 amazonSubjectModel.itemList.push(
   {

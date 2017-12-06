@@ -4,5 +4,6 @@ export default class SubjectConfigModel {
     this.entrySelector = obj.entrySelector;
     this.targetURL = obj.targetURL;
     this.itemList = []
+    this.type = 'config'
   }
 }

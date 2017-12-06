@@ -11,7 +11,7 @@ amazonSubjectModel.itemList.push(
     name: '名称',
     selector: '#productTitle',
     keyWord: '',
-    // filter: null
+    category: 'title'
   }, {
     name: 'ISBN',
     selector: '#detail_bullets_id .bucket .content',
@@ -21,7 +21,8 @@ amazonSubjectModel.itemList.push(
     name: '发售日',
     selector: '#detail_bullets_id .bucket .content',
     subSelector: 'li',
-    keyWord: '発売日：'
+    keyWord: '発売日：',
+    category: 'date'
   }, {
     name: '作者',
     selector: '.author .contributorNameID'

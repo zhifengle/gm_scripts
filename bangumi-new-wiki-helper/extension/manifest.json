@@ -24,13 +24,6 @@
         "*://*.chii.in/*"
       ],
       "js": ["dist/bangumi.js"]
-    }, {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "dist/conent.js"
-      ]
     }
   ],
   "permissions": [
@@ -38,6 +31,6 @@
     "storage",
     "webRequest",
     "<all_urls>",
-    "menus"
+    "contextMenus"
   ]
 }

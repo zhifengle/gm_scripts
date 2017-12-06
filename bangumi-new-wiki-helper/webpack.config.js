@@ -1,4 +1,5 @@
 const path = require('path');
+const ExtractTextPlugin = require("extract-text-webpack-plugin");
 const webpack = require('webpack');
 
 module.exports = {
@@ -21,7 +22,22 @@ module.exports = {
   module: {
     rules: [
       { test: /\.js$/, exclude: /node_modules/, loader: "babel-loader" },
+      {
+        test: /.less|.css$/,
+        use: ExtractTextPlugin.extract([
+          { loader: 'css-loader', options: { minimize: true }}, "less-loader"]
+        )
+        // ["style-loader", "css-loader", "less-loader"]
+      },
     ]
   },
+  plugins: [
+    // Since some NodeJS modules expect to be running in Node, it is helpful
+    // to set this environment var to avoid reference errors.
+    new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify('production'),
+    }),
+    new ExtractTextPlugin('[name].css')
+  ],
   devtool: 'sourcemap',
 };

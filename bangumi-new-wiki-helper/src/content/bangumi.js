@@ -1,4 +1,4 @@
-import 'webextension-polyfill'
+import browser from 'webextension-polyfill'
 
 export default class Bangumi {
   constructor(subjectType = 1) {

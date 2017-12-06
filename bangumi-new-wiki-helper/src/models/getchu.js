@@ -10,7 +10,8 @@ getchuSubjectModel.itemList.push(
   {
     name: '游戏名',
     selector: '#soft-title',
-    keyWord: ''
+    keyWord: '',
+    category: 'title'
   },
   {
     name: '开发',

@@ -1,9 +1,40 @@
-import 'webextension-polyfill'
+import browser from 'webextension-polyfill'
+
+function handleResponse(message) {
+  console.log(`Message from the background script:  ${message.response}`);
+}
+
+function handleError(error) {
+  console.log(`Error: ${error.message}`);
+}
+var sending = browser.runtime.sendMessage({
+  subjectInfo: {
+    subjectName: 'ちおちゃんの通学路 7',
+    // startDate: '2017/9/23'
+  }
+});
+sending.then(handleResponse, handleError);
 
 browser.storage.local.get()
   .then(obj => {
+    console.log('obj: ', obj);
     console.log(obj[obj.currentModel.name].itemList.map(i => getWikiItem(i)))
   })
+/**
+ * 获取查找条目需要的信息
+ * @param {Object[]} items
+ */
+function getQueryInfo(items) {
+  var info = {}
+  items.forEach((item) => {
+    if (item.category === 'title') {
+      info.subjectName = item.data
+    }
+    if (item.category === 'date') {
+      info.startDate = item.data
+    }
+  })
+}
 /**
  * dollar 选择符
  * @param {string} selector 

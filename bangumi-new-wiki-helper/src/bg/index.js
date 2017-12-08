@@ -13,9 +13,19 @@ browser.storage.local.set({
 
 function handleMessage(request, sender, sendResponse) {
   console.log(request.subjectInfo);
+  var notificationID = 'bangumi-new-wiki-helper-notice'
   // fetchBangumiDataBySearch(subjectInfo, 1).then(d => console.log(d));
-  gmFetch('https://www.baidu.com', 5 * 1000)
-    .then(d => console.log('dddddddddddd', d));
+  // gmFetch('https://www.baidu.com', 5 * 1000)
+  //   .then(d => console.log('dddddddddddd', d));
+  var notification = browser.notifications.create(notificationID, {
+    "type": "basic",
+    "title": 'title',
+    "message": 'content'
+  });
+
+  setTimeout(function(){
+    browser.notifications.clear(notificationID);
+  },2000);
   var response = {
     response: "Response from background script"
   }
@@ -72,16 +82,17 @@ browser.contextMenus.create({
 browser.contextMenus.onClicked.addListener((info, tab) => {
   switch (info.menuItemId) {
     case "bangumi-new-wiki":
-      // browser.tabs.query({ 'active': true, 'lastFocusedWindow': true })
-      //   .then(tabs => tabs[0].url)
-      //   .then(url => {
-      //     return browser.tabs.executeScript({
-      //       code: 'var testfff = 1;'
-      //     })
-      //   });
-      browser.tabs.executeScript({
-        file: '/dist/content.js'
-      });
+      browser.tabs.query({ 'active': true, 'lastFocusedWindow': true })
+        .then(tabs => tabs[0].url)
+        .then(url => {
+          var file = '/dist/content.js'
+          if (url.match(/bgm\.tv|bangumi\.tv|chii\.in/)) {
+            file = '/dist/bangumi.js'
+          }
+          return browser.tabs.executeScript({
+            file: file
+          })
+        });
       // gmFetch('https://bgm.tv/character/new', 5 * 1000)
       //   .then(d => console.log('dddddddddddd', d));
       break;

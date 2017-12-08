@@ -18,7 +18,7 @@ sending.then(handleResponse, handleError);
 browser.storage.local.get()
   .then(obj => {
     console.log('obj: ', obj);
-    console.log(obj[obj.currentModel.name].itemList.map(i => getWikiItem(i)))
+    console.log(obj[obj.currentConfig].itemList.map(i => getWikiItem(i)))
   })
 /**
  * 获取查找条目需要的信息
@@ -49,17 +49,25 @@ function $(selector) {
  * @TODO
  */
 function getWikiItem(itemConfig) {
+  var item = {
+    category: itemConfig.category
+  };
   if (itemConfig.selector && !itemConfig.subSelector) {
     var $d = $(itemConfig.selector)
-    if (!$d) return {};
-    console.log($d.textContent)
-    return {
-      name: itemConfig.name,
-      data: dealRawText($d.textContent)
+    if ($d) {
+      item = {
+        name: itemConfig.name,
+        data: dealRawText($d.textContent),
+        ...item
+      }
     }
   } else if (itemConfig.keyWord) {
-    return getItemByKeyWord(itemConfig);
+    item = {
+      ...getItemByKeyWord(itemConfig),
+      ...item
+    }
   }
+  return item;
 }
 /**
  * 处理无关字符
@@ -82,8 +90,9 @@ function getItemByKeyWord(itemConfig) {
   var targets;
   if (itemConfig.selector) {
     targets = contains(itemConfig.subSelector, itemConfig.keyWord, $(itemConfig.selector))
+  } else {
+    targets = contains(itemConfig.subSelector, itemConfig.keyWord)
   }
-  targets = contains(itemConfig.subSelector, itemConfig.keyWord)
   if (targets && targets.length) {
     if (itemConfig.sibling) {
       return {

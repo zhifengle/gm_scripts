@@ -3,13 +3,13 @@ import ReactDOM from 'react-dom';
 import browser from 'webextension-polyfill'
 import './css/index.less';
 
-import Nested from './nested-component';
 import CheckList from './CheckList'
 
 class Popup extends React.Component {
   constructor(props) {
     super(props);
     this.handleInputChange = this.handleInputChange.bind(this);
+    this.handleSelectChange = this.handleSelectChange.bind(this);
     this.state = {
       configs: null,
       currentConfig: null,
@@ -28,18 +28,17 @@ class Popup extends React.Component {
     }
   }
   handleSelectChange(e) {
-    browser.storage.local.set({
-      currentConfig: e.target.value
-    });
-    this.setState({
-      currentConfig: e.target.value
-    })
+    if (e.target.id === "model-config") {
+      browser.storage.local.set({
+        currentConfig: e.target.value
+      });
+      this.setState({
+        currentConfig: e.target.value
+      })
+    }
   }
 
   componentDidMount() {
-    browser.tabs.query({active: true}).then(tabs => {
-      this.setState({activeTab: tabs[0]});
-    });
     browser.storage.local.get()
       .then(obj => {
         var configs = {};

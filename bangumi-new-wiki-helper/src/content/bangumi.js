@@ -40,9 +40,39 @@ function genWikiString(infoType, infoArray) {
   return infobox.join('\n');
 }
 
-function fillSubjectInfo() {
+/**
+ * 填写条目信息
+ * @param {Object[]} info
+ */
+function fillSubjectInfo(info) {
 
-  var pNode = $('.settings .inputtext');
+  var infoArray = [];
+  // var $typeTD = $('table tr:nth-of-type(2) > td:nth-of-type(2)');
+
+  var $wikiMode = $('table small a:nth-of-type(1)[href="javascript:void(0)"]');
+  var $newbeeMode = $('table small a:nth-of-type(2)[href="javascript:void(0)"]');
+  for (var i = 0, len = info.length; i < len; i++) {
+    if (info[i].category === 'subject_title') {
+      let $title = $('input[name=subject_title]');
+      $title.value = info[i].data;
+      continue;
+    }
+    if (info[i].category === 'subject_summary') {
+      let $summary = $('#subject_summary');
+      $summary.value = info[i].data;
+      continue;
+    }
+    if (info[i].name) {
+      infoArray.push(info[i]);
+    }
+  }
+  $wikiMode.click();
+  setTimeout(() => {
+    fillInfoBox(infoArray);
+    setTimeout(() => {
+      $newbeeMode.click();
+    }, 500);
+  }, 500);
   
 }
 
@@ -55,7 +85,7 @@ function fillInfoBox(infoArray) {
     for (var i = 0, len = arr.length; i < len; i++) {
       let n = arr[i].replace(/\||=.*/g, '');
       if (n === info.name) {
-        arr[i] = arr[i].replace('*', '') + info.data;
+        arr[i] = arr[i].replace(/=[^{[]+/, '=') + info.data;
         isDefault = true;
         break;
       }
@@ -97,11 +127,30 @@ var t = [
   },
   {
     "name": "内容简介",
-    "data": "海と空に囲まれた湘南の町で始まる、ちょっとフシギな恋の物語。ゴールデンウィークの最終日。高校二年生の少年・梓川咲太は、静謐な空気漂う図書館で、野生のバニーガールと出会った――。電撃文庫の大人気タイトル『青春ブタ野郎』シリーズの、コミカライズ第1巻!",
+    "data": "海と空に囲まれた湘南の町で始まる、ちょっとフシギな恋の物語。ゴールデンウィークの最終日。高校二年生の少年・梓川咲太は、静謐な空気漂う図書館で、野生のバニーガールと出会った――。電撃文庫の大人気タイトル『青春ブタ野郎』���リーズの、コミカライズ第1巻!",
     "category": "subject_summary"
   }
-]
-function test(data) {
-  console.log('data', data);
+];
+
+function init() {
+  var re = new RegExp(['new_subject'].join('|'));
+  var page = document.location.href.match(re);
+  if (page) {
+    switch (page[0]) {
+      case 'new_subject':
+        browser.storage.local.get('subjectInfoList')
+          .then((obj) => {
+            if (obj.subjectInfoList) {
+              fillSubjectInfo(obj.subjectInfoList);
+            } else {
+              alert('条目信息为空');
+            }
+          })
+          .catch((err) => {
+            console.log('get subjectInfoList err: ', err);
+          });
+        break;
+    }
+  }
 }
-injectScript(test, '12313');
+init()

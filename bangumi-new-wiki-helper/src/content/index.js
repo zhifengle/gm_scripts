@@ -7,18 +7,22 @@ function handleResponse(message) {
 function handleError(error) {
   console.log(`Error: ${error.message}`);
 }
-var sending = browser.runtime.sendMessage({
-  subjectInfo: {
-    subjectName: 'ちおちゃんの通学路 7',
-    // startDate: '2017/9/23'
-  }
-});
-sending.then(handleResponse, handleError);
 
 browser.storage.local.get()
   .then(obj => {
-    console.log('obj: ', obj);
-    console.log(obj[obj.currentConfig].itemList.map(i => getWikiItem(i)))
+    var subjectInfoList = obj[obj.currentConfig].itemList.map(i => getWikiItem(i));
+    var subjectInfo = getQueryInfo(subjectInfoList);
+    if (subjectInfo) {
+      browser.storage.local.set({
+        subjectInfoList: subjectInfoList
+      })
+        .then(() => {
+          let sending = browser.runtime.sendMessage({
+            subjectInfo: getQueryInfo(subjectInfoList)
+          });
+          sending.then(handleResponse, handleError);
+        });
+    }
   })
 /**
  * 获取查找条目需要的信息
@@ -27,13 +31,17 @@ browser.storage.local.get()
 function getQueryInfo(items) {
   var info = {}
   items.forEach((item) => {
-    if (item.category === 'title') {
+    if (item.category === 'subject_title') {
       info.subjectName = item.data
     }
     if (item.category === 'date') {
       info.startDate = item.data
     }
   })
+  if (info.subjectName) {
+    return info
+  }
+  return;
 }
 /**
  * dollar 选择符

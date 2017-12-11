@@ -16,16 +16,6 @@
   "background": {
     "scripts": ["dist/background.js"]
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "*://*.bgm.tv/*",
-        "*://*.bangumi.tv/*",
-        "*://*.chii.in/*"
-      ],
-      "js": ["dist/bangumi.js"]
-    }
-  ],
   "permissions": [
     "tabs",
     "notifications",

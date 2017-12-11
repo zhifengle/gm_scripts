@@ -1,22 +1,40 @@
-import browser from 'webextension-polyfill'
-import models from '../models'
-import { gmFetch } from './utils/gmFetch'
-import { fetchBangumiDataBySearch } from './utils/searchBangumiSubject'
+import browser from 'webextension-polyfill';
+import models from '../models';
+import { fetchBangumiDataBySearch } from './utils/searchBangumiSubject';
 
 // browser.storage.local.clear()
 browser.storage.local.set(models);
 browser.storage.local.set({
   currentConfig: 'amazon_jp_book',
-  searchSubject: false
+  searchSubject: true,
+  newSubjectType: 1,
+  bangumiDomain: 'bgm.tv'
 });
 
 
 function handleMessage(request, sender, sendResponse) {
-  console.log(request.subjectInfo);
-  var notificationID = 'bangumi-new-wiki-helper-notice'
-  // fetchBangumiDataBySearch(subjectInfo, 1).then(d => console.log(d));
-  // gmFetch('https://www.baidu.com', 5 * 1000)
-  //   .then(d => console.log('dddddddddddd', d));
+  var notificationID = 'bangumi-new-wiki-helper-notice';
+  browser.storage.local.get()
+    .then(obj => {
+      let newSubjectType = obj.newSubjectType;
+      if (obj.searchSubject) {
+        return fetchBangumiDataBySearch(request.subjectInfo, newSubjectType);
+      }
+      browser.tabs.create({
+        url: `https://bgm.tv/new_subject/${newSubjectType}`
+      });
+    })
+    .then((d) => {
+      if (d) {
+        console.log('ddddddd', d);
+        browser.tabs.create({
+          url: d.subjectURL
+        });
+      }
+    })
+    .catch((r) => {
+      console.log('err:', r);
+    });
   var notification = browser.notifications.create(notificationID, {
     "type": "basic",
     "title": 'title',
@@ -28,7 +46,7 @@ function handleMessage(request, sender, sendResponse) {
   },2000);
   var response = {
     response: "Response from background script"
-  }
+  };
   sendResponse(response);
 }
 
@@ -41,14 +59,6 @@ function onCreated() {
   } else {
     console.log("Item created successfully");
   }
-}
-
-/*
-Called when the item has been removed.
-We'll just log success here.
-*/
-function onRemoved() {
-  console.log("Item removed successfully");
 }
 
 /*
@@ -85,16 +95,14 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
       browser.tabs.query({ 'active': true, 'lastFocusedWindow': true })
         .then(tabs => tabs[0].url)
         .then(url => {
-          var file = '/dist/content.js'
+          var file = '/dist/content.js';
           if (url.match(/bgm\.tv|bangumi\.tv|chii\.in/)) {
-            file = '/dist/bangumi.js'
+            file = '/dist/bangumi.js';
           }
           return browser.tabs.executeScript({
             file: file
-          })
+          });
         });
-      // gmFetch('https://bgm.tv/character/new', 5 * 1000)
-      //   .then(d => console.log('dddddddddddd', d));
       break;
   }
 });

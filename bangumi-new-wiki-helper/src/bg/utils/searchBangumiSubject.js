@@ -65,7 +65,7 @@ function fetchBangumiDataBySearch(subjectInfo, typeNumber) {
   if (subjectInfo && subjectInfo.startDate) {
     startDate = subjectInfo.startDate;
   }
-  typeNumber = typeNumber || 4; // 4 game
+  typeNumber = typeNumber || 'all';
   const url = `https://bgm.tv/subject_search/${encodeURIComponent(subjectInfo.subjectName)}?cat=${typeNumber}`;
   return gmFetch(url).then((info) => {
     var [rawInfoList, numOfPage] = dealRawHTML(info);

@@ -1,7 +1,7 @@
 import getchu from './getchu'
-import amazon_jp from './amazon_jp'
+import amazon_jp_book from './amazon_jp_book'
 
 export default {
   [getchu.key]: getchu,
-  [amazon_jp.key]: amazon_jp
+  [amazon_jp_book.key]: amazon_jp_book
 }

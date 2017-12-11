@@ -11,14 +11,14 @@ function handleError(error) {
 browser.storage.local.get()
   .then(obj => {
     var subjectInfoList = obj[obj.currentConfig].itemList.map(i => getWikiItem(i));
-    var subjectInfo = getQueryInfo(subjectInfoList);
-    if (subjectInfo) {
+    var queryInfo = getQueryInfo(subjectInfoList);
+    if (queryInfo) {
       browser.storage.local.set({
         subjectInfoList: subjectInfoList
       })
         .then(() => {
           let sending = browser.runtime.sendMessage({
-            subjectInfo: getQueryInfo(subjectInfoList)
+            queryInfo: getQueryInfo(subjectInfoList)
           });
           sending.then(handleResponse, handleError);
         });
@@ -49,6 +49,10 @@ function getQueryInfo(items) {
  */
 function $(selector) {
   return document.querySelector(selector);
+}
+function getCover(coverConfig) {
+  var $cover = $(coverConfig.selector);
+  return
 }
 /**
  * 生成wiki的项目

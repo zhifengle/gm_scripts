@@ -62,7 +62,8 @@ function fillSubjectInfo(info) {
       $summary.value = info[i].data;
       continue;
     }
-    if (info[i].name) {
+    // 有名称并且category不在制定列表里面
+    if (info[i].name && ['cover'].indexOf(info[i].category) === -1) {
       infoArray.push(info[i]);
     }
   }

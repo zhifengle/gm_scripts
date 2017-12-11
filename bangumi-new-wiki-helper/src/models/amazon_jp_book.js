@@ -4,7 +4,10 @@ var amazonSubjectModel = new SubjectConfigModel({
   key: 'amazon_jp_book',
   description: '日亚图书',
   entrySelector: 'xx',
-  targetURL: 'xxx'
+  targetURL: 'xxx',
+  cover: {
+    selector: 'img#imgBlkFront'
+  }
 })
 amazonSubjectModel.itemList.push(
   {

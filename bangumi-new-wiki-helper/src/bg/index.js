@@ -71,7 +71,7 @@ function onError(error) {
 
 browser.contextMenus.create({
   id: "bangumi-new-wiki",
-  title: 'test bg',
+  title: 'Bangumi new subject',
   contexts: ["all"]
 }, onCreated);
 

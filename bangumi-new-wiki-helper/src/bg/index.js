@@ -1,94 +1,77 @@
 import browser from 'webextension-polyfill';
 import models from '../models';
 import { fetchBangumiDataBySearch } from './utils/searchBangumiSubject';
+import { gmFetchBinary } from './utils/gmFetch';
 
 // browser.storage.local.clear()
-browser.storage.local.set(models);
-browser.storage.local.set({
-  currentConfig: 'amazon_jp_book',
-  searchSubject: true,
-  newSubjectType: 1,
-  bangumiDomain: 'bgm.tv'
+// 初始化设置
+browser.storage.local.get().then(obj => {
+  if (obj && !obj.currentConfig) {
+    browser.storage.local.set(models);
+    browser.storage.local.set({
+      currentConfig: 'amazon_jp_book',
+      searchSubject: true,
+      newSubjectType: 1,
+      bangumiDomain: 'bgm.tv'
+    });
+  }
 });
 
 
 function handleMessage(request, sender, sendResponse) {
-  var notificationID = 'bangumi-new-wiki-helper-notice';
+
   browser.storage.local.get()
     .then(obj => {
       let newSubjectType = obj.newSubjectType;
-      if (obj.searchSubject) {
-        return fetchBangumiDataBySearch(request.subjectInfo, newSubjectType);
+      var coverInfo = request.coverInfo;
+      if (coverInfo && coverInfo.coverURL) {
+        gmFetchBinary(coverInfo.coverURL).then(function(myBlob) {
+          var reader = new window.FileReader();
+          reader.readAsDataURL(myBlob); 
+          reader.onloadend = function() {
+            var base64data = reader.result;                
+            console.log(base64data);
+            browser.storage.local.set({
+              subjectCover: base64data
+            });
+          }
+        });
       }
-      browser.tabs.create({
-        url: `https://bgm.tv/new_subject/${newSubjectType}`
-      });
+      if (obj.searchSubject) {
+        return fetchBangumiDataBySearch(request.queryInfo, newSubjectType);
+      }
+      var url =  `https://bgm.tv/new_subject/${newSubjectType}`;
+      // browser.tabs.create({
+      //   url: changeDomain(url, obj.bangumiDomain)
+      // });
     })
     .then((d) => {
       if (d) {
         console.log('ddddddd', d);
         browser.tabs.create({
-          url: d.subjectURL
+          url: changeDomain(d.subjectURL, obj.bangumiDomain)
         });
       }
     })
     .catch((r) => {
       console.log('err:', r);
     });
-  var notification = browser.notifications.create(notificationID, {
-    "type": "basic",
-    "title": 'title',
-    "message": 'content'
-  });
-
-  setTimeout(function(){
-    browser.notifications.clear(notificationID);
-  },2000);
   var response = {
     response: "Response from background script"
   };
   sendResponse(response);
 }
 
+
 // 使用browser时，会报错
 chrome.runtime.onMessage.addListener(handleMessage);
-
-function onCreated() {
-  if (browser.runtime.lastError) {
-    console.log(`Error: ${browser.runtime.lastError}`);
-  } else {
-    console.log("Item created successfully");
-  }
-}
-
-/*
-Called when there was an error.
-We'll just log the error here.
-*/
-function onError(error) {
-  console.log(`Error: ${error}`);
-}
 
 browser.contextMenus.create({
   id: "bangumi-new-wiki",
   title: 'Bangumi new subject',
   contexts: ["all"]
-}, onCreated);
+});
 
-
-// chrome.contextMenus.create({
-//   id: "bangumi-new-wiki",
-//   title: 'test bg',
-//   contexts: ["all"],
-//   onclick: addSubject,
-// });
-// function addSubject(info, tab) {
-//   browser.tabs.executeScript({
-//     file: '/dist/content.js'
-//   });
-//   // gmFetch('https://bgm.tv/character/new', 5 * 1000)
-//   //   .then(d => console.log('dddddddddddd', d));
-// }
 browser.contextMenus.onClicked.addListener((info, tab) => {
   switch (info.menuItemId) {
     case "bangumi-new-wiki":
@@ -106,3 +89,11 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
       break;
   }
 });
+
+// 变更url的域名
+function changeDomain(url, domain) {
+  if (url.match(domain)) return url;
+  if (domain === 'bangumi.tv') {
+    return url.replace('https', 'http').replace('bgm.tv', domain);
+  }
+}

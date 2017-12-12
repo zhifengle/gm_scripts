@@ -1,4 +1,4 @@
-import browser from 'webextension-polyfill'
+import browser from 'webextension-polyfill';
 
 function handleResponse(message) {
   console.log(`Message from the background script:  ${message.response}`);
@@ -10,36 +10,39 @@ function handleError(error) {
 
 browser.storage.local.get()
   .then(obj => {
+    console.log(obj);
     var subjectInfoList = obj[obj.currentConfig].itemList.map(i => getWikiItem(i));
     var queryInfo = getQueryInfo(subjectInfoList);
+    var coverInfo = getCoverURL(obj[obj.currentConfig].cover);
     if (queryInfo) {
       browser.storage.local.set({
-        subjectInfoList: subjectInfoList
+        subjectInfoList: subjectInfoList,
       })
         .then(() => {
           let sending = browser.runtime.sendMessage({
-            queryInfo: getQueryInfo(subjectInfoList)
+            queryInfo: getQueryInfo(subjectInfoList),
+            coverInfo
           });
           sending.then(handleResponse, handleError);
         });
     }
-  })
+  });
 /**
  * 获取查找条目需要的信息
  * @param {Object[]} items
  */
 function getQueryInfo(items) {
-  var info = {}
+  var info = {};
   items.forEach((item) => {
     if (item.category === 'subject_title') {
-      info.subjectName = item.data
+      info.subjectName = item.data;
     }
     if (item.category === 'date') {
-      info.startDate = item.data
+      info.startDate = item.data;
     }
-  })
+  });
   if (info.subjectName) {
-    return info
+    return info;
   }
   return;
 }
@@ -50,9 +53,14 @@ function getQueryInfo(items) {
 function $(selector) {
   return document.querySelector(selector);
 }
-function getCover(coverConfig) {
+function getCoverURL(coverConfig) {
+  if (!coverConfig) return;
   var $cover = $(coverConfig.selector);
-  return
+  return {
+    coverURL: $cover.src,
+    height: $cover.height,
+    width: $cover.width
+  };
 }
 /**
  * 生成wiki的项目
@@ -65,19 +73,19 @@ function getWikiItem(itemConfig) {
     category: itemConfig.category
   };
   if (itemConfig.selector && !itemConfig.subSelector) {
-    var $d = $(itemConfig.selector)
+    var $d = $(itemConfig.selector);
     if ($d) {
       item = {
         name: itemConfig.name,
-        data: dealRawText($d.textContent),
+        data: dealRawText($d.innerText, [], itemConfig),
         ...item
-      }
+      };
     }
   } else if (itemConfig.keyWord) {
     item = {
       ...getItemByKeyWord(itemConfig),
       ...item
-    }
+    };
   }
   return item;
 }
@@ -86,9 +94,12 @@ function getWikiItem(itemConfig) {
  * @param {string} str 
  * @param {Object[]} filterArry
  */
-function dealRawText(str, filterArray = []) {
-  const textList = [':', '：', '\\(.*\\)', '（.*）', ...filterArray]
-  return str.replace(new RegExp(textList.join('|'), 'g'), '').trim()
+function dealRawText(str, filterArray = [], itemConfig) {
+  if (itemConfig && itemConfig.category === 'subject_summary') {
+    return str;
+  }
+  const textList = [':', '：', '\\(.*\\)', '（.*）', ...filterArray];
+  return str.replace(new RegExp(textList.join('|'), 'g'), '').trim();
 }
 /**
  * 通过关键字提取信息
@@ -101,21 +112,21 @@ function getItemByKeyWord(itemConfig) {
 
   var targets;
   if (itemConfig.selector) {
-    targets = contains(itemConfig.subSelector, itemConfig.keyWord, $(itemConfig.selector))
+    targets = contains(itemConfig.subSelector, itemConfig.keyWord, $(itemConfig.selector));
   } else {
-    targets = contains(itemConfig.subSelector, itemConfig.keyWord)
+    targets = contains(itemConfig.subSelector, itemConfig.keyWord);
   }
   if (targets && targets.length) {
     if (itemConfig.sibling) {
       return {
         name: itemConfig.name,
-        data: dealRawText(targets[targets.length - 1].nextElementSibling.textContent)
-      }
+        data: dealRawText(targets[targets.length - 1].nextElementSibling.innerText, [], itemConfig)
+      };
     }
     return {
       name: itemConfig.name,
-      data: dealRawText(targets[targets.length - 1].textContent, [itemConfig.keyWord])
-    }
+      data: dealRawText(targets[targets.length - 1].innerText, [itemConfig.keyWord], itemConfig)
+    };
   } else {
     return {};
   }
@@ -133,6 +144,6 @@ function contains(selector, text, $parent) {
     elements = document.querySelectorAll(selector);
   }
   return [].filter.call(elements, function (element) {
-    return new RegExp(text).test(element.textContent);
+    return new RegExp(text).test(element.innerText);
   });
 }

@@ -27,11 +27,15 @@ h1, h2 {
       line-height: 20px;
       margin: 8px 0;
       position: relative;
-    }
-    label {
-      display: inline-block;
-      /* padding: 25*@height; */
-      width: 100%;
+      label {
+        display: inline-block;
+        width: 100%;
+      }
+      .select-list {
+        width: 50%;
+        overflow: hidden;
+        float: right;
+      }
     }
   }
 
@@ -75,10 +79,5 @@ h1, h2 {
   }
   .checkbox-circle.checked {
     background-color: @circle-color;
-  }
-  #model-config {
-    width: 50%;
-    overflow: hidden;
-    float: right;
   }
 }

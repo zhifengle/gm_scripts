@@ -1,9 +1,35 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import browser from 'webextension-polyfill'
+import browser from 'webextension-polyfill';
 import './css/index.less';
 
-import CheckList from './CheckList'
+import CheckList from './CheckList';
+
+const SelectItem = (props) => {
+  let options = null;
+  if (props.items) {
+    let c = { ...props.items };
+    options = Object.keys(c).map((key) => {
+      return (<option
+        value={key}
+        key={key}>
+        {c[key].description}
+        </option>
+    );
+    });
+  }
+  return <li>
+    <span>{props.name}</span>
+    <select
+      className="select-list"
+      id={props.selectId}
+      value={props.value}
+      onChange={props.onChange}
+    >
+      {options}
+    </select>
+  </li>;
+};
 
 class Popup extends React.Component {
   constructor(props) {
@@ -13,7 +39,9 @@ class Popup extends React.Component {
     this.state = {
       configs: null,
       currentConfig: null,
-      searchSubject: true
+      searchSubject: true,
+      newSubjectType: 1,
+      bangumiDomain: 'bgm.tv'
     };
   }
 
@@ -24,9 +52,10 @@ class Popup extends React.Component {
       });
       this.setState({
         searchSubject: e.target.checked
-      })
+      });
     }
   }
+  // @TODO: 统一保存设置，当popup 失去焦点
   handleSelectChange(e) {
     if (e.target.id === "model-config") {
       browser.storage.local.set({
@@ -34,7 +63,23 @@ class Popup extends React.Component {
       });
       this.setState({
         currentConfig: e.target.value
-      })
+      });
+    }
+    if (e.target.id === "type-config") {
+      browser.storage.local.set({
+        newSubjectType: e.target.value
+      });
+      this.setState({
+        newSubjectType: e.target.value
+      });
+    }
+    if (e.target.id === "domain-config") {
+      browser.storage.local.set({
+        bangumiDomain: e.target.value
+      });
+      this.setState({
+        bangumiDomain: e.target.value
+      });
     }
   }
 
@@ -50,25 +95,37 @@ class Popup extends React.Component {
         this.setState({
           configs,
           currentConfig: obj.currentConfig,
-          searchSubject: obj.searchSubject
+          searchSubject: obj.searchSubject,
+          newSubjectType: obj.newSubjectType,
+          bangumiDomain: obj.bangumiDomain
         });
-      })
+      });
   }
 
   render() {
-    const {activeTab, configs} = this.state;
-    let options = null;
-    if (this.state.configs) {
-      let c = { ...this.state.configs };
-      options = Object.keys(c).map((key) => {
-        return (<option
-          value={key}
-          key={key}>
-          {c[key].description}
-          </option>
-      )
-      })
-    }
+    const {configs, currentConfig} = this.state;
+    const typeItems = {
+      '1': {
+        description: '图书'
+      },
+      '2': {
+        description: '动画'
+      },
+      '3': {
+        description: '音乐'
+      },
+      '4': {
+        description: '游戏'
+      }
+    };
+    const domainItems = {
+      'bgm.tv': {
+        description: 'bgm.tv'
+      },
+      'bangumi.tv': {
+        description: 'bangumi.tv'
+      }
+    };
     return (
       <div>
         <h1>设置</h1>
@@ -80,19 +137,25 @@ class Popup extends React.Component {
               name="检测条目是否存在"
               checked={this.state.searchSubject}
             />
-            <li>
-              <label htmlFor="model-config">
-                <span>选择配置</span>
-                <select
-                  class="select-list"
-                  id="model-config"
-                  value={this.state.currentConfig}
-                  onChange={this.handleSelectChange}
-                >
-                  {options}
-                </select>
-              </label>
-            </li>
+            <SelectItem
+              name="选择配置"
+              selectId="model-config"
+              value={currentConfig}
+              onChange={this.handleSelectChange}
+              items={configs}
+            />
+            <SelectItem
+              name="条目类型"
+              items={typeItems}
+              value={this.state.newSubjectType}
+              onChange={this.handleSelectChange}
+              selectId="type-config" />
+            <SelectItem
+              name="Bangumi域名"
+              items={domainItems}
+              value={this.state.bangumiDomain}
+              onChange={this.handleSelectChange}
+              selectId="domain-config" />
           </ul>
         </div>
       </div>

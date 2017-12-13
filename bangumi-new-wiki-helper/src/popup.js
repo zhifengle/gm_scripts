@@ -86,14 +86,14 @@ class Popup extends React.Component {
   componentDidMount() {
     browser.storage.local.get()
       .then(obj => {
-        var configs = {};
-        for (const prop in obj) {
-          if (obj[prop].type === 'config') {
-            configs[prop] = obj[prop];
-          }
-        }
+        // var configs = {};
+        // for (const prop in obj) {
+        //   if (obj[prop].type === 'config') {
+        //     configs[prop] = obj[prop];
+        //   }
+        // }
         this.setState({
-          configs,
+          configs: obj.configModel,
           currentConfig: obj.currentConfig,
           searchSubject: obj.searchSubject,
           newSubjectType: obj.newSubjectType,

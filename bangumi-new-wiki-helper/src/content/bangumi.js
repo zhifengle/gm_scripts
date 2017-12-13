@@ -50,22 +50,69 @@ function htmlToElement(html) {
   return template.content.firstChild;
 }
 
+/**
+ * 提交上传图片表单
+ * @param {Object} $form - form表单 DOM
+ * @param {Object} picBlob - 图片Blob
+ */
+function sendUploadForm($form, picBlob) {
+  var fd = new FormData($form);
+  var $file = $form.querySelector('input[type=file]');
+  var inputFileName = $file.name ? $file.name : 'picfile';
+  fd.set(inputFileName, picBlob, genImageName(picBlob.type));
+  var $submit = $form.querySelector('[name=submit]');
+  if ($submit && $submit.name && $submit.value) {
+    fd.set($submit.name, $submit.value);
+  }
+  // loading
+  $submit.style.display = 'none';
+  var $loading = document.createElement('div');
+  $loading.style = 'width: 208px; height: 13px; background-image: url("/img/loadingAnimation.gif");';
+  $form.appendChild($loading);
+  // setTimeout(() => {
+  //   $submit.style.display = '';
+  //   $loading.remove();
+  // }, 1000);
+  var xhr = new XMLHttpRequest();
+  xhr.open($form.method.toLowerCase(), $form.action, true);
+  xhr.onreadystatechange = function () {
+    var _location;
+    //console.log(xhr);
+    if(xhr.readyState === 2 && xhr.status === 200){
+      _location = xhr.responseURL;
+      $loading.remove();
+      $submit.style.display = '';
+      if(_location) {
+        location.assign(_location);
+      }
+    }
+  };
+  xhr.send(fd);
+}
+
 function previewImage(coverBlob, parentDOM) {
   var reader = new window.FileReader();
   reader.readAsDataURL(coverBlob);
   reader.onloadend = function() {
     var base64data = reader.result;
 
-    var rawHTML = `<tr>
-    <td valign="top">预览封面</td>
-    <td valign="top"><img id="test-preview" src="${base64data}" alt=""></td>
-</tr>`;
-    var $i = document.querySelector('#test-preview');
+    var rawHTML = `<div style="margin-top: 1rem;">
+<input style="vertical-align: top;" class="inputBtn" value="上传抓取图片" name="submit" type="button">
+<img id="e-wiki-cover-preview" src="${base64data}" alt="">
+</div>`;
+    var $i = document.querySelector('#e-wiki-cover-preview');
     if ($i) {
       $i.src = base64data;
+      $i.parentElement.style.display = '';
     } else {
       parentDOM.appendChild(htmlToElement(rawHTML));
     }
+    var clickHandler = function (e) {
+      e.target.parentElement.style.display = 'none';
+      sendUploadForm(document.querySelector('#columnInSubjectA form'), coverBlob);
+      e.target.removeEventListener('click', clickHandler, false);
+    };
+    document.querySelector('#e-wiki-cover-preview').previousElementSibling.addEventListener('click', clickHandler, false);
   };
 }
 function genImageName(mimeType) {
@@ -159,16 +206,12 @@ function init() {
   if (page) {
     browser.storage.local.get(['subjectInfoList', 'subjectCover'])
       .then((obj) => {
-        console.log(obj);
         switch (page[0]) {
           case 'new_subject':
             if (obj.subjectInfoList) {
               fillSubjectInfo(obj.subjectInfoList);
             } else {
               alert('条目信息为空');
-            }
-            if (obj.subjectCover) {
-              previewImage(obj.subjectCover, document.querySelector('#columnInSubjectA'));
             }
             break;
           case 'upload_img':

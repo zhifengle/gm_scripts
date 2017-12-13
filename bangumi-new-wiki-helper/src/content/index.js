@@ -132,8 +132,7 @@ function contains(selector, text, $parent) {
 function init() {
   browser.storage.local.get()
     .then(obj => {
-      console.log(obj);
-      let config = obj.configModel[obj.currentConfig]
+      let config = obj.configModel[obj.currentConfig];
       var subjectInfoList = config.itemList.map(i => getWikiItem(i));
       var queryInfo = getQueryInfo(subjectInfoList);
       var coverInfo = getCoverURL(config.cover);

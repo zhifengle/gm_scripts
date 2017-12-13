@@ -1,6 +1,7 @@
 {
   "manifest_version": 2,
-  "name": "bangumi-new-wiki-helper",
+  "name": "bangumi new wiki helper",
+  "description": "辅助创建 Bangumi WIKI 条目",
   "version": "0.1",
 
   "browser_action": {
@@ -12,7 +13,10 @@
     "default_title": "Setting",
     "default_popup": "popup.html"
   },
-
+  "icons": {
+    "48": "images/Watermelon-48.png",
+    "96": "images/Watermelon-96.png"
+  },
   "background": {
     "scripts": ["dist/background.js"]
   },

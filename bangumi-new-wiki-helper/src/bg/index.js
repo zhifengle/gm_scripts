@@ -60,8 +60,9 @@ chrome.runtime.onMessage.addListener(handleMessage);
 
 browser.contextMenus.create({
   id: "bangumi-new-wiki",
-  title: 'Bangumi new subject',
-  contexts: ["all"]
+  // shortcut: 'N',
+  title: 'New subject(Bangumi)',
+  contexts: ["page"]
 });
 
 browser.contextMenus.onClicked.addListener((info, tab) => {

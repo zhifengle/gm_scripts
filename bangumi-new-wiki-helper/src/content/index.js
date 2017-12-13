@@ -8,25 +8,6 @@ function handleError(error) {
   console.log(`Error: ${error.message}`);
 }
 
-browser.storage.local.get()
-  .then(obj => {
-    console.log(obj);
-    var subjectInfoList = obj[obj.currentConfig].itemList.map(i => getWikiItem(i));
-    var queryInfo = getQueryInfo(subjectInfoList);
-    var coverInfo = getCoverURL(obj[obj.currentConfig].cover);
-    if (queryInfo) {
-      browser.storage.local.set({
-        subjectInfoList: subjectInfoList,
-      })
-        .then(() => {
-          let sending = browser.runtime.sendMessage({
-            queryInfo: getQueryInfo(subjectInfoList),
-            coverInfo
-          });
-          sending.then(handleResponse, handleError);
-        });
-    }
-  });
 /**
  * 获取查找条目需要的信息
  * @param {Object[]} items
@@ -147,3 +128,27 @@ function contains(selector, text, $parent) {
     return new RegExp(text).test(element.innerText);
   });
 }
+
+function init() {
+  browser.storage.local.get()
+    .then(obj => {
+      console.log(obj);
+      let config = obj.configModel[obj.currentConfig]
+      var subjectInfoList = config.itemList.map(i => getWikiItem(i));
+      var queryInfo = getQueryInfo(subjectInfoList);
+      var coverInfo = getCoverURL(config.cover);
+      if (queryInfo) {
+        browser.storage.local.set({
+          subjectInfoList: subjectInfoList,
+        })
+          .then(() => {
+            let sending = browser.runtime.sendMessage({
+              queryInfo: getQueryInfo(subjectInfoList),
+              coverInfo
+            });
+            sending.then(handleResponse, handleError);
+          });
+      }
+    });
+}
+init();

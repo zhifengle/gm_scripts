@@ -22,39 +22,31 @@ function handleMessage(request, sender, sendResponse) {
 
   browser.storage.local.get()
     .then(obj => {
-      let newSubjectType = obj.newSubjectType;
+      var newSubjectType = obj.newSubjectType;
       var coverInfo = request.coverInfo;
       if (coverInfo && coverInfo.coverURL) {
         gmFetchBinary(coverInfo.coverURL).then(function(myBlob) {
-          var reader = new window.FileReader();
-          reader.readAsDataURL(myBlob); 
-          reader.onloadend = function() {
-            var base64data = reader.result;                
-            console.log(base64data);
-            browser.storage.local.set({
-              subjectCover: base64data
-            });
-          }
+          browser.storage.local.set({
+            subjectCover: myBlob
+          });
         });
       }
       if (obj.searchSubject) {
-        return fetchBangumiDataBySearch(request.queryInfo, newSubjectType);
-      }
-      var url =  `https://bgm.tv/new_subject/${newSubjectType}`;
-      // browser.tabs.create({
-      //   url: changeDomain(url, obj.bangumiDomain)
-      // });
-    })
-    .then((d) => {
-      if (d) {
-        console.log('ddddddd', d);
+        fetchBangumiDataBySearch(request.queryInfo, newSubjectType).then((d) => {
+          console.log('ddddddd', d);
+          browser.tabs.create({
+            url: changeDomain(d.subjectURL, obj.bangumiDomain)
+          });
+        });
+      } else {
+        var url =  `https://bgm.tv/new_subject/${newSubjectType}`;
         browser.tabs.create({
-          url: changeDomain(d.subjectURL, obj.bangumiDomain)
+          url: changeDomain(url, obj.bangumiDomain)
         });
       }
     })
     .catch((r) => {
-      console.log('err:', r);
+      console.log('err:', r, r.message);
     });
   var response = {
     response: "Response from background script"

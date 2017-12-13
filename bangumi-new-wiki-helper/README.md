@@ -1,22 +1,4 @@
-# React / ES6 Popup Example
-
-## What it does
-
-This is an example of creating a browser action
-[popup](https://developer.mozilla.org/en-US/Add-ons/WebExtensions/Add_a_button_to_the_toolbar#Adding_a_popup)
-UI in [React][react] and [ES6](http://es6-features.org/) JavaScript.
-
-## What it shows
-
-* How to bundle [React][react] and any other [NodeJS][nodejs] module into an
-  extension.
-* How to transpile code that is not supported natively in
-  a browser such as
-  [import / export](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import)
-  syntax and [JSX](https://facebook.github.io/react/docs/jsx-in-depth.html).
-* How to continuously build code as you edit files.
-* How to customize [web-ext][web-ext] for your extension's specific needs.
-* How to structure your code in reusable ES6 modules.
+# Bangumi New Wiki Helper
 
 ## Usage
 
@@ -43,7 +25,7 @@ Any time you edit a file, [web-ext][web-ext] will reload the extension
 in Firefox. To see the popup, click the watermelon icon from the browser bar.
 Here is what it looks like:
 
-![popup screenshot](screenshots/popup.png "React popup screenshot")
+![popup screenshot](screenshots/popup.png "popup screenshot")
 
 [react]: https://facebook.github.io/react/
 [nodejs]: https://nodejs.org/en/

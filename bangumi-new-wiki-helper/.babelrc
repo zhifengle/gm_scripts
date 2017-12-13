@@ -1,11 +1,15 @@
 {
   "presets": [
-    "env",
     "stage-2",
-    "react"
+    "react",
+    ["env", {
+      "targets": {
+        "uglify": true
+      }
+    }]
   ],
   "plugins": [
     "transform-class-properties",
-    "transform-es2015-modules-commonjs"
+  "transform-es2015-modules-commonjs"
   ]
 }

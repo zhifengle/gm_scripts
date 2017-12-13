@@ -3,3 +3,5 @@
 yarn.lock
 extension/dist
 node_modules
+extension.crx
+extension.pem

@@ -36,6 +36,7 @@ class Popup extends React.Component {
     super(props);
     this.handleInputChange = this.handleInputChange.bind(this);
     this.handleSelectChange = this.handleSelectChange.bind(this);
+    this.handleClick = this.handleClick.bind(this);
     this.state = {
       configs: null,
       currentConfig: null,
@@ -81,6 +82,14 @@ class Popup extends React.Component {
         bangumiDomain: e.target.value
       });
     }
+  }
+
+  handleClick(e) {
+    browser.storage.local.set({
+      subjectCover: null,
+      subjectInfoList: null,
+    });
+    console.log('clear storage success!');
   }
 
   componentDidMount() {
@@ -156,6 +165,11 @@ class Popup extends React.Component {
               value={this.state.bangumiDomain}
               onChange={this.handleSelectChange}
               selectId="domain-config" />
+            <li>
+              <input
+                onClick={this.handleClick}
+                type="button" value="清空缓存"/>
+            </li>
           </ul>
         </div>
       </div>

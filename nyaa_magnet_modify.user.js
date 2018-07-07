@@ -4,8 +4,9 @@
 // @description nyaa magnet modify
 // @description:zh-cn 替换nyaa base32编码磁力链接为base16
 // @include     /^https:\/\/(sukebei\.)?nyaa.si\/.*$/
-// @version     0.1
-// @grant       none
+// @version     0.2
+// @run-at      document-end
+// @grant       GM_setClipboard
 // ==/UserScript==
 
 const MAGNET_PREFIX = 'magnet:?xt=urn:btih:'
@@ -22,6 +23,7 @@ if (window.location.pathname.match('view')) {
       return `btih:${convertToHex(b)}&dn=`
     })
   }
+  addBtn();
 }
 
 function convertToHex(str) {
@@ -49,4 +51,26 @@ function convertToHex(str) {
     }
   }
   return output
+}
+
+function addBtn() {
+  var $f = document.querySelector('.navbar-form > .input-group');
+  let $d = document.createElement('div');
+  $d.classList.add('input-group-btn');
+  $d.innerHTML = `<span class="btn btn-primary">
+  复制为Markdown
+								</span>`;
+  $d.addEventListener('click', () => {
+    let info = getInfo();
+    console.log(info);
+    GM_setClipboard(info.join('\n'), 'text')
+  });
+  $f.appendChild($d);
+}
+function getInfo() {
+  return Array.from(document.querySelectorAll('.container table > tbody > tr')).map(elem => {
+    let name = elem.querySelector('td:nth-child(2) > a:last-child').innerText.trim();
+    let magnet = elem.querySelector('td:nth-child(3) > a:last-child').href.replace(/&dn=.*$/, '')
+    return `[${name}](${magnet})`
+  })
 }

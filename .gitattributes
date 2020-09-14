@@ -1,0 +1,2 @@
+extension/lib/* linguist-vendored=true
+src/data/* linguist-vendored=true

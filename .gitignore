@@ -1,6 +1,11 @@
-node_modules
-.idea
-/logs
+# Ignore build artifacts and other files.
 /dist
-/pkg
-/output
+.idea
+.DS_Store
+yarn.lock
+extension/dist
+node_modules
+extension.crx
+extension.pem
+*-bk.test.ts
+web-ext-artifacts

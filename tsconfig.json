@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist",
+    "lib": [
+      "es2017",
+      "esnext.array",
+      "dom",
+      "es2015.iterable"
+    ],
+    "noImplicitAny": true,
+    "module": "es2015",
+    "target": "es6",
+    // "jsx": "react",
+    "allowJs": true,
+    //定义类型定义文件的根目录
+    "esModuleInterop": true,
+    // 引入 JSON
+    "resolveJsonModule": true,
+    // 引入辅助函数集
+    "importHelpers": false,
+    "moduleResolution": "node"
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "./extension/dist",
+    "./node_modules",
+    "./dist"
+  ]
+}

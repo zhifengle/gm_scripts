@@ -2,7 +2,7 @@
 // @name        migrate douban collection to bangumi
 // @name:zh-CN  迁移豆瓣收藏到 Bangumi
 // @namespace   https://github.com/22earth
-// @description migrate douban collection to bangumi
+// @description migrate douban collection to bangumi and export douban collection
 // @description:zh-cn 迁移豆瓣动画收藏到 Bangumi.
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/?$/
 // @author      22earth

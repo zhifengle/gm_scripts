@@ -6,9 +6,11 @@
 
 迁移豆瓣收藏到 Bangumi
 
-## [bt_search_for_bgm.user.js](scripts/bt_search_for_bgm.user.js?raw=true)
+## DEPRECATED
 
-### bangumi 辅助搜索
+### [bt_search_for_bgm.user.js](scripts/bt_search_for_bgm.user.js?raw=true)
+
+#### bangumi 辅助搜索
 
 为 bangumi 界面添加 bt 搜索图标
 方便在查阅条目的时候，搜索资源
@@ -16,13 +18,7 @@
 可以根据需要添加搜索引擎
 或者注释 searchEngineLists 里相关项
 
-## [nyaa_magnet_modify.user.js](scripts/nyaa_magnet_modify.user.js?raw=true)
-
-替换 nyaa base32 编码磁力链接为 base16
-
-## DEPRECATED
-
-## [bilidan.uc.js](scripts/bilidan.uc.js?raw=true)
+### [bilidan.uc.js](scripts/bilidan.uc.js?raw=true)
 
 Linux 下向火狐添加右键菜单，调用[bilidan.py](https://github.com/m13253/BiliDan) 和[MPV](https://github.com/mpv-player/mpv)播放 bilibili.com 视频
 
@@ -39,3 +35,7 @@ Linux 下向火狐添加右键菜单，调用[bilidan.py](https://github.com/m13
 浏览 getchu 和批评空间时，辅助创建游戏条目，减少复制粘贴的操作。
 关键游戏条目时创建一个表格，点击表格可以辅助搜索。
 为 bangumi 右上角增加 google 和 baidu 站内搜的功能。
+
+### [nyaa_magnet_modify.user.js](scripts/nyaa_magnet_modify.user.js?raw=true)
+
+替换 nyaa base32 编码磁力链接为 base16

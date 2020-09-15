@@ -4,16 +4,14 @@
 // @namespace   https://github.com/22earth
 // @description migrate douban collection to bangumi
 // @description:zh-cn 迁移豆瓣动画收藏到 Bangumi.
-// @include     https://movie.douban.com/people/*/collect/*
+// @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/?$/
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
 // @version     0.0.1
 // @run-at      document-end
-// @grant       GM_addStyle
-// @grant       GM_openInTab
 // @grant       GM_registerMenuCommand
 // @grant       GM_xmlhttpRequest
-// @grant       GM_getValue
-// @grant       GM_setValue
+// @grant       GM_getResourceText
 // @require     https://cdn.staticfile.org/fuse.js/6.4.0/fuse.min.js
+// @resource    bangumiDataURL https://cdn.jsdelivr.net/npm/bangumi-data@0.3/dist/data.json
 // ==/UserScript==

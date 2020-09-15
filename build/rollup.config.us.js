@@ -1,4 +1,4 @@
-import fsPromises from 'fs/promises';
+import fs from 'fs';
 import { resolve as pathResolve } from 'path';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
@@ -15,7 +15,7 @@ function addScriptHeader(name) {
     intro() {
       const header = pathResolve(__dirname, `../src/header/${name}.js`);
       // @TODO 版本替换
-      return fsPromises.readFile(header);
+      return fs.promises.readFile(header);
     },
   };
 }
@@ -35,4 +35,5 @@ export default {
     commonjs(),
     addScriptHeader(outputName),
   ],
+  external: ['bangumi-data', 'fuse.js'],
 };

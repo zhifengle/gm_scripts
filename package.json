@@ -31,6 +31,7 @@
     "typescript": "3.8.3"
   },
   "dependencies": {
-    "stackblur-canvas": "2.2.0"
+    "bangumi-data": "0.3.36",
+    "fuse.js": "6.4.1"
   }
 }

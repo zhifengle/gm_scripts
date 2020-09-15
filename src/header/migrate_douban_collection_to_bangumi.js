@@ -11,6 +11,9 @@
 // @run-at      document-end
 // @grant       GM_registerMenuCommand
 // @grant       GM_xmlhttpRequest
+// @grant       GM_addStyle
+// @grant       GM_setValue
+// @grant       GM_getValue
 // @grant       GM_getResourceText
 // @require     https://cdn.staticfile.org/fuse.js/6.4.0/fuse.min.js
 // @resource    bangumiDataURL https://cdn.jsdelivr.net/npm/bangumi-data@0.3/dist/data.json

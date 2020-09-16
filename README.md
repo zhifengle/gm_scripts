@@ -4,7 +4,23 @@
 
 ## [migrate_douban_collection_to_bangumi.js](scripts/migrate_douban_collection_to_bangumi.user.js?raw=true)
 
-迁移豆瓣收藏到 Bangumi
+迁移豆瓣动画的收藏到 Bangumi。
+迁移 Bangumi 的数据到豆瓣， 只能同步“在看” “看过” “想看”。
+一键迁移后，有一个 “导出 xx 动画的收藏同步信息” 的按钮，用来查看原来的收藏信息和导出结果。
+
+![import data on douban movie](screenshots/douban-movie.png 'douban movie')
+
+上图是豆瓣电影主页的。输入框输入个人的 Bangumi 主页地址。
+豆瓣的电影主页地址是： https://movie.douban.com/mine
+
+![import data on Bangumi](screenshots/bangumi-home.png 'bangumi home')
+
+在上图的输入框，输入自己豆瓣主页的 URL。 另外还可以选择同步的类型。
+然后点击 “导入豆瓣动画收藏”
+
+已经被收藏的条目的评论、标签以及评分不会被覆盖。  
+豆瓣上面非日语的电影类型，不会进行迁移同步。  
+因为无法区分动画还是日剧，默认搜索类型是动画，所以日剧会同步失败
 
 ## DEPRECATED
 

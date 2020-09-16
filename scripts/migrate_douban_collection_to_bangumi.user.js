@@ -5,6 +5,7 @@
 // @description migrate douban collection to bangumi and export douban collection
 // @description:zh-cn 迁移豆瓣动画收藏到 Bangumi.
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/?$/
+// @include     https://www.douban.com/people/*/
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
 // @version     0.0.1
@@ -44,16 +45,6 @@ function __awaiter(thisArg, _arguments, P, generator) {
     });
 }
 
-var SubjectTypeId;
-(function (SubjectTypeId) {
-    SubjectTypeId[SubjectTypeId["book"] = 1] = "book";
-    SubjectTypeId[SubjectTypeId["anime"] = 2] = "anime";
-    SubjectTypeId[SubjectTypeId["music"] = 3] = "music";
-    SubjectTypeId[SubjectTypeId["game"] = 4] = "game";
-    SubjectTypeId[SubjectTypeId["real"] = 6] = "real";
-    SubjectTypeId["all"] = "all";
-})(SubjectTypeId || (SubjectTypeId = {}));
-
 function sleep(num) {
     return new Promise(resolve => {
         setTimeout(resolve, num);
@@ -75,6 +66,19 @@ function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
 function fetchText(url, TIMEOUT = 10 * 1000) {
     return fetchInfo(url, 'text', {}, TIMEOUT);
 }
+function fetchJson(url, opts = {}) {
+    return fetchInfo(url, 'json', opts);
+}
+
+var SubjectTypeId;
+(function (SubjectTypeId) {
+    SubjectTypeId[SubjectTypeId["book"] = 1] = "book";
+    SubjectTypeId[SubjectTypeId["anime"] = 2] = "anime";
+    SubjectTypeId[SubjectTypeId["music"] = 3] = "music";
+    SubjectTypeId[SubjectTypeId["game"] = 4] = "game";
+    SubjectTypeId[SubjectTypeId["real"] = 6] = "real";
+    SubjectTypeId["all"] = "all";
+})(SubjectTypeId || (SubjectTypeId = {}));
 
 function formatDate(time, fmt = 'yyyy-MM-dd') {
     const date = new Date(time);
@@ -175,6 +179,239 @@ function filterResults(items, subjectInfo, opts = {}, isSearch = true) {
         }
     }
     return (_a = results[0]) === null || _a === void 0 ? void 0 : _a.item;
+}
+const typeIdDict = {
+    dropped: {
+        name: '抛弃',
+        id: '5',
+    },
+    on_hold: {
+        name: '搁置',
+        id: '4',
+    },
+    do: {
+        name: '在看',
+        id: '3',
+    },
+    collect: {
+        name: '看过',
+        id: '2',
+    },
+    wish: {
+        name: '想看',
+        id: '1',
+    },
+};
+function findInterestStatusById(id) {
+    for (let key in typeIdDict) {
+        const obj = typeIdDict[key];
+        if (obj.id === id) {
+            return Object.assign({ key: key }, obj);
+        }
+    }
+}
+
+function getBgmHost() {
+    return `${location.protocol}//${location.host}`;
+}
+function getSubjectId(url) {
+    const m = url.match(/(?:subject|character)\/(\d+)/);
+    if (!m)
+        return '';
+    return m[1];
+}
+function getUserId(url) {
+    // https://bgm.tv/user/a_little
+    const m = url.match(/user\/(.*)/);
+    if (!m)
+        return '';
+    return m[1];
+}
+function insertLogInfo($sibling, txt) {
+    const $log = document.createElement('div');
+    $log.classList.add('e-wiki-log-info');
+    // $log.setAttribute('style', 'color: tomato;');
+    $log.innerHTML = txt;
+    $sibling.parentElement.insertBefore($log, $sibling);
+    $sibling.insertAdjacentElement('afterend', $log);
+    return $log;
+}
+function convertItemInfo($item) {
+    let $subjectTitle = $item.querySelector('h3>a.l');
+    let itemSubject = {
+        name: $subjectTitle.textContent.trim(),
+        rawInfos: $item.querySelector('.info').textContent.trim(),
+        // url 没有协议和域名
+        url: $subjectTitle.getAttribute('href'),
+        greyName: $item.querySelector('h3>.grey')
+            ? $item.querySelector('h3>.grey').textContent.trim()
+            : '',
+    };
+    let matchDate = $item
+        .querySelector('.info')
+        .textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
+    if (matchDate) {
+        itemSubject.releaseDate = dealDate(matchDate[0]);
+    }
+    const $rateInfo = $item.querySelector('.rateInfo');
+    if ($rateInfo) {
+        const rateInfo = {};
+        if ($rateInfo.querySelector('.fade')) {
+            rateInfo.score = $rateInfo.querySelector('.fade').textContent;
+            rateInfo.count = $rateInfo
+                .querySelector('.tip_j')
+                .textContent.replace(/[^0-9]/g, '');
+        }
+        else {
+            rateInfo.score = '0';
+            rateInfo.count = '少于10';
+        }
+        itemSubject.rateInfo = rateInfo;
+    }
+    const $rank = $item.querySelector('.rank');
+    if ($rank) {
+        itemSubject.rank = $rank.textContent.replace('Rank', '').trim();
+    }
+    const $collectInfo = $item.querySelector('.collectInfo');
+    if ($collectInfo) {
+        const collectInfo = {};
+        const textArr = $collectInfo.textContent.split('/');
+        collectInfo.date = textArr[0].trim();
+        textArr.forEach((str) => {
+            if (str.match('标签')) {
+                collectInfo.tags = str.replace(/标签:/, '').trim();
+            }
+        });
+        const $comment = $item.querySelector('#comment_box');
+        if ($comment) {
+            collectInfo.comment = $comment.textContent.trim();
+        }
+        const $starlight = $collectInfo.querySelector('.starlight');
+        if ($starlight) {
+            $starlight.classList.forEach((s) => {
+                if (/stars\d/.test(s)) {
+                    collectInfo.score = s.replace('stars', '');
+                }
+            });
+        }
+        itemSubject.collectInfo = collectInfo;
+    }
+    const $cover = $item.querySelector('.subjectCover img');
+    if ($cover && $cover.tagName.toLowerCase() === 'img') {
+        // 替换 cover/s --->  cover/l 是大图
+        const src = $cover.getAttribute('src') || $cover.getAttribute('data-cfsrc');
+        if (src) {
+            itemSubject.cover = src.replace('pic/cover/s', 'pic/cover/l');
+        }
+    }
+    return itemSubject;
+}
+function getItemInfos($doc = document) {
+    const items = $doc.querySelectorAll('#browserItemList>li');
+    const res = [];
+    for (const item of Array.from(items)) {
+        res.push(convertItemInfo(item));
+    }
+    return res;
+}
+function getTotalPageNum($doc = document) {
+    const $multipage = $doc.querySelector('#multipage');
+    let totalPageNum = 1;
+    const pList = $multipage.querySelectorAll('.page_inner>.p');
+    if (pList && pList.length) {
+        let tempNum = parseInt(pList[pList.length - 2].getAttribute('href').match(/page=(\d*)/)[1]);
+        totalPageNum = parseInt(pList[pList.length - 1].getAttribute('href').match(/page=(\d*)/)[1]);
+        totalPageNum = totalPageNum > tempNum ? totalPageNum : tempNum;
+    }
+    return totalPageNum;
+}
+function genCollectionURL(userId, subjectType, interestType) {
+    const dict = {
+        movie: 'anime',
+        music: 'music',
+        book: 'book',
+    };
+    return `https://bgm.tv/${dict[subjectType]}/list/${userId}/${interestType}`;
+}
+function getAllPageInfo(userId, subjectType, interestType) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const url = genCollectionURL(userId, subjectType, interestType);
+        console.info('bgm collection page: ', url);
+        const rawText = yield fetchText(url);
+        const $doc = new DOMParser().parseFromString(rawText, 'text/html');
+        const totalPageNum = getTotalPageNum($doc);
+        const res = [...getItemInfos($doc)];
+        let page = 2;
+        while (page <= totalPageNum) {
+            let reqUrl = url;
+            const m = url.match(/page=(\d*)/);
+            if (m) {
+                reqUrl = reqUrl.replace(m[0], `page=${page}`);
+            }
+            else {
+                reqUrl = `${reqUrl}?page=${page}`;
+            }
+            yield sleep(500);
+            console.info('fetch info: ', reqUrl);
+            const rawText = yield fetchText(reqUrl);
+            const $doc = new DOMParser().parseFromString(rawText, 'text/html');
+            res.push(...getItemInfos($doc));
+            page += 1;
+        }
+        return res;
+    });
+}
+function loadIframe($iframe, subjectId) {
+    return new Promise((resolve, reject) => {
+        $iframe.src = `/update/${subjectId}`;
+        let timer = setTimeout(() => {
+            timer = null;
+            reject('iframe timeout');
+        }, 5000);
+        $iframe.onload = () => {
+            clearTimeout(timer);
+            $iframe.onload = null;
+            resolve();
+        };
+    });
+}
+function getUpdateForm(subjectId) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const iframeId = 'e-userjs-update-interest';
+        let $iframe = document.querySelector(`#${iframeId}`);
+        if (!$iframe) {
+            $iframe = document.createElement('iframe');
+            $iframe.style.display = 'none';
+            $iframe.id = iframeId;
+            document.body.appendChild($iframe);
+        }
+        yield loadIframe($iframe, subjectId);
+        const $form = $iframe.contentDocument.querySelector('#collectBoxForm');
+        return $form;
+        // return $form.action;
+    });
+}
+/**
+ * 更新用户收藏
+ * @param subjectId 条目 id
+ * @param data 更新数据
+ */
+function updateInterest(subjectId, data) {
+    return __awaiter(this, void 0, void 0, function* () {
+        // gh 暂时不知道如何获取，直接拿 action 了
+        const $form = yield getUpdateForm(subjectId);
+        const formData = new FormData($form);
+        const obj = Object.assign({ referer: 'ajax', tags: '', comment: '', update: '保存' }, data);
+        for (let [key, val] of Object.entries(obj)) {
+            if (!formData.has(key)) {
+                formData.append(key, val);
+            }
+        }
+        yield fetch($form.action, {
+            method: 'POST',
+            body: formData,
+        });
+    });
 }
 
 var BangumiDomain;
@@ -333,24 +570,6 @@ function findSubjectByDate(subjectInfo, bgmHost = 'https://bgm.tv', pageNumber =
         return result;
     });
 }
-function checkBookSubjectExist(subjectInfo, bgmHost = 'https://bgm.tv', type) {
-    return __awaiter(this, void 0, void 0, function* () {
-        let searchResult = yield searchSubject(subjectInfo, bgmHost, type, subjectInfo.isbn);
-        console.info(`First: search book of bangumi: `, searchResult);
-        if (searchResult && searchResult.url) {
-            return searchResult;
-        }
-        searchResult = yield searchSubject(subjectInfo, bgmHost, type, subjectInfo.asin);
-        console.info(`Second: search book by ${subjectInfo.asin}: `, searchResult);
-        if (searchResult && searchResult.url) {
-            return searchResult;
-        }
-        // 默认使用名称搜索
-        searchResult = yield searchSubject(subjectInfo, bgmHost, type);
-        console.info('Third: search book of bangumi: ', searchResult);
-        return searchResult;
-    });
-}
 /**
  * 查找条目是否存在： 通过名称搜索或者日期加上名称的过滤查询
  * @param subjectInfo 条目基本信息
@@ -380,98 +599,23 @@ function checkExist(subjectInfo, bgmHost = 'https://bgm.tv', type, disabelDate) 
         return searchResult;
     });
 }
-function checkSubjectExit(subjectInfo, bgmHost = 'https://bgm.tv', type, disableDate) {
+function checkAnimeSubjectExist(subjectInfo) {
     return __awaiter(this, void 0, void 0, function* () {
-        let result;
-        switch (type) {
-            case SubjectTypeId.book:
-                result = yield checkBookSubjectExist(subjectInfo, bgmHost, type);
-                break;
-            case SubjectTypeId.game:
-            case SubjectTypeId.anime:
-                result = yield checkExist(subjectInfo, bgmHost, type, disableDate);
-                break;
-            case SubjectTypeId.real:
-            case SubjectTypeId.music:
-            default:
-                console.info('not support type: ', type);
-        }
+        const result = yield checkExist(subjectInfo, getBgmHost(), SubjectTypeId.anime, true);
         return result;
     });
 }
+const siteUtils = {
+    name: 'Bangumi',
+    contanerSelector: '#columnHomeB',
+    getUserId: getUserId,
+    getSubjectId: getSubjectId,
+    updateInterest: updateInterest,
+    checkSubjectExist: checkAnimeSubjectExist,
+    getAllPageInfo: getAllPageInfo,
+};
 
-function getBgmHost() {
-    return `${location.protocol}//${location.host}`;
-}
-function getSubjectId(url) {
-    const m = url.match(/(?:subject|character)\/(\d+)/);
-    if (!m)
-        return '';
-    return m[1];
-}
-function insertLogInfo($sibling, txt) {
-    const $log = document.createElement('div');
-    $log.classList.add('e-wiki-log-info');
-    // $log.setAttribute('style', 'color: tomato;');
-    $log.innerHTML = txt;
-    $sibling.parentElement.insertBefore($log, $sibling);
-    $sibling.insertAdjacentElement('afterend', $log);
-    return $log;
-}
-function loadIframe($iframe, subjectId) {
-    return new Promise((resolve, reject) => {
-        $iframe.src = `/update/${subjectId}`;
-        let timer = setTimeout(() => {
-            timer = null;
-            reject('iframe timeout');
-        }, 5000);
-        $iframe.onload = () => {
-            clearTimeout(timer);
-            $iframe.onload = null;
-            resolve();
-        };
-    });
-}
-function getUpdateForm(subjectId) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const iframeId = 'e-userjs-update-interest';
-        let $iframe = document.querySelector(`#${iframeId}`);
-        if (!$iframe) {
-            $iframe = document.createElement('iframe');
-            $iframe.style.display = 'none';
-            $iframe.id = iframeId;
-            document.body.appendChild($iframe);
-        }
-        yield loadIframe($iframe, subjectId);
-        const $form = $iframe.contentDocument.querySelector('#collectBoxForm');
-        return $form;
-        // return $form.action;
-    });
-}
-/**
- * 更新用户收藏
- * @param subjectId 条目 id
- * @param data 更新数据
- */
-function updateInterest(subjectId, data) {
-    return __awaiter(this, void 0, void 0, function* () {
-        // gh 暂时不知道如何获取，直接拿 action 了
-        const $form = yield getUpdateForm(subjectId);
-        const formData = new FormData($form);
-        const obj = Object.assign({ referer: 'ajax', tags: '', comment: '', update: '保存' }, data);
-        for (let [key, val] of Object.entries(obj)) {
-            if (!formData.has(key)) {
-                formData.append(key, val);
-            }
-        }
-        yield fetch($form.action, {
-            method: 'POST',
-            body: formData,
-        });
-    });
-}
-
-function genCollectionURL(userId, interestType, subjectType = 'movie', start = 1) {
+function genCollectionURL$1(userId, interestType, subjectType = 'movie', start = 1) {
     const baseURL = `https://${subjectType}.douban.com/people/${userId}/${interestType}`;
     if (start === 1) {
         return baseURL;
@@ -480,7 +624,21 @@ function genCollectionURL(userId, interestType, subjectType = 'movie', start = 1
         return `${baseURL}?start=${start}&sort=time&rating=all&filter=all&mode=grid`;
     }
 }
-function convertItemInfo($item) {
+function getSubjectId$1(url) {
+    const m = url.match(/movie\.douban\.com\/subject\/(\d+)/);
+    if (m) {
+        return m[1];
+    }
+    return '';
+}
+function getUserId$1(homeURL) {
+    let m = homeURL.match(/douban.com\/people\/([^\/]*)\//);
+    if (m) {
+        return m[1];
+    }
+    return '';
+}
+function convertItemInfo$1($item) {
     var _a, _b, _c;
     let $subjectTitle = $item.querySelector('.info .title a');
     // 默认第二项为日文名
@@ -532,41 +690,160 @@ function convertItemInfo($item) {
     }
     return itemSubject;
 }
-function getTotalPageNum($doc = document) {
+function getTotalPageNum$1($doc = document) {
     const numStr = $doc.querySelector('.mode > .subject-num').textContent.trim();
     return Number(numStr.split('/')[1].trim());
 }
-function getItemInfos($doc = document) {
+function getItemInfos$1($doc = document) {
     const items = $doc.querySelectorAll('#content .grid-view > .item');
     const res = [];
     for (const item of Array.from(items)) {
-        res.push(convertItemInfo(item));
+        res.push(convertItemInfo$1(item));
     }
     return res;
 }
-// https://movie.douban.com/people/y4950/collect?start=75&sort=time&rating=all&filter=all&mode=grid
-function getAllPageInfo(userId, subjectType = 'movie', interestType) {
+/**
+ * 获取所有分页的条目数据
+ * @param userId 用户id
+ * @param subjectType 条目类型
+ * @param interestType 条目状态
+ */
+function getAllPageInfo$1(userId, subjectType = 'movie', interestType) {
     return __awaiter(this, void 0, void 0, function* () {
         let res = [];
-        const url = genCollectionURL(userId, interestType, subjectType);
+        const url = genCollectionURL$1(userId, interestType, subjectType);
         const rawText = yield fetchText(url);
         const $doc = new DOMParser().parseFromString(rawText, 'text/html');
-        const totalPageNum = getTotalPageNum($doc);
-        res = [...getItemInfos($doc)];
+        const totalPageNum = getTotalPageNum$1($doc);
+        res = [...getItemInfos$1($doc)];
         // 16 分割
         let page = 16;
         while (page <= totalPageNum) {
-            let reqUrl = genCollectionURL(userId, interestType, subjectType, page);
+            let reqUrl = genCollectionURL$1(userId, interestType, subjectType, page);
             yield sleep(500);
             console.info('fetch info: ', reqUrl);
             const rawText = yield fetchText(reqUrl);
             const $doc = new DOMParser().parseFromString(rawText, 'text/html');
-            res.push(...getItemInfos($doc));
+            res.push(...getItemInfos$1($doc));
             page += 15;
         }
         return res;
     });
 }
+function convertHomeSearchItem($item) {
+    const dealHref = (href) => {
+        const urlParam = href.split('?url=')[1];
+        if (urlParam) {
+            return decodeURIComponent(urlParam.split('&')[0]);
+        }
+        else {
+            throw 'invalid href';
+        }
+    };
+    const $title = $item.querySelector('.title h3 > a');
+    const href = dealHref($title.getAttribute('href'));
+    const $ratingNums = $item.querySelector('.rating-info > .rating_nums');
+    let ratingsCount = '';
+    let averageScore = '';
+    if ($ratingNums) {
+        const $count = $ratingNums.nextElementSibling;
+        const m = $count.innerText.match(/\d+/);
+        if (m) {
+            ratingsCount = m[0];
+        }
+        averageScore = $ratingNums.innerText;
+    }
+    const greayName = $item.querySelector('.subject-cast')
+        .innerText;
+    return {
+        name: $title.textContent.trim(),
+        greyName: greayName.split('/')[0].replace('原名:', '').trim(),
+        releaseDate: (greayName.match(/\d{4}$/) || [])[0],
+        url: href,
+        score: averageScore,
+        count: ratingsCount,
+    };
+}
+/**
+ * 通过首页搜索的结果
+ * @param query 搜索字符串
+ */
+function getHomeSearchResults(query, cat = '1002') {
+    return __awaiter(this, void 0, void 0, function* () {
+        const url = `https://www.douban.com/search?cat=${cat}&q=${encodeURIComponent(query)}`;
+        const rawText = yield fetchText(url);
+        const $doc = new DOMParser().parseFromString(rawText, 'text/html');
+        const items = $doc.querySelectorAll('.search-result > .result-list > .result > .content');
+        return Array.prototype.slice
+            .call(items)
+            .map(($item) => convertHomeSearchItem($item));
+    });
+}
+function updateInterest$1(subjectId, data) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let url = `https://movie.douban.com/j/subject/${subjectId}/interest?`;
+        const interestObj = findInterestStatusById(data.interest);
+        const collectInfo = yield fetchJson(url);
+        const interestStatus = collectInfo.interest_status;
+        const tags = collectInfo.tags;
+        const $doc = new DOMParser().parseFromString(collectInfo.html, 'text/html');
+        const $form = $doc.querySelector('form');
+        const formData = new FormData($form);
+        const sendData = {
+            interest: interestObj.key,
+            tags: data.tags,
+            comment: data.comment,
+            rating: data.rating,
+        };
+        if (tags && tags.length) {
+            sendData.tags = tags.join(' ');
+        }
+        if (interestStatus) {
+            sendData.interest = interestStatus;
+        }
+        if (data.privacy === '1') {
+            // @ts-ignore
+            sendData.privacy = 'on';
+        }
+        for (let [key, val] of Object.entries(sendData)) {
+            if (!formData.has(key)) {
+                formData.append(key, val);
+            }
+        }
+        yield fetch($form.action, {
+            method: 'POST',
+            body: formData,
+        });
+    });
+}
+function checkAnimeSubjectExist$1(subjectInfo) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let query = (subjectInfo.name || '').trim();
+        if (!query) {
+            console.info('Query string is empty');
+            return Promise.reject();
+        }
+        const rawInfoList = yield getHomeSearchResults(query);
+        // const rawInfoList = await getSubjectSearchResults(query);
+        const options = {
+            keys: ['name', 'greyName'],
+        };
+        let searchResult = filterResults(rawInfoList, subjectInfo, options);
+        console.info(`Search result of douban: `, searchResult);
+        if (searchResult && searchResult.url) {
+            return searchResult;
+        }
+    });
+}
+const siteUtils$1 = {
+    name: '豆瓣',
+    contanerSelector: '#board',
+    getUserId: getUserId$1,
+    getSubjectId: getSubjectId$1,
+    getAllPageInfo: getAllPageInfo$1,
+    updateInterest: updateInterest$1,
+    checkSubjectExist: checkAnimeSubjectExist$1,
+};
 
 /**
  * 为页面添加样式
@@ -606,7 +883,29 @@ function htmlToElement(html) {
 }
 
 let bangumiData = null;
-function getBangumiSubjectId(jp = '', greyName = '') {
+const typeIdDict$1 = {
+    dropped: {
+        name: '抛弃',
+        id: '5',
+    },
+    on_hold: {
+        name: '搁置',
+        id: '4',
+    },
+    do: {
+        name: '在看',
+        id: '3',
+    },
+    collect: {
+        name: '看过',
+        id: '2',
+    },
+    wish: {
+        name: '想看',
+        id: '1',
+    },
+};
+function getBangumiSubjectId(name = '', greyName = '') {
     var _a;
     if (!bangumiData)
         return;
@@ -615,17 +914,14 @@ function getBangumiSubjectId(jp = '', greyName = '') {
         if (item.titleTranslate && item.titleTranslate['zh-Hans']) {
             cnNames = item.titleTranslate['zh-Hans'];
         }
-        return item.title === jp || cnNames.includes(greyName);
+        return (item.title === name ||
+            item.title === greyName ||
+            cnNames.includes(greyName));
     });
     return (_a = obj === null || obj === void 0 ? void 0 : obj.sites) === null || _a === void 0 ? void 0 : _a.find((item) => item.site === 'bangumi').id;
 }
 function genCSVContent(infos) {
-    const header = '\ufeff名称,别名,发行日期,地址,封面地址,收藏日期,我的评分,标签,吐槽,其它信息,类别,bangumi同步情况';
-    const dict = {
-        do: '在看',
-        wish: '想看',
-        collect: '看过',
-    };
+    const header = '\ufeff名称,别名,发行日期,地址,封面地址,收藏日期,我的评分,标签,吐槽,其它信息,类别,同步情况';
     let csvContent = '';
     const keys = Object.keys(infos);
     keys.forEach((key) => {
@@ -646,7 +942,7 @@ function genCSVContent(infos) {
             csvContent += `,"${comment}"`;
             const rawInfos = item.rawInfos || '';
             csvContent += `,"${rawInfos}"`;
-            csvContent += `,"${dict[key]}"`;
+            csvContent += `,"${typeIdDict$1[key].name}"`;
             csvContent += `,"${item.syncStatus || ''}"`;
         });
     });
@@ -661,7 +957,7 @@ function clearLogInfo($container) {
         .querySelectorAll('.e-wiki-log-info')
         .forEach((node) => node.remove());
 }
-function init() {
+function init(site) {
     GM_addStyle(`
   .e-userjs-export-tool-container input {
     margin-bottom: 12px;
@@ -673,11 +969,22 @@ function init() {
     display: none;
   }
 `);
-    const $headerTab = document.querySelector('#columnHomeB');
+    let targetUtils;
+    let originUtils;
+    if (site === 'bangumi') {
+        targetUtils = siteUtils$1;
+        originUtils = siteUtils;
+    }
+    else {
+        targetUtils = siteUtils;
+        originUtils = siteUtils$1;
+    }
+    const name = targetUtils.name;
+    const $parent = document.querySelector(originUtils.contanerSelector);
     const $container = htmlToElement(`
 <div class="e-userjs-export-tool-container">
-  <label>豆瓣主页 URL: </label><br/>
-  <input placeholder="输入豆瓣主页的 URL" class="inputtext" autocomplete="off" type="text" size="30" name="tags" value="">
+  <label>${name}主页 URL: </label><br/>
+  <input placeholder="输入${name}主页的 URL" class="inputtext" autocomplete="off" type="text" size="30" name="tags" value="">
 <label for="movie-type-select">选择同步类型:</label>
 <select name="movieType" id="movie-type-select">
     <option value="">所有</option>
@@ -685,26 +992,28 @@ function init() {
     <option value="wish">想看</option>
     <option value="collect">看过</option>
 </select><br/>
-  <input class="inputBtn import-btn" value="导入豆瓣动画收藏" name="importBtn" type="submit">
-  <input class="inputBtn export-btn" value="导出豆瓣动画的收藏同步信息" name="exportBtn" type="submit">
+  <input class="inputBtn import-btn" value="导入${name}动画收藏" name="importBtn" type="submit"><br/>
+  <input class="inputBtn export-btn" value="导出${name}动画的收藏同步信息" name="exportBtn" type="submit">
 </div>
   `);
     const $input = $container.querySelector('input');
     const $btn = $container.querySelector('.import-btn');
     const $exportBtn = $container.querySelector('.export-btn');
-    const doubanAllSubject = {
+    const interestInfos = {
         do: [],
         collect: [],
         wish: [],
+        dropped: [],
+        on_hold: [],
     };
     $exportBtn.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
         const $text = e.target;
         $text.value = '导出中...';
-        let name = '豆瓣动画的收藏';
-        const csv = genCSVContent(doubanAllSubject);
+        let strName = `${name}动画的收藏`;
+        const csv = genCSVContent(interestInfos);
         // $text.value = '导出完成';
         $text.style.display = 'none';
-        downloadFile(csv, `${name}-${formatDate(new Date())}.csv`);
+        downloadFile(csv, `${strName}-${formatDate(new Date())}.csv`);
     }));
     $btn.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
         try {
@@ -715,54 +1024,56 @@ function init() {
         }
         const val = $input.value;
         if (!val) {
-            alert('请输入豆瓣主页地址');
+            alert(`请输入${name}主页地址`);
             return;
         }
-        let m = val.match(/douban.com\/people\/([^\/]*)\//);
-        if (!m) {
-            alert('无效豆瓣主页地址');
+        const userId = targetUtils.getUserId(val);
+        if (!userId) {
+            alert(`无效${name}主页地址`);
         }
-        const userId = m[1];
         const $select = $container.querySelector('#movie-type-select');
         // const arr: InterestType[] = ['wish'];
-        const typeIdDict = {
-            do: '3',
-            collect: '2',
-            wish: '1',
-        };
         let arr = ['do', 'collect', 'wish'];
         if ($select && $select.value) {
             arr = [$select.value];
         }
         for (let type of arr) {
             try {
-                const res = yield getAllPageInfo(userId, 'movie', type);
+                const res = yield targetUtils.getAllPageInfo(userId, 'movie', type);
                 for (let i = 0; i < res.length; i++) {
+                    // for test
+                    if (i > 1)
+                        return;
                     const item = res[i];
-                    if (isJpMovie(item)) {
-                        // 使用 bangumi data
-                        let subjectId = getBangumiSubjectId(item.name, item.greyName);
-                        if (!subjectId) {
-                            const result = yield checkSubjectExit({
-                                name: item.name,
-                                releaseDate: item.releaseDate,
-                            }, getBgmHost(), SubjectTypeId.anime, true);
-                            console.info('search results: ', result);
-                            if (result && result.url) {
-                                subjectId = getSubjectId(result.url);
-                            }
-                        }
-                        if (subjectId) {
-                            clearLogInfo($container);
-                            const nameStr = `<span style="color:tomato">《${item.name}》</span>`;
-                            insertLogInfo($btn, `更新收藏 ${nameStr} 中...`);
-                            yield updateInterest(subjectId, Object.assign(Object.assign({ interest: typeIdDict[type] }, item.collectInfo), { rating: item.collectInfo.score || '' }));
-                            yield sleep(300);
-                            insertLogInfo($btn, `更新收藏 ${nameStr} 成功`);
-                            item.syncStatus = '成功';
+                    // 在 Bangumi 上 非日语的条目跳过
+                    if (site === 'bangumi' && !isJpMovie(item)) {
+                        interestInfos[type].push(item);
+                        continue;
+                    }
+                    let subjectId = '';
+                    // 使用 bangumi data
+                    if (site === 'bangumi') {
+                        subjectId = getBangumiSubjectId(item.name, item.greyName);
+                    }
+                    if (!subjectId) {
+                        const result = yield originUtils.checkSubjectExist({
+                            name: item.name,
+                            releaseDate: item.releaseDate,
+                        });
+                        console.info('search results: ', result);
+                        if (result && result.url) {
+                            subjectId = originUtils.getSubjectId(result.url);
                         }
                     }
-                    doubanAllSubject[type].push(item);
+                    if (subjectId) {
+                        clearLogInfo($container);
+                        const nameStr = `<span style="color:tomato">《${item.name}》</span>`;
+                        insertLogInfo($btn, `更新收藏 ${nameStr} 中...`);
+                        yield originUtils.updateInterest(subjectId, Object.assign(Object.assign({ interest: typeIdDict$1[type].id }, item.collectInfo), { rating: item.collectInfo.score || '' }));
+                        yield sleep(300);
+                        insertLogInfo($btn, `更新收藏 ${nameStr} 成功`);
+                        item.syncStatus = '成功';
+                    }
                 }
             }
             catch (error) {
@@ -772,6 +1083,11 @@ function init() {
         clearLogInfo($container);
         $exportBtn.style.display = 'inline-block';
     }));
-    $headerTab.appendChild($container);
+    $parent.appendChild($container);
 }
-init();
+if (location.href.match(/bgm.tv|bangumi.tv|chii.in/)) {
+    init('bangumi');
+}
+if (location.href.match(/douban.com/)) {
+    init('douban');
+}

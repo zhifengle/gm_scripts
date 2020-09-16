@@ -1,14 +1,20 @@
-import { SubjectItem } from '../interface/types';
+import { SearchResult, Subject } from '../interface/subject';
+import {
+  IInterestData,
+  InterestType,
+  SiteUtils,
+  SubjectItem,
+  SubjectType,
+} from '../interface/types';
 import { sleep } from '../utils/async/sleep';
-import { fetchText } from '../utils/fetchData';
-
-type DoubanSubjectType = 'book' | 'movie' | 'music';
-export type InterestType = 'collect' | 'do' | 'wish';
+import { htmlToElement } from '../utils/domUtils';
+import { fetchJson, fetchText } from '../utils/fetchData';
+import { filterResults, findInterestStatusById } from './common';
 
 function genCollectionURL(
   userId: string,
   interestType: InterestType,
-  subjectType: DoubanSubjectType = 'movie',
+  subjectType: SubjectType = 'movie',
   start: number = 1
 ) {
   const baseURL = `https://${subjectType}.douban.com/people/${userId}/${interestType}`;
@@ -17,6 +23,22 @@ function genCollectionURL(
   } else {
     return `${baseURL}?start=${start}&sort=time&rating=all&filter=all&mode=grid`;
   }
+}
+
+function getSubjectId(url: string): string {
+  const m = url.match(/movie\.douban\.com\/subject\/(\d+)/);
+  if (m) {
+    return m[1];
+  }
+  return '';
+}
+
+export function getUserId(homeURL: string) {
+  let m = homeURL.match(/douban.com\/people\/([^\/]*)\//);
+  if (m) {
+    return m[1];
+  }
+  return '';
 }
 
 export function convertItemInfo($item: HTMLElement): SubjectItem {
@@ -87,10 +109,15 @@ export function getItemInfos($doc: Document | Element = document) {
   }
   return res;
 }
-// https://movie.douban.com/people/y4950/collect?start=75&sort=time&rating=all&filter=all&mode=grid
+/**
+ * 获取所有分页的条目数据
+ * @param userId 用户id
+ * @param subjectType 条目类型
+ * @param interestType 条目状态
+ */
 export async function getAllPageInfo(
   userId: string,
-  subjectType: DoubanSubjectType = 'movie',
+  subjectType: SubjectType = 'movie',
   interestType: InterestType
 ) {
   let res: SubjectItem[] = [];
@@ -112,3 +139,163 @@ export async function getAllPageInfo(
   }
   return res;
 }
+
+function convertHomeSearchItem($item: HTMLElement): SearchResult {
+  const dealHref = (href: string) => {
+    const urlParam = href.split('?url=')[1];
+    if (urlParam) {
+      return decodeURIComponent(urlParam.split('&')[0]);
+    } else {
+      throw 'invalid href';
+    }
+  };
+  const $title = $item.querySelector('.title h3 > a');
+  const href = dealHref($title.getAttribute('href'));
+  const $ratingNums = $item.querySelector(
+    '.rating-info > .rating_nums'
+  ) as HTMLElement;
+  let ratingsCount = '';
+  let averageScore = '';
+  if ($ratingNums) {
+    const $count = $ratingNums.nextElementSibling as HTMLElement;
+    const m = $count.innerText.match(/\d+/);
+    if (m) {
+      ratingsCount = m[0];
+    }
+    averageScore = $ratingNums.innerText;
+  }
+  const greayName = ($item.querySelector('.subject-cast') as HTMLElement)
+    .innerText;
+  return {
+    name: $title.textContent.trim(),
+    greyName: greayName.split('/')[0].replace('原名:', '').trim(),
+    releaseDate: (greayName.match(/\d{4}$/) || [])[0],
+    url: href,
+    score: averageScore,
+    count: ratingsCount,
+  };
+}
+/**
+ * 通过首页搜索的结果
+ * @param query 搜索字符串
+ */
+async function getHomeSearchResults(
+  query: string,
+  cat = '1002'
+): Promise<SearchResult[]> {
+  const url = `https://www.douban.com/search?cat=${cat}&q=${encodeURIComponent(
+    query
+  )}`;
+  const rawText = await fetchText(url);
+  const $doc = new DOMParser().parseFromString(rawText, 'text/html');
+  const items = $doc.querySelectorAll(
+    '.search-result > .result-list > .result > .content'
+  );
+  return Array.prototype.slice
+    .call(items)
+    .map(($item: HTMLElement) => convertHomeSearchItem($item));
+}
+function convertSubjectSearchItem($item: HTMLElement): SearchResult {
+  // item-root
+  const $title = $item.querySelector('.title a') as HTMLElement;
+  let ratingsCount = '';
+  let averageScore = '';
+  const $ratingNums = $item.querySelector('.rating_nums');
+  if ($ratingNums) {
+    const $count = $ratingNums.nextElementSibling;
+    const m = $count.textContent.match(/\d+/);
+    if (m) {
+      ratingsCount = m[0];
+    }
+    averageScore = $ratingNums.textContent;
+  }
+  return {
+    name: $title.innerText,
+    url: $title.getAttribute('href'),
+    score: averageScore,
+    count: ratingsCount,
+  };
+}
+/**
+ * 单独类型搜索入口
+ * @param query 搜索字符串
+ * @param cat 类型
+ */
+async function getSubjectSearchResults(
+  query: string,
+  cat = '1002'
+): Promise<SearchResult[]> {
+  const url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(
+    query
+  )}&cat=${cat}`;
+  const rawText = await fetchText(url);
+  const $doc = new DOMParser().parseFromString(rawText, 'text/html');
+  const items = $doc.querySelectorAll('#root .item-root');
+  return Array.prototype.slice
+    .call(items)
+    .map(($item: HTMLElement) => convertSubjectSearchItem($item));
+}
+async function updateInterest(subjectId: string, data: IInterestData) {
+  let url = `https://movie.douban.com/j/subject/${subjectId}/interest?`;
+  const interestObj = findInterestStatusById(data.interest);
+  const collectInfo = await fetchJson(url);
+  const interestStatus = collectInfo.interest_status;
+  const tags = collectInfo.tags;
+  const $doc = new DOMParser().parseFromString(collectInfo.html, 'text/html');
+  const $form = $doc.querySelector('form');
+  const formData = new FormData($form);
+  const sendData = {
+    interest: interestObj.key,
+    tags: data.tags,
+    comment: data.comment,
+    rating: data.rating,
+  };
+  if (tags && tags.length) {
+    sendData.tags = tags.join(' ');
+  }
+  if (interestStatus) {
+    sendData.interest = interestStatus;
+  }
+  if (data.privacy === '1') {
+    // @ts-ignore
+    sendData.privacy = 'on';
+  }
+  for (let [key, val] of Object.entries(sendData)) {
+    if (!formData.has(key)) {
+      formData.append(key, val);
+    }
+  }
+  await fetch($form.action, {
+    method: 'POST',
+    body: formData,
+  });
+}
+async function checkAnimeSubjectExist(
+  subjectInfo: Subject
+): Promise<SearchResult> {
+  let query = (subjectInfo.name || '').trim();
+  if (!query) {
+    console.info('Query string is empty');
+    return Promise.reject();
+  }
+  const rawInfoList = await getHomeSearchResults(query);
+  // const rawInfoList = await getSubjectSearchResults(query);
+  const options = {
+    keys: ['name', 'greyName'],
+  };
+  let searchResult = filterResults(rawInfoList, subjectInfo, options);
+  console.info(`Search result of douban: `, searchResult);
+  if (searchResult && searchResult.url) {
+    return searchResult;
+  }
+}
+
+export const siteUtils: SiteUtils = {
+  name: '豆瓣',
+  contanerSelector: '#board',
+  getUserId,
+  getSubjectId,
+  getAllPageInfo,
+  updateInterest,
+  checkSubjectExist: checkAnimeSubjectExist,
+};

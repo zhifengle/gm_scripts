@@ -1,7 +1,12 @@
 import { dealDate } from '../../utils/utils';
 import { fetchText } from '../../utils/fetchData';
 import { sleep } from '../../utils/async/sleep';
-import { SubjectItem } from '../../interface/types';
+import {
+  IInterestData,
+  InterestType,
+  SubjectItem,
+  SubjectType,
+} from '../../interface/types';
 
 export function getBgmHost() {
   return `${location.protocol}//${location.host}`;
@@ -9,6 +14,13 @@ export function getBgmHost() {
 
 export function getSubjectId(url: string) {
   const m = url.match(/(?:subject|character)\/(\d+)/);
+  if (!m) return '';
+  return m[1];
+}
+
+export function getUserId(url: string) {
+  // https://bgm.tv/user/a_little
+  const m = url.match(/user\/(.*)/);
   if (!m) return '';
   return m[1];
 }
@@ -138,7 +150,26 @@ export function getTotalPageNum($doc: Document | Element = document) {
   return totalPageNum;
 }
 
-export async function getAllPageInfo(url: string) {
+function genCollectionURL(
+  userId: string,
+  subjectType: SubjectType,
+  interestType: InterestType
+) {
+  const dict: { [key in SubjectType]: string } = {
+    movie: 'anime',
+    music: 'music',
+    book: 'book',
+  };
+  return `https://bgm.tv/${dict[subjectType]}/list/${userId}/${interestType}`;
+}
+
+export async function getAllPageInfo(
+  userId: string,
+  subjectType: SubjectType,
+  interestType: InterestType
+) {
+  const url = genCollectionURL(userId, subjectType, interestType);
+  console.info('bgm collection page: ', url);
   const rawText = await fetchText(url);
   const $doc = new DOMParser().parseFromString(rawText, 'text/html');
   const totalPageNum = getTotalPageNum($doc);
@@ -194,15 +225,6 @@ export async function getUpdateForm(subjectId: string) {
   // return $form.action;
 }
 
-type IInterestData = {
-  // 想看 看过 在看 搁置 抛弃
-  interest: '1' | '2' | '3' | '4' | '5';
-  tags?: string;
-  comment?: string;
-  rating?: string;
-  // 1 为自己可见
-  privacy?: '1' | '0';
-};
 /**
  * 更新用户收藏
  * @param subjectId 条目 id

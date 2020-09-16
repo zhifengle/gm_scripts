@@ -1,4 +1,5 @@
 import { AllSubject, SearchResult } from '../interface/subject';
+import { InterestType, InterestTypeId } from '../interface/types';
 import { isEqualDate } from '../utils/utils';
 
 /**
@@ -45,4 +46,42 @@ export function filterResults(
     }
   }
   return results[0]?.item;
+}
+
+export const typeIdDict: {
+  [key in InterestType]: { name: string; id: InterestTypeId };
+} = {
+  dropped: {
+    name: '抛弃',
+    id: '5',
+  },
+  on_hold: {
+    name: '搁置',
+    id: '4',
+  },
+  do: {
+    name: '在看',
+    id: '3',
+  },
+  collect: {
+    name: '看过',
+    id: '2',
+  },
+  wish: {
+    name: '想看',
+    id: '1',
+  },
+};
+export function findInterestStatusById(
+  id: InterestTypeId
+): { key: InterestType; id: InterestTypeId; name: string } {
+  for (let key in typeIdDict) {
+    const obj = typeIdDict[key as InterestType];
+    if (obj.id === id) {
+      return {
+        key: key as InterestType,
+        ...obj,
+      };
+    }
+  }
 }

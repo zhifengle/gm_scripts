@@ -5,6 +5,7 @@
 // @description migrate douban collection to bangumi and export douban collection
 // @description:zh-cn 迁移豆瓣动画收藏到 Bangumi.
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/?$/
+// @include     https://www.douban.com/people/*/
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
 // @version     0.0.1

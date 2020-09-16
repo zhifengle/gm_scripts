@@ -1,9 +1,22 @@
-import { AllSubject, BookSubject, SearchResult } from '../../interface/subject';
+import {
+  AllSubject,
+  BookSubject,
+  SearchResult,
+  Subject,
+} from '../../interface/subject';
 import { sleep } from '../../utils/async/sleep';
 import { fetchText } from '../../utils/fetchData';
 import { SubjectTypeId } from '../../interface/wiki';
 import { dealDate } from '../../utils/utils';
 import { filterResults } from '../common';
+import { SiteUtils } from '../../interface/types';
+import {
+  getAllPageInfo,
+  getBgmHost,
+  getSubjectId,
+  getUserId,
+  updateInterest,
+} from './common';
 
 export enum BangumiDomain {
   chii = 'chii.in',
@@ -246,7 +259,7 @@ async function checkExist(
   return searchResult;
 }
 
-export async function checkSubjectExit(
+export async function checkSubjectExist(
   subjectInfo: AllSubject,
   bgmHost: string = 'https://bgm.tv',
   type: SubjectTypeId,
@@ -290,3 +303,24 @@ export function changeDomain(
     .replace(new RegExp(domainArr.join('|').replace('.', '\\.')), domain)
     .replace(/https?/, protocol);
 }
+async function checkAnimeSubjectExist(
+  subjectInfo: Subject
+): Promise<SearchResult> {
+  const result = await checkExist(
+    subjectInfo,
+    getBgmHost(),
+    SubjectTypeId.anime,
+    true
+  );
+  return result;
+}
+
+export const siteUtils: SiteUtils = {
+  name: 'Bangumi',
+  contanerSelector: '#columnHomeB',
+  getUserId: getUserId,
+  getSubjectId: getSubjectId,
+  updateInterest: updateInterest,
+  checkSubjectExist: checkAnimeSubjectExist,
+  getAllPageInfo: getAllPageInfo,
+};

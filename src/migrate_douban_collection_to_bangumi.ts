@@ -1,42 +1,72 @@
-import { AllSubject } from './interface/subject';
-import { SubjectItem } from './interface/types';
-import { SubjectTypeId } from './interface/wiki';
-import { checkSubjectExit } from './sites/bangumi';
+import { AllSubject, Subject } from './interface/subject';
 import {
-  getBgmHost,
+  IInterestData,
+  InterestType,
+  InterestTypeId,
+  SiteUtils,
+  SubjectItem,
+  SubjectType,
+} from './interface/types';
+import { SubjectTypeId } from './interface/wiki';
+import { siteUtils as bangumiUtils } from './sites/bangumi';
+import { siteUtils as doubanUtils } from './sites/douban';
+import {
   getSubjectId,
   insertLogInfo,
   updateInterest,
 } from './sites/bangumi/common';
-import { getAllPageInfo, InterestType } from './sites/douban';
 import { sleep } from './utils/async/sleep';
 import { downloadFile, htmlToElement } from './utils/domUtils';
 import { formatDate } from './utils/utils';
 
-type DoubanSubjectItem = SubjectItem & { syncStatus: string };
-type InterestInfos = { [key in InterestType]: DoubanSubjectItem[] };
+type SubjectItemWithSync = SubjectItem & { syncStatus: string };
+type InterestInfos = { [key in InterestType]: SubjectItemWithSync[] };
 
 let bangumiData: any = null;
 
-function getBangumiSubjectId(jp = '', greyName = '') {
+const typeIdDict: {
+  [key in InterestType]: { name: string; id: InterestTypeId };
+} = {
+  dropped: {
+    name: '抛弃',
+    id: '5',
+  },
+  on_hold: {
+    name: '搁置',
+    id: '4',
+  },
+  do: {
+    name: '在看',
+    id: '3',
+  },
+  collect: {
+    name: '看过',
+    id: '2',
+  },
+  wish: {
+    name: '想看',
+    id: '1',
+  },
+};
+
+function getBangumiSubjectId(name = '', greyName = '') {
   if (!bangumiData) return;
   const obj = bangumiData.items.find((item: any) => {
     let cnNames = [];
     if (item.titleTranslate && item.titleTranslate['zh-Hans']) {
       cnNames = item.titleTranslate['zh-Hans'];
     }
-    return item.title === jp || cnNames.includes(greyName);
+    return (
+      item.title === name ||
+      item.title === greyName ||
+      cnNames.includes(greyName)
+    );
   });
   return obj?.sites?.find((item: any) => item.site === 'bangumi').id;
 }
 function genCSVContent(infos: InterestInfos) {
   const header =
-    '\ufeff名称,别名,发行日期,地址,封面地址,收藏日期,我的评分,标签,吐槽,其它信息,类别,bangumi同步情况';
-  const dict = {
-    do: '在看',
-    wish: '想看',
-    collect: '看过',
-  };
+    '\ufeff名称,别名,发行日期,地址,封面地址,收藏日期,我的评分,标签,吐槽,其它信息,类别,同步情况';
   let csvContent = '';
   const keys = Object.keys(infos) as InterestType[];
   keys.forEach((key) => {
@@ -59,7 +89,7 @@ function genCSVContent(infos: InterestInfos) {
       csvContent += `,"${comment}"`;
       const rawInfos = item.rawInfos || '';
       csvContent += `,"${rawInfos}"`;
-      csvContent += `,"${dict[key]}"`;
+      csvContent += `,"${typeIdDict[key].name}"`;
       csvContent += `,"${item.syncStatus || ''}"`;
     });
   });
@@ -76,7 +106,7 @@ function clearLogInfo($container: HTMLElement) {
     .forEach((node) => node.remove());
 }
 
-function init() {
+function init(site: 'douban' | 'bangumi') {
   GM_addStyle(`
   .e-userjs-export-tool-container input {
     margin-bottom: 12px;
@@ -88,11 +118,21 @@ function init() {
     display: none;
   }
 `);
-  const $headerTab = document.querySelector('#columnHomeB');
+  let targetUtils: SiteUtils;
+  let originUtils: SiteUtils;
+  if (site === 'bangumi') {
+    targetUtils = doubanUtils;
+    originUtils = bangumiUtils;
+  } else {
+    targetUtils = bangumiUtils;
+    originUtils = doubanUtils;
+  }
+  const name = targetUtils.name;
+  const $parent = document.querySelector(originUtils.contanerSelector);
   const $container = htmlToElement(`
 <div class="e-userjs-export-tool-container">
-  <label>豆瓣主页 URL: </label><br/>
-  <input placeholder="输入豆瓣主页的 URL" class="inputtext" autocomplete="off" type="text" size="30" name="tags" value="">
+  <label>${name}主页 URL: </label><br/>
+  <input placeholder="输入${name}主页的 URL" class="inputtext" autocomplete="off" type="text" size="30" name="tags" value="">
 <label for="movie-type-select">选择同步类型:</label>
 <select name="movieType" id="movie-type-select">
     <option value="">所有</option>
@@ -100,8 +140,8 @@ function init() {
     <option value="wish">想看</option>
     <option value="collect">看过</option>
 </select><br/>
-  <input class="inputBtn import-btn" value="导入豆瓣动画收藏" name="importBtn" type="submit">
-  <input class="inputBtn export-btn" value="导出豆瓣动画的收藏同步信息" name="exportBtn" type="submit">
+  <input class="inputBtn import-btn" value="导入${name}动画收藏" name="importBtn" type="submit"><br/>
+  <input class="inputBtn export-btn" value="导出${name}动画的收藏同步信息" name="exportBtn" type="submit">
 </div>
   `) as HTMLElement;
   const $input = $container.querySelector('input');
@@ -109,19 +149,21 @@ function init() {
   const $exportBtn = $container.querySelector(
     '.export-btn'
   ) as HTMLInputElement;
-  const doubanAllSubject: InterestInfos = {
+  const interestInfos: InterestInfos = {
     do: [],
     collect: [],
     wish: [],
+    dropped: [],
+    on_hold: [],
   };
   $exportBtn.addEventListener('click', async (e) => {
     const $text = e.target as HTMLInputElement;
     $text.value = '导出中...';
-    let name = '豆瓣动画的收藏';
-    const csv = genCSVContent(doubanAllSubject);
+    let strName = `${name}动画的收藏`;
+    const csv = genCSVContent(interestInfos);
     // $text.value = '导出完成';
     $text.style.display = 'none';
-    downloadFile(csv, `${name}-${formatDate(new Date())}.csv`);
+    downloadFile(csv, `${strName}-${formatDate(new Date())}.csv`);
   });
   $btn.addEventListener('click', async (e) => {
     try {
@@ -131,66 +173,62 @@ function init() {
     }
     const val = $input.value;
     if (!val) {
-      alert('请输入豆瓣主页地址');
+      alert(`请输入${name}主页地址`);
       return;
     }
-    let m = val.match(/douban.com\/people\/([^\/]*)\//);
-    if (!m) {
-      alert('无效豆瓣主页地址');
+    const userId = targetUtils.getUserId(val);
+    if (!userId) {
+      alert(`无效${name}主页地址`);
     }
-    const userId = m[1];
     const $select = $container.querySelector(
       '#movie-type-select'
     ) as HTMLSelectElement;
 
     // const arr: InterestType[] = ['wish'];
-    const typeIdDict: { [key in InterestType]: '1' | '2' | '3' | '4' | '5' } = {
-      do: '3',
-      collect: '2',
-      wish: '1',
-    };
     let arr: InterestType[] = ['do', 'collect', 'wish'];
     if ($select && $select.value) {
       arr = [$select.value as any];
     }
     for (let type of arr) {
       try {
-        const res = await getAllPageInfo(userId, 'movie', type);
+        const res = await targetUtils.getAllPageInfo(userId, 'movie', type);
         for (let i = 0; i < res.length; i++) {
-          const item = res[i] as DoubanSubjectItem;
-          if (isJpMovie(item)) {
-            // 使用 bangumi data
-            let subjectId = getBangumiSubjectId(item.name, item.greyName);
-            if (!subjectId) {
-              const result = await checkSubjectExit(
-                {
-                  name: item.name,
-                  releaseDate: item.releaseDate,
-                } as AllSubject,
-                getBgmHost(),
-                SubjectTypeId.anime,
-                true
-              );
-              console.info('search results: ', result);
-              if (result && result.url) {
-                subjectId = getSubjectId(result.url);
-              }
-            }
-            if (subjectId) {
-              clearLogInfo($container);
-              const nameStr = `<span style="color:tomato">《${item.name}》</span>`;
-              insertLogInfo($btn, `更新收藏 ${nameStr} 中...`);
-              await updateInterest(subjectId, {
-                interest: typeIdDict[type],
-                ...item.collectInfo,
-                rating: item.collectInfo.score || '',
-              });
-              await sleep(300);
-              insertLogInfo($btn, `更新收藏 ${nameStr} 成功`);
-              item.syncStatus = '成功';
+          // for test
+          if (i > 1) return;
+          const item = res[i] as SubjectItemWithSync;
+          // 在 Bangumi 上 非日语的条目跳过
+          if (site === 'bangumi' && !isJpMovie(item)) {
+            interestInfos[type].push(item);
+            continue;
+          }
+          let subjectId = '';
+          // 使用 bangumi data
+          if (site === 'bangumi') {
+            subjectId = getBangumiSubjectId(item.name, item.greyName);
+          }
+          if (!subjectId) {
+            const result = await originUtils.checkSubjectExist({
+              name: item.name,
+              releaseDate: item.releaseDate,
+            } as Subject);
+            console.info('search results: ', result);
+            if (result && result.url) {
+              subjectId = originUtils.getSubjectId(result.url);
             }
           }
-          doubanAllSubject[type].push(item);
+          if (subjectId) {
+            clearLogInfo($container);
+            const nameStr = `<span style="color:tomato">《${item.name}》</span>`;
+            insertLogInfo($btn, `更新收藏 ${nameStr} 中...`);
+            await originUtils.updateInterest(subjectId, {
+              interest: typeIdDict[type].id,
+              ...item.collectInfo,
+              rating: item.collectInfo.score || '',
+            });
+            await sleep(300);
+            insertLogInfo($btn, `更新收藏 ${nameStr} 成功`);
+            item.syncStatus = '成功';
+          }
         }
       } catch (error) {
         console.error(error);
@@ -199,6 +237,12 @@ function init() {
     clearLogInfo($container);
     $exportBtn.style.display = 'inline-block';
   });
-  $headerTab.appendChild($container);
+  $parent.appendChild($container);
 }
-init();
+if (location.href.match(/bgm.tv|bangumi.tv|chii.in/)) {
+  init('bangumi');
+}
+
+if (location.href.match(/douban.com/)) {
+  init('douban');
+}

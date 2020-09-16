@@ -25,6 +25,19 @@ function genCollectionURL(
   }
 }
 
+function convertBangumiScore(num: number): number {
+  if (num < 4) {
+    return 1;
+  }
+  if (num < 6) {
+    return 2;
+  }
+  if (num < 8) return 3;
+  if (num < 9) return 4;
+  if (num === 10) return 5;
+  return 0;
+}
+
 function getSubjectId(url: string): string {
   const m = url.match(/movie\.douban\.com\/subject\/(\d+)/);
   if (m) {
@@ -236,8 +249,12 @@ async function getSubjectSearchResults(
     .map(($item: HTMLElement) => convertSubjectSearchItem($item));
 }
 async function updateInterest(subjectId: string, data: IInterestData) {
-  let url = `https://movie.douban.com/j/subject/${subjectId}/interest?`;
   const interestObj = findInterestStatusById(data.interest);
+  let query = '';
+  if (data.interest !== undefined) {
+    query = 'interest=' + interestObj.key;
+  }
+  let url = `https://movie.douban.com/j/subject/${subjectId}/interest?${query}`;
   const collectInfo = await fetchJson(url);
   const interestStatus = collectInfo.interest_status;
   const tags = collectInfo.tags;
@@ -248,7 +265,7 @@ async function updateInterest(subjectId: string, data: IInterestData) {
     interest: interestObj.key,
     tags: data.tags,
     comment: data.comment,
-    rating: data.rating,
+    rating: convertBangumiScore(+data.rating) + '',
   };
   if (tags && tags.length) {
     sendData.tags = tags.join(' ');
@@ -263,10 +280,15 @@ async function updateInterest(subjectId: string, data: IInterestData) {
   for (let [key, val] of Object.entries(sendData)) {
     if (!formData.has(key)) {
       formData.append(key, val);
+    } else if (formData.has(key) && !formData.get(key) && val) {
+      formData.set(key, val);
     }
   }
   await fetch($form.action, {
     method: 'POST',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+    },
     body: formData,
   });
 }
@@ -292,7 +314,7 @@ async function checkAnimeSubjectExist(
 
 export const siteUtils: SiteUtils = {
   name: '豆瓣',
-  contanerSelector: '#board',
+  contanerSelector: '#content .aside',
   getUserId,
   getSubjectId,
   getAllPageInfo,

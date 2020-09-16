@@ -241,6 +241,8 @@ export async function updateInterest(subjectId: string, data: IInterestData) {
   for (let [key, val] of Object.entries(obj)) {
     if (!formData.has(key)) {
       formData.append(key, val);
+    } else if (formData.has(key) && !formData.get(key) && val) {
+      formData.set(key, val);
     }
   }
   await fetch($form.action, {

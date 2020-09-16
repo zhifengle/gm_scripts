@@ -83,7 +83,7 @@ function genCSVContent(infos: InterestInfos) {
       csvContent += `,${collectDate}`;
       const score = collectInfo.score || '';
       csvContent += `,${score}`;
-      const tag = collectInfo.tag || '';
+      const tag = collectInfo.tags || '';
       csvContent += `,${tag}`;
       const comment = collectInfo.comment || '';
       csvContent += `,"${comment}"`;
@@ -111,11 +111,41 @@ function init(site: 'douban' | 'bangumi') {
   .e-userjs-export-tool-container input {
     margin-bottom: 12px;
   }
+  .e-userjs-export-tool-container .title {
+    color: #F09199;
+    font-weight: bold;
+    font-size: 14px;
+    margin: 12px 0;
+    display: inline-block;
+  }
   .e-userjs-export-tool-container .import-btn{
     margin-top: 12px;
   }
   .e-userjs-export-tool-container .export-btn {
     display: none;
+  }
+  .ui-button {
+    display: inline-block;
+    line-height: 20px;
+    font-size: 14px;
+    text-align: center;
+    color: #4c5161;
+    border-radius: 4px;
+    border: 1px solid #d0d0d5;
+    padding: 9px 15px;
+    min-width: 80px;
+    background-color: #fff;
+    background-repeat: no-repeat;
+    background-position: center;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: border-color .15s, box-shadow .15s, opacity .15s;
+    font-family: inherit;
+    cursor: pointer;
+    overflow: visible;
+
+    background-color: #2a80eb;
+    color: #fff;
   }
 `);
   let targetUtils: SiteUtils;
@@ -131,17 +161,26 @@ function init(site: 'douban' | 'bangumi') {
   const $parent = document.querySelector(originUtils.contanerSelector);
   const $container = htmlToElement(`
 <div class="e-userjs-export-tool-container">
-  <label>${name}主页 URL: </label><br/>
+<div>
+  <span class="title">${name}主页 URL: </span><br/>
   <input placeholder="输入${name}主页的 URL" class="inputtext" autocomplete="off" type="text" size="30" name="tags" value="">
+</div>
+  <div>
 <label for="movie-type-select">选择同步类型:</label>
 <select name="movieType" id="movie-type-select">
     <option value="">所有</option>
     <option value="do">在看</option>
     <option value="wish">想看</option>
     <option value="collect">看过</option>
-</select><br/>
-  <input class="inputBtn import-btn" value="导入${name}动画收藏" name="importBtn" type="submit"><br/>
-  <input class="inputBtn export-btn" value="导出${name}动画的收藏同步信息" name="exportBtn" type="submit">
+</select>
+  </div>
+  <button class="ui-button import-btn" type="submit">
+导入${name}动画收藏
+  </button>
+  <br/>
+  <button class="ui-button export-btn" type="submit">
+导出${name}动画的收藏同步信息
+  </button>
 </div>
   `) as HTMLElement;
   const $input = $container.querySelector('input');
@@ -179,6 +218,7 @@ function init(site: 'douban' | 'bangumi') {
     const userId = targetUtils.getUserId(val);
     if (!userId) {
       alert(`无效${name}主页地址`);
+      return;
     }
     const $select = $container.querySelector(
       '#movie-type-select'
@@ -191,11 +231,13 @@ function init(site: 'douban' | 'bangumi') {
     }
     for (let type of arr) {
       try {
-        const res = await targetUtils.getAllPageInfo(userId, 'movie', type);
+        const res = (await targetUtils.getAllPageInfo(
+          userId,
+          'movie',
+          type
+        )) as SubjectItemWithSync[];
         for (let i = 0; i < res.length; i++) {
-          // for test
-          if (i > 1) return;
-          const item = res[i] as SubjectItemWithSync;
+          const item = res[i];
           // 在 Bangumi 上 非日语的条目跳过
           if (site === 'bangumi' && !isJpMovie(item)) {
             interestInfos[type].push(item);
@@ -211,7 +253,6 @@ function init(site: 'douban' | 'bangumi') {
               name: item.name,
               releaseDate: item.releaseDate,
             } as Subject);
-            console.info('search results: ', result);
             if (result && result.url) {
               subjectId = originUtils.getSubjectId(result.url);
             }
@@ -230,6 +271,7 @@ function init(site: 'douban' | 'bangumi') {
             item.syncStatus = '成功';
           }
         }
+        interestInfos[type] = [...res];
       } catch (error) {
         console.error(error);
       }

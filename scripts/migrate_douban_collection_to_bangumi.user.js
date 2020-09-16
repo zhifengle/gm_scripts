@@ -5,10 +5,10 @@
 // @description migrate douban collection to bangumi and export douban collection
 // @description:zh-cn 迁移豆瓣动画收藏到 Bangumi.
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/?$/
-// @include     https://www.douban.com/people/*/
+// @include     https://movie.douban.com/mine
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
-// @version     0.0.1
+// @version     0.0.2
 // @run-at      document-end
 // @grant       GM_registerMenuCommand
 // @grant       GM_xmlhttpRequest
@@ -406,6 +406,9 @@ function updateInterest(subjectId, data) {
             if (!formData.has(key)) {
                 formData.append(key, val);
             }
+            else if (formData.has(key) && !formData.get(key) && val) {
+                formData.set(key, val);
+            }
         }
         yield fetch($form.action, {
             method: 'POST',
@@ -624,6 +627,21 @@ function genCollectionURL$1(userId, interestType, subjectType = 'movie', start =
         return `${baseURL}?start=${start}&sort=time&rating=all&filter=all&mode=grid`;
     }
 }
+function convertBangumiScore(num) {
+    if (num < 4) {
+        return 1;
+    }
+    if (num < 6) {
+        return 2;
+    }
+    if (num < 8)
+        return 3;
+    if (num < 9)
+        return 4;
+    if (num === 10)
+        return 5;
+    return 0;
+}
 function getSubjectId$1(url) {
     const m = url.match(/movie\.douban\.com\/subject\/(\d+)/);
     if (m) {
@@ -781,8 +799,12 @@ function getHomeSearchResults(query, cat = '1002') {
 }
 function updateInterest$1(subjectId, data) {
     return __awaiter(this, void 0, void 0, function* () {
-        let url = `https://movie.douban.com/j/subject/${subjectId}/interest?`;
         const interestObj = findInterestStatusById(data.interest);
+        let query = '';
+        if (data.interest !== undefined) {
+            query = 'interest=' + interestObj.key;
+        }
+        let url = `https://movie.douban.com/j/subject/${subjectId}/interest?${query}`;
         const collectInfo = yield fetchJson(url);
         const interestStatus = collectInfo.interest_status;
         const tags = collectInfo.tags;
@@ -793,7 +815,7 @@ function updateInterest$1(subjectId, data) {
             interest: interestObj.key,
             tags: data.tags,
             comment: data.comment,
-            rating: data.rating,
+            rating: convertBangumiScore(+data.rating) + '',
         };
         if (tags && tags.length) {
             sendData.tags = tags.join(' ');
@@ -809,9 +831,15 @@ function updateInterest$1(subjectId, data) {
             if (!formData.has(key)) {
                 formData.append(key, val);
             }
+            else if (formData.has(key) && !formData.get(key) && val) {
+                formData.set(key, val);
+            }
         }
         yield fetch($form.action, {
             method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
             body: formData,
         });
     });
@@ -837,7 +865,7 @@ function checkAnimeSubjectExist$1(subjectInfo) {
 }
 const siteUtils$1 = {
     name: '豆瓣',
-    contanerSelector: '#board',
+    contanerSelector: '#content .aside',
     getUserId: getUserId$1,
     getSubjectId: getSubjectId$1,
     getAllPageInfo: getAllPageInfo$1,
@@ -936,7 +964,7 @@ function genCSVContent(infos) {
             csvContent += `,${collectDate}`;
             const score = collectInfo.score || '';
             csvContent += `,${score}`;
-            const tag = collectInfo.tag || '';
+            const tag = collectInfo.tags || '';
             csvContent += `,${tag}`;
             const comment = collectInfo.comment || '';
             csvContent += `,"${comment}"`;
@@ -962,11 +990,41 @@ function init(site) {
   .e-userjs-export-tool-container input {
     margin-bottom: 12px;
   }
+  .e-userjs-export-tool-container .title {
+    color: #F09199;
+    font-weight: bold;
+    font-size: 14px;
+    margin: 12px 0;
+    display: inline-block;
+  }
   .e-userjs-export-tool-container .import-btn{
     margin-top: 12px;
   }
   .e-userjs-export-tool-container .export-btn {
     display: none;
+  }
+  .ui-button {
+    display: inline-block;
+    line-height: 20px;
+    font-size: 14px;
+    text-align: center;
+    color: #4c5161;
+    border-radius: 4px;
+    border: 1px solid #d0d0d5;
+    padding: 9px 15px;
+    min-width: 80px;
+    background-color: #fff;
+    background-repeat: no-repeat;
+    background-position: center;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: border-color .15s, box-shadow .15s, opacity .15s;
+    font-family: inherit;
+    cursor: pointer;
+    overflow: visible;
+
+    background-color: #2a80eb;
+    color: #fff;
   }
 `);
     let targetUtils;
@@ -983,17 +1041,26 @@ function init(site) {
     const $parent = document.querySelector(originUtils.contanerSelector);
     const $container = htmlToElement(`
 <div class="e-userjs-export-tool-container">
-  <label>${name}主页 URL: </label><br/>
+<div>
+  <span class="title">${name}主页 URL: </span><br/>
   <input placeholder="输入${name}主页的 URL" class="inputtext" autocomplete="off" type="text" size="30" name="tags" value="">
+</div>
+  <div>
 <label for="movie-type-select">选择同步类型:</label>
 <select name="movieType" id="movie-type-select">
     <option value="">所有</option>
     <option value="do">在看</option>
     <option value="wish">想看</option>
     <option value="collect">看过</option>
-</select><br/>
-  <input class="inputBtn import-btn" value="导入${name}动画收藏" name="importBtn" type="submit"><br/>
-  <input class="inputBtn export-btn" value="导出${name}动画的收藏同步信息" name="exportBtn" type="submit">
+</select>
+  </div>
+  <button class="ui-button import-btn" type="submit">
+导入${name}动画收藏
+  </button>
+  <br/>
+  <button class="ui-button export-btn" type="submit">
+导出${name}动画的收藏同步信息
+  </button>
 </div>
   `);
     const $input = $container.querySelector('input');
@@ -1030,6 +1097,7 @@ function init(site) {
         const userId = targetUtils.getUserId(val);
         if (!userId) {
             alert(`无效${name}主页地址`);
+            return;
         }
         const $select = $container.querySelector('#movie-type-select');
         // const arr: InterestType[] = ['wish'];
@@ -1039,11 +1107,8 @@ function init(site) {
         }
         for (let type of arr) {
             try {
-                const res = yield targetUtils.getAllPageInfo(userId, 'movie', type);
+                const res = (yield targetUtils.getAllPageInfo(userId, 'movie', type));
                 for (let i = 0; i < res.length; i++) {
-                    // for test
-                    if (i > 1)
-                        return;
                     const item = res[i];
                     // 在 Bangumi 上 非日语的条目跳过
                     if (site === 'bangumi' && !isJpMovie(item)) {
@@ -1060,7 +1125,6 @@ function init(site) {
                             name: item.name,
                             releaseDate: item.releaseDate,
                         });
-                        console.info('search results: ', result);
                         if (result && result.url) {
                             subjectId = originUtils.getSubjectId(result.url);
                         }
@@ -1075,6 +1139,7 @@ function init(site) {
                         item.syncStatus = '成功';
                     }
                 }
+                interestInfos[type] = [...res];
             }
             catch (error) {
                 console.error(error);

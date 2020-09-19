@@ -26,16 +26,17 @@ function genCollectionURL(
 }
 
 function convertBangumiScore(num: number): number {
-  if (num < 4) {
-    return 1;
-  }
-  if (num < 6) {
-    return 2;
-  }
-  if (num < 8) return 3;
-  if (num < 9) return 4;
-  if (num === 10) return 5;
-  return 0;
+  return Math.ceil(num / 2);
+  // if (num < 4) {
+  //   return 1;
+  // }
+  // if (num < 6) {
+  //   return 2;
+  // }
+  // if (num < 8) return 3;
+  // if (num < 9) return 4;
+  // if (num === 10) return 5;
+  // return 0;
 }
 
 function getSubjectId(url: string): string {

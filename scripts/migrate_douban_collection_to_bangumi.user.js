@@ -9,7 +9,7 @@
 // @include     https://search.douban.com/movie/subject_search*
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
-// @version     0.0.4
+// @version     0.0.5
 // @run-at      document-end
 // @grant       GM_registerMenuCommand
 // @grant       GM_xmlhttpRequest
@@ -677,19 +677,17 @@ function genCollectionURL$1(userId, interestType, subjectType = 'movie', start =
     }
 }
 function convertBangumiScore(num) {
-    if (num < 4) {
-        return 1;
-    }
-    if (num < 6) {
-        return 2;
-    }
-    if (num < 8)
-        return 3;
-    if (num < 9)
-        return 4;
-    if (num === 10)
-        return 5;
-    return 0;
+    return Math.ceil(num / 2);
+    // if (num < 4) {
+    //   return 1;
+    // }
+    // if (num < 6) {
+    //   return 2;
+    // }
+    // if (num < 8) return 3;
+    // if (num < 9) return 4;
+    // if (num === 10) return 5;
+    // return 0;
 }
 function getSubjectId$1(url) {
     const m = url.match(/movie\.douban\.com\/subject\/(\d+)/);
@@ -1117,7 +1115,7 @@ function getBangumiSubjectId(name = '', greyName = '') {
     return (_a = obj === null || obj === void 0 ? void 0 : obj.sites) === null || _a === void 0 ? void 0 : _a.find((item) => item.site === 'bangumi').id;
 }
 function genCSVContent(infos) {
-    const header = '\ufeff名称,别名,发行日期,地址,封面地址,收藏日期,我的评分,标签,吐槽,其它信息,类别,同步情况';
+    const header = '\ufeff名称,别名,发行日期,地址,封面地址,收藏日期,我的评分,标签,吐槽,其它信息,类别,同步情况,搜索结果信息';
     let csvContent = '';
     const keys = Object.keys(infos);
     keys.forEach((key) => {
@@ -1139,7 +1137,15 @@ function genCSVContent(infos) {
             const rawInfos = item.rawInfos || '';
             csvContent += `,"${rawInfos}"`;
             csvContent += `,"${typeIdDict$1[key].name}"`;
-            csvContent += `,"${item.syncStatus || ''}"`;
+            csvContent += `,${item.syncStatus || ''}`;
+            // 新增搜索结果信息
+            let searchResultStr = '';
+            if (item.syncSubject) {
+                const obj = item.syncSubject;
+                searchResultStr = `${obj.name};${obj.greyName || ''};${obj.url || ''};${obj.rawName || ''}`;
+            }
+            // 同步信息
+            csvContent += `,"${searchResultStr}"`;
         });
     });
     return header + csvContent;
@@ -1179,6 +1185,10 @@ function init(site) {
     $exportBtn.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
         const $text = e.target;
         $text.value = '导出中...';
+        let name = 'Bangumi';
+        if (site === 'bangumi') {
+            name = '豆瓣';
+        }
         let strName = `${name}动画的收藏`;
         const csv = genCSVContent(interestInfos);
         // $text.value = '导出完成';
@@ -1285,6 +1295,7 @@ function migrateCollection(siteUtils, item, site, type) {
                 });
                 if (result && result.url) {
                     subjectId = siteUtils.getSubjectId(result.url);
+                    subjectItem.syncSubject = result;
                 }
             }
             catch (error) {

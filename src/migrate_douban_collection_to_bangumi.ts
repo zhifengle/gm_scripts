@@ -13,7 +13,10 @@ import { downloadFile } from './utils/domUtils';
 import { formatDate } from './utils/utils';
 import { insertControl } from './ui/migrateTool';
 
-type SubjectItemWithSync = SubjectItem & { syncStatus: string };
+type SubjectItemWithSync = SubjectItem & {
+  syncStatus: string;
+  syncSubject?: SearchResult;
+};
 type InterestInfos = { [key in InterestType]: SubjectItemWithSync[] };
 
 let bangumiData: any = null;
@@ -60,7 +63,7 @@ function getBangumiSubjectId(name = '', greyName = '') {
 }
 function genCSVContent(infos: InterestInfos) {
   const header =
-    '\ufeff名称,别名,发行日期,地址,封面地址,收藏日期,我的评分,标签,吐槽,其它信息,类别,同步情况';
+    '\ufeff名称,别名,发行日期,地址,封面地址,收藏日期,我的评分,标签,吐槽,其它信息,类别,同步情况,搜索结果信息';
   let csvContent = '';
   const keys = Object.keys(infos) as InterestType[];
   keys.forEach((key) => {
@@ -84,7 +87,17 @@ function genCSVContent(infos: InterestInfos) {
       const rawInfos = item.rawInfos || '';
       csvContent += `,"${rawInfos}"`;
       csvContent += `,"${typeIdDict[key].name}"`;
-      csvContent += `,"${item.syncStatus || ''}"`;
+      csvContent += `,${item.syncStatus || ''}`;
+      // 新增搜索结果信息
+      let searchResultStr = '';
+      if (item.syncSubject) {
+        const obj = item.syncSubject;
+        searchResultStr = `${obj.name};${obj.greyName || ''};${obj.url || ''};${
+          obj.rawName || ''
+        }`;
+      }
+      // 同步信息
+      csvContent += `,"${searchResultStr}"`;
     });
   });
   return header + csvContent;
@@ -130,6 +143,10 @@ function init(site: 'douban' | 'bangumi') {
   $exportBtn.addEventListener('click', async (e) => {
     const $text = e.target as HTMLInputElement;
     $text.value = '导出中...';
+    let name = 'Bangumi';
+    if (site === 'bangumi') {
+      name = '豆瓣';
+    }
     let strName = `${name}动画的收藏`;
     const csv = genCSVContent(interestInfos);
     // $text.value = '导出完成';
@@ -245,6 +262,7 @@ async function migrateCollection(
       } as Subject);
       if (result && result.url) {
         subjectId = siteUtils.getSubjectId(result.url);
+        subjectItem.syncSubject = result;
       }
     } catch (error) {
       console.error(error);

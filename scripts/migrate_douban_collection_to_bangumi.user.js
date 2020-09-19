@@ -6,9 +6,10 @@
 // @description:zh-cn 迁移豆瓣动画收藏到 Bangumi.
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/?$/
 // @include     https://movie.douban.com/mine
+// @include     https://search.douban.com/movie/subject_search*
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
-// @version     0.0.2
+// @version     0.0.3
 // @run-at      document-end
 // @grant       GM_registerMenuCommand
 // @grant       GM_xmlhttpRequest
@@ -46,9 +47,15 @@ function __awaiter(thisArg, _arguments, P, generator) {
 }
 
 function sleep(num) {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
         setTimeout(resolve, num);
     });
+}
+function randomSleep(max = 400, min = 200) {
+    return sleep(randomNum(max, min));
+}
+function randomNum(max, min) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 // support GM_XMLHttpRequest
@@ -151,10 +158,7 @@ function filterResults(items, subjectInfo, opts = {}, isSearch = true) {
         return;
     // 只有一个结果时直接返回, 不再比较日期
     if (items.length === 1 && isSearch) {
-        const result = items[0];
-        return result;
-        // if (isEqualDate(result.releaseDate, subjectInfo.releaseDate)) {
-        // }
+        return items[0];
     }
     let results = new Fuse(items, Object.assign({}, opts)).search(subjectInfo.name);
     if (!results.length)
@@ -163,7 +167,13 @@ function filterResults(items, subjectInfo, opts = {}, isSearch = true) {
     if (subjectInfo.releaseDate) {
         for (const item of results) {
             const result = item.item;
-            if (result.releaseDate) {
+            // 只有年的时候
+            if (result.releaseDate && result.releaseDate.length === '4') {
+                if (result.releaseDate === subjectInfo.releaseDate.slice(0, 4)) {
+                    return result;
+                }
+            }
+            else if (result.releaseDate) {
                 if (isEqualDate(result.releaseDate, subjectInfo.releaseDate)) {
                     return result;
                 }
@@ -174,7 +184,9 @@ function filterResults(items, subjectInfo, opts = {}, isSearch = true) {
     const nameRe = new RegExp(subjectInfo.name.trim());
     for (const item of results) {
         const result = item.item;
-        if (nameRe.test(result.name) || nameRe.test(result.greyName)) {
+        if (nameRe.test(result.name) ||
+            nameRe.test(result.greyName) ||
+            nameRe.test(result.rawName)) {
             return result;
         }
     }
@@ -618,6 +630,63 @@ const siteUtils = {
     getAllPageInfo: getAllPageInfo,
 };
 
+/**
+ * 为页面添加样式
+ * @param style
+ */
+/**
+ * 下载内容
+ * https://stackoverflow.com/questions/14964035/how-to-export-javascript-array-info-to-csv-on-client-side
+ * @example
+ * download(csvContent, 'dowload.csv', 'text/csv;encoding:utf-8');
+ * BOM: data:text/csv;charset=utf-8,\uFEFF
+ * @param content 内容
+ * @param fileName 文件名
+ * @param mimeType 文件类型
+ */
+function downloadFile(content, fileName, mimeType = 'application/octet-stream') {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], {
+        type: mimeType,
+    }));
+    a.style.display = 'none';
+    a.setAttribute('download', fileName);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+/**
+ * @param {String} HTML 字符串
+ * @return {Element}
+ */
+function htmlToElement(html) {
+    var template = document.createElement('template');
+    html = html.trim();
+    template.innerHTML = html;
+    // template.content.childNodes;
+    return template.content.firstChild;
+}
+/**
+ * 载入 iframe
+ * @param $iframe iframe DOM
+ * @param src iframe URL
+ * @param TIMEOUT time out
+ */
+function loadIframe$1($iframe, src, TIMEOUT = 5000) {
+    return new Promise((resolve, reject) => {
+        $iframe.src = src;
+        let timer = setTimeout(() => {
+            timer = null;
+            reject('iframe timeout');
+        }, TIMEOUT);
+        $iframe.onload = () => {
+            clearTimeout(timer);
+            $iframe.onload = null;
+            resolve();
+        };
+    });
+}
+
 function genCollectionURL$1(userId, interestType, subjectType = 'movie', start = 1) {
     const baseURL = `https://${subjectType}.douban.com/people/${userId}/${interestType}`;
     if (start === 1) {
@@ -771,12 +840,15 @@ function convertHomeSearchItem($item) {
         }
         averageScore = $ratingNums.innerText;
     }
-    const greayName = $item.querySelector('.subject-cast')
-        .innerText;
+    let greyName = '';
+    const $greyName = $item.querySelector('.subject-cast');
+    if ($greyName) {
+        greyName = $greyName.innerText;
+    }
     return {
         name: $title.textContent.trim(),
-        greyName: greayName.split('/')[0].replace('原名:', '').trim(),
-        releaseDate: (greayName.match(/\d{4}$/) || [])[0],
+        greyName: greyName.split('/')[0].replace('原名:', '').trim(),
+        releaseDate: (greyName.match(/\d{4}$/) || [])[0],
         url: href,
         score: averageScore,
         count: ratingsCount,
@@ -789,12 +861,111 @@ function convertHomeSearchItem($item) {
 function getHomeSearchResults(query, cat = '1002') {
     return __awaiter(this, void 0, void 0, function* () {
         const url = `https://www.douban.com/search?cat=${cat}&q=${encodeURIComponent(query)}`;
+        console.info('Douban search URL: ', url);
         const rawText = yield fetchText(url);
         const $doc = new DOMParser().parseFromString(rawText, 'text/html');
         const items = $doc.querySelectorAll('.search-result > .result-list > .result > .content');
         return Array.prototype.slice
             .call(items)
             .map(($item) => convertHomeSearchItem($item));
+    });
+}
+function convertSubjectSearchItem($item) {
+    // item-root
+    const $title = $item.querySelector('.title a');
+    let name = '';
+    let greyName = '';
+    let releaseDate = '';
+    let rawName = '';
+    if ($title) {
+        const rawText = $title.textContent.trim();
+        rawName = rawText;
+        const yearRe = /\((\d{4})\)$/;
+        releaseDate = (rawText.match(yearRe) || ['', ''])[1];
+        let arr = rawText.split(/ (?!-)/);
+        if (arr && arr.length === 2) {
+            name = arr[0];
+            greyName = arr[1].replace(yearRe, '');
+        }
+        else {
+            arr = rawText.split(/ (?!(-|\w))/);
+            name = arr[0];
+            greyName = rawText.replace(name, '').trim().replace(yearRe, '').trim();
+        }
+    }
+    let ratingsCount = '';
+    let averageScore = '';
+    const $ratingNums = $item.querySelector('.rating_nums');
+    if ($ratingNums) {
+        const $count = $ratingNums.nextElementSibling;
+        const m = $count.textContent.match(/\d+/);
+        if (m) {
+            ratingsCount = m[0];
+        }
+        averageScore = $ratingNums.textContent;
+    }
+    return {
+        name,
+        rawName,
+        url: $title.getAttribute('href'),
+        score: averageScore,
+        count: ratingsCount,
+        releaseDate,
+    };
+}
+/**
+ * 单独类型搜索入口
+ * @param query 搜索字符串
+ * @param cat 类型
+ */
+function getSubjectSearchResults(query, cat = '1002') {
+    return __awaiter(this, void 0, void 0, function* () {
+        const url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(query)}&cat=${cat}`;
+        console.info('Douban search URL: ', url);
+        const iframeId = 'e-userjs-search-subject';
+        let $iframe = document.querySelector(`#${iframeId}`);
+        if ($iframe) {
+            $iframe.remove();
+        }
+        $iframe = document.createElement('iframe');
+        $iframe.setAttribute('sandbox', 'allow-forms allow-same-origin allow-scripts');
+        $iframe.style.display = 'none';
+        $iframe.id = iframeId;
+        document.body.appendChild($iframe);
+        yield loadIframe$1($iframe, url);
+        return yield getSearchResultByMessage();
+    });
+}
+function sendSearchResults() {
+    return __awaiter(this, void 0, void 0, function* () {
+        let items = document.querySelectorAll('#root .item-root');
+        let counter = 0;
+        // 尝试 8s
+        while (items && items.length === 0 && counter < 20) {
+            items = document.querySelectorAll('#root .item-root');
+            yield sleep(400);
+            console.info('Retry counter: ', counter);
+        }
+        const searchItems = Array.prototype.slice
+            .call(items)
+            .map(($item) => convertSubjectSearchItem($item));
+        parent.postMessage({ type: 'search_result', data: searchItems }, '*');
+    });
+}
+function getSearchResultByMessage() {
+    return new Promise((resolve, reject) => {
+        window.addEventListener('message', receiveMessage, false);
+        let timer = setTimeout(() => {
+            timer = null;
+            reject('message timeout');
+        }, 10000);
+        function receiveMessage(event) {
+            if (event.data && event.data.type === 'search_result') {
+                window.removeEventListener('message', receiveMessage);
+                clearTimeout(timer);
+                resolve(event.data.data);
+            }
+        }
     });
 }
 function updateInterest$1(subjectId, data) {
@@ -835,6 +1006,10 @@ function updateInterest$1(subjectId, data) {
                 formData.set(key, val);
             }
         }
+        // share-shuo: douban  删除分享广播
+        if (formData.has('share-shuo')) {
+            formData.delete('share-shuo');
+        }
         yield fetch($form.action, {
             method: 'POST',
             headers: {
@@ -851,13 +1026,24 @@ function checkAnimeSubjectExist$1(subjectInfo) {
             console.info('Query string is empty');
             return Promise.reject();
         }
-        const rawInfoList = yield getHomeSearchResults(query);
-        // const rawInfoList = await getSubjectSearchResults(query);
+        let rawInfoList;
+        let searchResult;
         const options = {
             keys: ['name', 'greyName'],
         };
-        let searchResult = filterResults(rawInfoList, subjectInfo, options);
-        console.info(`Search result of douban: `, searchResult);
+        if (Math.random() > 0.2) {
+            rawInfoList = yield getHomeSearchResults(query);
+            searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+        }
+        else {
+            rawInfoList = yield getSubjectSearchResults(query);
+            searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+            // searchResult = filterSearchResultsByYear(
+            //   rawInfoList,
+            //   new Date(subjectInfo.releaseDate).getFullYear() + ''
+            // );
+        }
+        console.info(`Search result of ${query} on Douban: `, searchResult);
         if (searchResult && searchResult.url) {
             return searchResult;
         }
@@ -873,41 +1059,81 @@ const siteUtils$1 = {
     checkSubjectExist: checkAnimeSubjectExist$1,
 };
 
-/**
- * 为页面添加样式
- * @param style
- */
-/**
- * 下载内容
- * https://stackoverflow.com/questions/14964035/how-to-export-javascript-array-info-to-csv-on-client-side
- * @example
- * download(csvContent, 'dowload.csv', 'text/csv;encoding:utf-8');
- * BOM: data:text/csv;charset=utf-8,\uFEFF
- * @param content 内容
- * @param fileName 文件名
- * @param mimeType 文件类型
- */
-function downloadFile(content, fileName, mimeType = 'application/octet-stream') {
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([content], {
-        type: mimeType,
-    }));
-    a.style.display = 'none';
-    a.setAttribute('download', fileName);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-}
-/**
- * @param {String} HTML 字符串
- * @return {Element}
- */
-function htmlToElement(html) {
-    var template = document.createElement('template');
-    html = html.trim();
-    template.innerHTML = html;
-    // template.content.childNodes;
-    return template.content.firstChild;
+function insertControl(contanerSelector, name) {
+    GM_addStyle(`
+  .e-userjs-export-tool-container input {
+    margin-bottom: 12px;
+  }
+  .e-userjs-export-tool-container .title {
+    color: #F09199;
+    font-weight: bold;
+    font-size: 14px;
+    margin: 12px 0;
+    display: inline-block;
+  }
+  .e-userjs-export-tool-container .import-btn{
+    margin-top: 12px;
+  }
+  .e-userjs-export-tool-container .export-btn {
+    display: none;
+  }
+  .e-userjs-export-tool-container .retry-btn {
+    display: none;
+  }
+  .ui-button {
+    display: inline-block;
+    line-height: 20px;
+    font-size: 14px;
+    text-align: center;
+    color: #4c5161;
+    border-radius: 4px;
+    border: 1px solid #d0d0d5;
+    padding: 9px 15px;
+    min-width: 80px;
+    background-color: #fff;
+    background-repeat: no-repeat;
+    background-position: center;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: border-color .15s, box-shadow .15s, opacity .15s;
+    font-family: inherit;
+    cursor: pointer;
+    overflow: visible;
+
+    background-color: #2a80eb;
+    color: #fff;
+  }
+`);
+    const $parent = document.querySelector(contanerSelector);
+    const $container = htmlToElement(`
+<div class="e-userjs-export-tool-container">
+<div>
+  <span class="title">${name}主页 URL: </span><br/>
+  <input placeholder="输入${name}主页的 URL" class="inputtext" autocomplete="off" type="text" size="30" name="tags" value="">
+</div>
+  <div>
+<label for="movie-type-select">选择同步类型:</label>
+<select name="movieType" id="movie-type-select">
+    <option value="">所有</option>
+    <option value="do">在看</option>
+    <option value="wish">想看</option>
+    <option value="collect">看过</option>
+</select>
+  </div>
+  <button class="ui-button import-btn" type="submit">
+导入${name}动画收藏
+  </button>
+  <br/>
+  <button class="ui-button export-btn" type="submit">
+导出${name}动画的收藏同步信息
+  </button>
+  <button class="ui-button retry-btn" type="submit">
+重新同步失败的条目
+  </button>
+</div>
+  `);
+    $parent.appendChild($container);
+    return $container;
 }
 
 let bangumiData = null;
@@ -986,47 +1212,6 @@ function clearLogInfo($container) {
         .forEach((node) => node.remove());
 }
 function init(site) {
-    GM_addStyle(`
-  .e-userjs-export-tool-container input {
-    margin-bottom: 12px;
-  }
-  .e-userjs-export-tool-container .title {
-    color: #F09199;
-    font-weight: bold;
-    font-size: 14px;
-    margin: 12px 0;
-    display: inline-block;
-  }
-  .e-userjs-export-tool-container .import-btn{
-    margin-top: 12px;
-  }
-  .e-userjs-export-tool-container .export-btn {
-    display: none;
-  }
-  .ui-button {
-    display: inline-block;
-    line-height: 20px;
-    font-size: 14px;
-    text-align: center;
-    color: #4c5161;
-    border-radius: 4px;
-    border: 1px solid #d0d0d5;
-    padding: 9px 15px;
-    min-width: 80px;
-    background-color: #fff;
-    background-repeat: no-repeat;
-    background-position: center;
-    text-decoration: none;
-    box-sizing: border-box;
-    transition: border-color .15s, box-shadow .15s, opacity .15s;
-    font-family: inherit;
-    cursor: pointer;
-    overflow: visible;
-
-    background-color: #2a80eb;
-    color: #fff;
-  }
-`);
     let targetUtils;
     let originUtils;
     if (site === 'bangumi') {
@@ -1037,35 +1222,11 @@ function init(site) {
         targetUtils = siteUtils;
         originUtils = siteUtils$1;
     }
-    const name = targetUtils.name;
-    const $parent = document.querySelector(originUtils.contanerSelector);
-    const $container = htmlToElement(`
-<div class="e-userjs-export-tool-container">
-<div>
-  <span class="title">${name}主页 URL: </span><br/>
-  <input placeholder="输入${name}主页的 URL" class="inputtext" autocomplete="off" type="text" size="30" name="tags" value="">
-</div>
-  <div>
-<label for="movie-type-select">选择同步类型:</label>
-<select name="movieType" id="movie-type-select">
-    <option value="">所有</option>
-    <option value="do">在看</option>
-    <option value="wish">想看</option>
-    <option value="collect">看过</option>
-</select>
-  </div>
-  <button class="ui-button import-btn" type="submit">
-导入${name}动画收藏
-  </button>
-  <br/>
-  <button class="ui-button export-btn" type="submit">
-导出${name}动画的收藏同步信息
-  </button>
-</div>
-  `);
+    const $container = insertControl(originUtils.contanerSelector, targetUtils.name);
     const $input = $container.querySelector('input');
-    const $btn = $container.querySelector('.import-btn');
+    const $importBtn = $container.querySelector('.import-btn');
     const $exportBtn = $container.querySelector('.export-btn');
+    const $retryBtn = $container.querySelector('.retry-btn');
     const interestInfos = {
         do: [],
         collect: [],
@@ -1082,62 +1243,49 @@ function init(site) {
         $text.style.display = 'none';
         downloadFile(csv, `${strName}-${formatDate(new Date())}.csv`);
     }));
-    $btn.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
+    $retryBtn.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
         try {
             bangumiData = JSON.parse(GM_getResourceText('bangumiDataURL'));
         }
         catch (e) {
             console.log('parse JSON:', e);
         }
-        const val = $input.value;
-        if (!val) {
-            alert(`请输入${name}主页地址`);
+        const userId = getUserIdFromInput($input.value, targetUtils.getUserId);
+        if (!userId)
             return;
+        const arr = getInterestTypeArr();
+        for (let type of arr) {
+            const res = interestInfos[type];
+            for (let i = 0; i < res.length; i++) {
+                let item = res[i];
+                if (!item.syncStatus) {
+                    item = yield migrateCollection(originUtils, item, site, type);
+                }
+                res[i] = item;
+            }
         }
-        const userId = targetUtils.getUserId(val);
-        if (!userId) {
-            alert(`无效${name}主页地址`);
+        clearLogInfo($container);
+        $exportBtn.style.display = 'inline-block';
+        $retryBtn.style.display = 'inline-block';
+    }));
+    $importBtn.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
+        try {
+            bangumiData = JSON.parse(GM_getResourceText('bangumiDataURL'));
+        }
+        catch (e) {
+            console.log('parse JSON:', e);
+        }
+        const userId = getUserIdFromInput($input.value, targetUtils.getUserId);
+        if (!userId)
             return;
-        }
-        const $select = $container.querySelector('#movie-type-select');
-        // const arr: InterestType[] = ['wish'];
-        let arr = ['do', 'collect', 'wish'];
-        if ($select && $select.value) {
-            arr = [$select.value];
-        }
+        const arr = getInterestTypeArr();
         for (let type of arr) {
             try {
                 const res = (yield targetUtils.getAllPageInfo(userId, 'movie', type));
                 for (let i = 0; i < res.length; i++) {
-                    const item = res[i];
-                    // 在 Bangumi 上 非日语的条目跳过
-                    if (site === 'bangumi' && !isJpMovie(item)) {
-                        interestInfos[type].push(item);
-                        continue;
-                    }
-                    let subjectId = '';
-                    // 使用 bangumi data
-                    if (site === 'bangumi') {
-                        subjectId = getBangumiSubjectId(item.name, item.greyName);
-                    }
-                    if (!subjectId) {
-                        const result = yield originUtils.checkSubjectExist({
-                            name: item.name,
-                            releaseDate: item.releaseDate,
-                        });
-                        if (result && result.url) {
-                            subjectId = originUtils.getSubjectId(result.url);
-                        }
-                    }
-                    if (subjectId) {
-                        clearLogInfo($container);
-                        const nameStr = `<span style="color:tomato">《${item.name}》</span>`;
-                        insertLogInfo($btn, `更新收藏 ${nameStr} 中...`);
-                        yield originUtils.updateInterest(subjectId, Object.assign(Object.assign({ interest: typeIdDict$1[type].id }, item.collectInfo), { rating: item.collectInfo.score || '' }));
-                        yield sleep(300);
-                        insertLogInfo($btn, `更新收藏 ${nameStr} 成功`);
-                        item.syncStatus = '成功';
-                    }
+                    let item = res[i];
+                    item = yield migrateCollection(originUtils, item, site, type);
+                    res[i] = item;
                 }
                 interestInfos[type] = [...res];
             }
@@ -1147,12 +1295,80 @@ function init(site) {
         }
         clearLogInfo($container);
         $exportBtn.style.display = 'inline-block';
+        $retryBtn.style.display = 'inline-block';
     }));
-    $parent.appendChild($container);
+}
+function getUserIdFromInput(val, fn) {
+    if (!val) {
+        alert(`请输入${name}主页地址`);
+        return '';
+    }
+    const userId = fn(val);
+    if (!userId) {
+        alert(`无效${name}主页地址`);
+        return '';
+    }
+    return userId;
+}
+function getInterestTypeArr() {
+    const $container = document.querySelector('.e-userjs-export-tool-container');
+    const $select = $container.querySelector('#movie-type-select');
+    // const arr: InterestType[] = ['wish'];
+    let arr = ['do', 'collect', 'wish'];
+    if ($select && $select.value) {
+        arr = [$select.value];
+    }
+    return arr;
+}
+function migrateCollection(siteUtils, item, site, type) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const subjectItem = Object.assign({}, item);
+        const $container = document.querySelector('.e-userjs-export-tool-container');
+        const $btn = $container.querySelector('.import-btn');
+        // 在 Bangumi 上 非日语的条目跳过
+        if (site === 'bangumi' && !isJpMovie(subjectItem)) {
+            return subjectItem;
+        }
+        let subjectId = '';
+        // 使用 bangumi data
+        if (site === 'bangumi') {
+            subjectId = getBangumiSubjectId(subjectItem.name, subjectItem.greyName);
+        }
+        if (!subjectId) {
+            try {
+                yield randomSleep(1000, 400);
+                const result = yield siteUtils.checkSubjectExist({
+                    name: subjectItem.name,
+                    releaseDate: subjectItem.releaseDate,
+                });
+                if (result && result.url) {
+                    subjectId = siteUtils.getSubjectId(result.url);
+                }
+            }
+            catch (error) {
+                console.error(error);
+            }
+        }
+        if (subjectId) {
+            clearLogInfo($container);
+            const nameStr = `<span style="color:tomato">《${subjectItem.name}》</span>`;
+            insertLogInfo($btn, `更新收藏 ${nameStr} 中...`);
+            yield siteUtils.updateInterest(subjectId, Object.assign(Object.assign({ interest: typeIdDict$1[type].id }, subjectItem.collectInfo), { rating: subjectItem.collectInfo.score || '' }));
+            subjectItem.syncStatus = '成功';
+            yield randomSleep(2000, 1000);
+            insertLogInfo($btn, `更新收藏 ${nameStr} 成功`);
+        }
+        return subjectItem;
+    });
 }
 if (location.href.match(/bgm.tv|bangumi.tv|chii.in/)) {
     init('bangumi');
 }
-if (location.href.match(/douban.com/)) {
+if (location.href.match(/movie.douban.com/)) {
     init('douban');
+}
+if (location.href.match(/search\.douban\.com\/movie\/subject_search/)) {
+    if (window.top !== window.self) {
+        sendSearchResults();
+    }
 }

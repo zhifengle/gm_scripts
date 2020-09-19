@@ -182,3 +182,28 @@ export function htmlToElement(html: string) {
   // template.content.childNodes;
   return template.content.firstChild;
 }
+
+/**
+ * 载入 iframe
+ * @param $iframe iframe DOM
+ * @param src iframe URL
+ * @param TIMEOUT time out
+ */
+export function loadIframe(
+  $iframe: HTMLIFrameElement,
+  src: string,
+  TIMEOUT = 5000
+) {
+  return new Promise((resolve, reject) => {
+    $iframe.src = src;
+    let timer = setTimeout(() => {
+      timer = null;
+      reject('iframe timeout');
+    }, TIMEOUT);
+    $iframe.onload = () => {
+      clearTimeout(timer);
+      $iframe.onload = null;
+      resolve();
+    };
+  });
+}

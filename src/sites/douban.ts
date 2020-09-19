@@ -6,8 +6,8 @@ import {
   SubjectItem,
   SubjectType,
 } from '../interface/types';
-import { sleep } from '../utils/async/sleep';
-import { htmlToElement } from '../utils/domUtils';
+import { randomSleep, sleep } from '../utils/async/sleep';
+import { htmlToElement, loadIframe } from '../utils/domUtils';
 import { fetchJson, fetchText } from '../utils/fetchData';
 import { filterResults, findInterestStatusById } from './common';
 
@@ -177,12 +177,15 @@ function convertHomeSearchItem($item: HTMLElement): SearchResult {
     }
     averageScore = $ratingNums.innerText;
   }
-  const greayName = ($item.querySelector('.subject-cast') as HTMLElement)
-    .innerText;
+  let greyName = '';
+  const $greyName = $item.querySelector('.subject-cast') as HTMLElement;
+  if ($greyName) {
+    greyName = $greyName.innerText;
+  }
   return {
     name: $title.textContent.trim(),
-    greyName: greayName.split('/')[0].replace('原名:', '').trim(),
-    releaseDate: (greayName.match(/\d{4}$/) || [])[0],
+    greyName: greyName.split('/')[0].replace('原名:', '').trim(),
+    releaseDate: (greyName.match(/\d{4}$/) || [])[0],
     url: href,
     score: averageScore,
     count: ratingsCount,
@@ -199,6 +202,7 @@ async function getHomeSearchResults(
   const url = `https://www.douban.com/search?cat=${cat}&q=${encodeURIComponent(
     query
   )}`;
+  console.info('Douban search URL: ', url);
   const rawText = await fetchText(url);
   const $doc = new DOMParser().parseFromString(rawText, 'text/html');
   const items = $doc.querySelectorAll(
@@ -208,9 +212,28 @@ async function getHomeSearchResults(
     .call(items)
     .map(($item: HTMLElement) => convertHomeSearchItem($item));
 }
-function convertSubjectSearchItem($item: HTMLElement): SearchResult {
+export function convertSubjectSearchItem($item: HTMLElement): SearchResult {
   // item-root
   const $title = $item.querySelector('.title a') as HTMLElement;
+  let name = '';
+  let greyName = '';
+  let releaseDate = '';
+  let rawName = '';
+  if ($title) {
+    const rawText = $title.textContent.trim();
+    rawName = rawText;
+    const yearRe = /\((\d{4})\)$/;
+    releaseDate = (rawText.match(yearRe) || ['', ''])[1];
+    let arr = rawText.split(/ (?!-)/);
+    if (arr && arr.length === 2) {
+      name = arr[0];
+      greyName = arr[1].replace(yearRe, '');
+    } else {
+      arr = rawText.split(/ (?!(-|\w))/);
+      name = arr[0];
+      greyName = rawText.replace(name, '').trim().replace(yearRe, '').trim();
+    }
+  }
   let ratingsCount = '';
   let averageScore = '';
   const $ratingNums = $item.querySelector('.rating_nums');
@@ -223,10 +246,12 @@ function convertSubjectSearchItem($item: HTMLElement): SearchResult {
     averageScore = $ratingNums.textContent;
   }
   return {
-    name: $title.innerText,
+    name,
+    rawName,
     url: $title.getAttribute('href'),
     score: averageScore,
     count: ratingsCount,
+    releaseDate,
   };
 }
 /**
@@ -234,19 +259,66 @@ function convertSubjectSearchItem($item: HTMLElement): SearchResult {
  * @param query 搜索字符串
  * @param cat 类型
  */
-async function getSubjectSearchResults(
+export async function getSubjectSearchResults(
   query: string,
   cat = '1002'
 ): Promise<SearchResult[]> {
   const url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(
     query
   )}&cat=${cat}`;
-  const rawText = await fetchText(url);
-  const $doc = new DOMParser().parseFromString(rawText, 'text/html');
-  const items = $doc.querySelectorAll('#root .item-root');
-  return Array.prototype.slice
+  console.info('Douban search URL: ', url);
+  const iframeId = 'e-userjs-search-subject';
+  let $iframe = document.querySelector(`#${iframeId}`) as HTMLIFrameElement;
+  if ($iframe) {
+    $iframe.remove();
+  }
+  $iframe = document.createElement('iframe');
+  $iframe.setAttribute(
+    'sandbox',
+    'allow-forms allow-same-origin allow-scripts'
+  );
+  $iframe.style.display = 'none';
+  $iframe.id = iframeId;
+  document.body.appendChild($iframe);
+  await loadIframe($iframe, url);
+  return await getSearchResultByMessage();
+}
+function filterSearchResultsByYear(results: SearchResult[], year: string) {
+  for (let i = 0; i < results.length; i++) {
+    if (results[i].releaseDate === year) {
+      return results[i];
+    }
+  }
+}
+export async function sendSearchResults() {
+  let items = document.querySelectorAll('#root .item-root');
+  let counter = 0;
+  // 尝试 8s
+  while (items && items.length === 0 && counter < 20) {
+    items = document.querySelectorAll('#root .item-root');
+    await sleep(400);
+    console.info('Retry counter: ', counter);
+  }
+  const searchItems: SearchResult[] = Array.prototype.slice
     .call(items)
     .map(($item: HTMLElement) => convertSubjectSearchItem($item));
+  parent.postMessage({ type: 'search_result', data: searchItems }, '*');
+}
+export function getSearchResultByMessage(): Promise<SearchResult[]> {
+  return new Promise((resolve, reject) => {
+    window.addEventListener('message', receiveMessage, false);
+    let timer = setTimeout(() => {
+      timer = null;
+      reject('message timeout');
+    }, 10000);
+    function receiveMessage(event: MessageEvent) {
+      if (event.data && event.data.type === 'search_result') {
+        window.removeEventListener('message', receiveMessage);
+        clearTimeout(timer);
+        resolve(event.data.data);
+      }
+    }
+  });
 }
 async function updateInterest(subjectId: string, data: IInterestData) {
   const interestObj = findInterestStatusById(data.interest);
@@ -284,6 +356,10 @@ async function updateInterest(subjectId: string, data: IInterestData) {
       formData.set(key, val);
     }
   }
+  // share-shuo: douban  删除分享广播
+  if (formData.has('share-shuo')) {
+    formData.delete('share-shuo');
+  }
   await fetch($form.action, {
     method: 'POST',
     headers: {
@@ -300,13 +376,23 @@ async function checkAnimeSubjectExist(
     console.info('Query string is empty');
     return Promise.reject();
   }
-  const rawInfoList = await getHomeSearchResults(query);
-  // const rawInfoList = await getSubjectSearchResults(query);
+  let rawInfoList;
+  let searchResult;
   const options = {
     keys: ['name', 'greyName'],
   };
-  let searchResult = filterResults(rawInfoList, subjectInfo, options);
-  console.info(`Search result of douban: `, searchResult);
+  if (Math.random() > 0.2) {
+    rawInfoList = await getHomeSearchResults(query);
+    searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+  } else {
+    rawInfoList = await getSubjectSearchResults(query);
+    searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+    // searchResult = filterSearchResultsByYear(
+    //   rawInfoList,
+    //   new Date(subjectInfo.releaseDate).getFullYear() + ''
+    // );
+  }
+  console.info(`Search result of ${query} on Douban: `, searchResult);
   if (searchResult && searchResult.url) {
     return searchResult;
   }

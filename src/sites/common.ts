@@ -17,10 +17,7 @@ export function filterResults(
   if (!items) return;
   // 只有一个结果时直接返回, 不再比较日期
   if (items.length === 1 && isSearch) {
-    const result = items[0];
-    return result;
-    // if (isEqualDate(result.releaseDate, subjectInfo.releaseDate)) {
-    // }
+    return items[0];
   }
   let results = new Fuse(items, Object.assign({}, opts)).search(
     subjectInfo.name
@@ -30,7 +27,12 @@ export function filterResults(
   if (subjectInfo.releaseDate) {
     for (const item of results) {
       const result = item.item;
-      if (result.releaseDate) {
+      // 只有年的时候
+      if (result.releaseDate && result.releaseDate.length === '4') {
+        if (result.releaseDate === subjectInfo.releaseDate.slice(0, 4)) {
+          return result;
+        }
+      } else if (result.releaseDate) {
         if (isEqualDate(result.releaseDate, subjectInfo.releaseDate)) {
           return result;
         }
@@ -41,7 +43,11 @@ export function filterResults(
   const nameRe = new RegExp(subjectInfo.name.trim());
   for (const item of results) {
     const result = item.item;
-    if (nameRe.test(result.name) || nameRe.test(result.greyName)) {
+    if (
+      nameRe.test(result.name) ||
+      nameRe.test(result.greyName) ||
+      nameRe.test(result.rawName)
+    ) {
       return result;
     }
   }

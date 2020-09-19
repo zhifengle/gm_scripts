@@ -666,26 +666,6 @@ function htmlToElement(html) {
     // template.content.childNodes;
     return template.content.firstChild;
 }
-/**
- * 载入 iframe
- * @param $iframe iframe DOM
- * @param src iframe URL
- * @param TIMEOUT time out
- */
-function loadIframe$1($iframe, src, TIMEOUT = 5000) {
-    return new Promise((resolve, reject) => {
-        $iframe.src = src;
-        let timer = setTimeout(() => {
-            timer = null;
-            reject('iframe timeout');
-        }, TIMEOUT);
-        $iframe.onload = () => {
-            clearTimeout(timer);
-            $iframe.onload = null;
-            resolve();
-        };
-    });
-}
 
 function genCollectionURL$1(userId, interestType, subjectType = 'movie', start = 1) {
     const baseURL = `https://${subjectType}.douban.com/people/${userId}/${interestType}`;
@@ -913,29 +893,6 @@ function convertSubjectSearchItem($item) {
         releaseDate,
     };
 }
-/**
- * 单独类型搜索入口
- * @param query 搜索字符串
- * @param cat 类型
- */
-function getSubjectSearchResults(query, cat = '1002') {
-    return __awaiter(this, void 0, void 0, function* () {
-        const url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(query)}&cat=${cat}`;
-        console.info('Douban search URL: ', url);
-        const iframeId = 'e-userjs-search-subject';
-        let $iframe = document.querySelector(`#${iframeId}`);
-        if ($iframe) {
-            $iframe.remove();
-        }
-        $iframe = document.createElement('iframe');
-        $iframe.setAttribute('sandbox', 'allow-forms allow-same-origin allow-scripts');
-        $iframe.style.display = 'none';
-        $iframe.id = iframeId;
-        document.body.appendChild($iframe);
-        yield loadIframe$1($iframe, url);
-        return yield getSearchResultByMessage();
-    });
-}
 function sendSearchResults() {
     return __awaiter(this, void 0, void 0, function* () {
         let items = document.querySelectorAll('#root .item-root');
@@ -950,22 +907,6 @@ function sendSearchResults() {
             .call(items)
             .map(($item) => convertSubjectSearchItem($item));
         parent.postMessage({ type: 'search_result', data: searchItems }, '*');
-    });
-}
-function getSearchResultByMessage() {
-    return new Promise((resolve, reject) => {
-        window.addEventListener('message', receiveMessage, false);
-        let timer = setTimeout(() => {
-            timer = null;
-            reject('message timeout');
-        }, 10000);
-        function receiveMessage(event) {
-            if (event.data && event.data.type === 'search_result') {
-                window.removeEventListener('message', receiveMessage);
-                clearTimeout(timer);
-                resolve(event.data.data);
-            }
-        }
     });
 }
 function updateInterest$1(subjectId, data) {
@@ -1031,18 +972,19 @@ function checkAnimeSubjectExist$1(subjectInfo) {
         const options = {
             keys: ['name', 'greyName'],
         };
-        if (Math.random() > 0.2) {
-            rawInfoList = yield getHomeSearchResults(query);
-            searchResult = filterResults(rawInfoList, subjectInfo, options, true);
-        }
-        else {
-            rawInfoList = yield getSubjectSearchResults(query);
-            searchResult = filterResults(rawInfoList, subjectInfo, options, true);
-            // searchResult = filterSearchResultsByYear(
-            //   rawInfoList,
-            //   new Date(subjectInfo.releaseDate).getFullYear() + ''
-            // );
-        }
+        rawInfoList = yield getHomeSearchResults(query);
+        searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+        // if (Math.random() > 0.2) {
+        //   rawInfoList = await getHomeSearchResults(query);
+        //   searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+        // } else {
+        //   rawInfoList = await getSubjectSearchResults(query);
+        //   searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+        //   // searchResult = filterSearchResultsByYear(
+        //   //   rawInfoList,
+        //   //   new Date(subjectInfo.releaseDate).getFullYear() + ''
+        //   // );
+        // }
         console.info(`Search result of ${query} on Douban: `, searchResult);
         if (searchResult && searchResult.url) {
             return searchResult;

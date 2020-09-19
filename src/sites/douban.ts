@@ -381,17 +381,19 @@ async function checkAnimeSubjectExist(
   const options = {
     keys: ['name', 'greyName'],
   };
-  if (Math.random() > 0.2) {
-    rawInfoList = await getHomeSearchResults(query);
-    searchResult = filterResults(rawInfoList, subjectInfo, options, true);
-  } else {
-    rawInfoList = await getSubjectSearchResults(query);
-    searchResult = filterResults(rawInfoList, subjectInfo, options, true);
-    // searchResult = filterSearchResultsByYear(
-    //   rawInfoList,
-    //   new Date(subjectInfo.releaseDate).getFullYear() + ''
-    // );
-  }
+  rawInfoList = await getHomeSearchResults(query);
+  searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+  // if (Math.random() > 0.2) {
+  //   rawInfoList = await getHomeSearchResults(query);
+  //   searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+  // } else {
+  //   rawInfoList = await getSubjectSearchResults(query);
+  //   searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+  //   // searchResult = filterSearchResultsByYear(
+  //   //   rawInfoList,
+  //   //   new Date(subjectInfo.releaseDate).getFullYear() + ''
+  //   // );
+  // }
   console.info(`Search result of ${query} on Douban: `, searchResult);
   if (searchResult && searchResult.url) {
     return searchResult;

@@ -52,3 +52,9 @@ export interface SiteUtils {
   ) => Promise<void>;
   checkSubjectExist: (subject: Subject, type?: string) => Promise<SearchResult>;
 }
+
+export interface MsgResponse {
+  type: string;
+  timestamp?: number;
+  data: any;
+}

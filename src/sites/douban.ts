@@ -1,7 +1,9 @@
+import { SEARCH_RESULT } from '../contants';
 import { SearchResult, Subject } from '../interface/subject';
 import {
   IInterestData,
   InterestType,
+  MsgResponse,
   SiteUtils,
   SubjectItem,
   SubjectType,
@@ -115,6 +117,10 @@ function getTotalPageNum($doc: Document | Element = document) {
   return Number(numStr.split('/')[1].trim());
 }
 
+/**
+ * 拿到当前页面豆瓣用户收藏信息列表
+ * @param $doc DOM
+ */
 export function getItemInfos($doc: Document | Element = document) {
   const items = $doc.querySelectorAll('#content .grid-view > .item');
   const res = [];
@@ -213,6 +219,24 @@ async function getHomeSearchResults(
     .call(items)
     .map(($item: HTMLElement) => convertHomeSearchItem($item));
 }
+
+/**
+ * 提取所有 search.douban.com 的条目信息
+ * @param $doc 页面容器
+ */
+function getAllSearchResult(
+  $doc: Element | Document = document
+): SearchResult[] {
+  let items = $doc.querySelectorAll('#root .item-root');
+  return Array.prototype.slice
+    .call(items)
+    .map(($item: HTMLElement) => convertSubjectSearchItem($item));
+}
+
+/**
+ * 提取 search.douban.com 的条目信息
+ * @param $item 单项搜索结果容器 DOM
+ */
 export function convertSubjectSearchItem($item: HTMLElement): SearchResult {
   // item-root
   const $title = $item.querySelector('.title a') as HTMLElement;
@@ -258,10 +282,12 @@ export function convertSubjectSearchItem($item: HTMLElement): SearchResult {
 /**
  * 单独类型搜索入口
  * @param query 搜索字符串
- * @param cat 类型
+ * @param cat 搜索类型
+ * @param type 获取传递数据的类型: gm 通过 GM_setValue, message 通过 postMessage
  */
 export async function getSubjectSearchResults(
   query: string,
+  type = 'gm',
   cat = '1002'
 ): Promise<SearchResult[]> {
   const url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(
@@ -270,19 +296,22 @@ export async function getSubjectSearchResults(
   console.info('Douban search URL: ', url);
   const iframeId = 'e-userjs-search-subject';
   let $iframe = document.querySelector(`#${iframeId}`) as HTMLIFrameElement;
-  if ($iframe) {
-    $iframe.remove();
+  if (!$iframe) {
+    $iframe = document.createElement('iframe');
+    $iframe.setAttribute(
+      'sandbox',
+      'allow-forms allow-same-origin allow-scripts'
+    );
+    $iframe.style.display = 'none';
+    $iframe.id = iframeId;
+    document.body.appendChild($iframe);
   }
-  $iframe = document.createElement('iframe');
-  $iframe.setAttribute(
-    'sandbox',
-    'allow-forms allow-same-origin allow-scripts'
-  );
-  $iframe.style.display = 'none';
-  $iframe.id = iframeId;
-  document.body.appendChild($iframe);
   await loadIframe($iframe, url);
-  return await getSearchResultByMessage();
+  if (type === 'gm') {
+    return await getSearchResultByGM();
+  } else {
+    return await getSearchResultByMessage();
+  }
 }
 function filterSearchResultsByYear(results: SearchResult[], year: string) {
   for (let i = 0; i < results.length; i++) {
@@ -292,18 +321,15 @@ function filterSearchResultsByYear(results: SearchResult[], year: string) {
   }
 }
 export async function sendSearchResults() {
-  let items = document.querySelectorAll('#root .item-root');
   let counter = 0;
   // 尝试 8s
-  while (items && items.length === 0 && counter < 20) {
-    items = document.querySelectorAll('#root .item-root');
+  while (counter < 20) {
     await sleep(400);
+    const searchItems: SearchResult[] = getAllSearchResult();
+    parent.postMessage({ type: SEARCH_RESULT, data: searchItems }, '*');
     console.info('Retry counter: ', counter);
+    counter++;
   }
-  const searchItems: SearchResult[] = Array.prototype.slice
-    .call(items)
-    .map(($item: HTMLElement) => convertSubjectSearchItem($item));
-  parent.postMessage({ type: 'search_result', data: searchItems }, '*');
 }
 export function getSearchResultByMessage(): Promise<SearchResult[]> {
   return new Promise((resolve, reject) => {
@@ -313,13 +339,41 @@ export function getSearchResultByMessage(): Promise<SearchResult[]> {
       reject('message timeout');
     }, 10000);
     function receiveMessage(event: MessageEvent) {
-      if (event.data && event.data.type === 'search_result') {
+      if (event.data && event.data.type === SEARCH_RESULT) {
         window.removeEventListener('message', receiveMessage);
         clearTimeout(timer);
         resolve(event.data.data);
       }
     }
   });
+}
+export async function getSearchResultByGM(): Promise<SearchResult[]> {
+  const now = +new Date();
+  const getData = () => {
+    const obj: MsgResponse = JSON.parse(GM_getValue(SEARCH_RESULT) || '{}');
+    if (obj.type === SEARCH_RESULT && obj.timestamp && obj.timestamp < now) {
+      return obj.data;
+    }
+  };
+  await sleep(1000);
+  // 尝试 8s
+  let counter = 0;
+  let data: SearchResult[];
+  while (counter < 20 && !data) {
+    await sleep(400);
+    console.info('Read GM_getValue, retry counter: ', counter);
+    data = getData();
+    counter++;
+  }
+  return data;
+}
+export async function setSearchResultByGM() {
+  const res: MsgResponse = {
+    type: SEARCH_RESULT,
+    timestamp: +new Date(),
+    data: getAllSearchResult(),
+  };
+  GM_setValue(SEARCH_RESULT, JSON.stringify(res));
 }
 async function updateInterest(subjectId: string, data: IInterestData) {
   const interestObj = findInterestStatusById(data.interest);

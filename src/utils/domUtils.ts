@@ -198,6 +198,7 @@ export function loadIframe(
     $iframe.src = src;
     let timer = setTimeout(() => {
       timer = null;
+      $iframe.onload = undefined;
       reject('iframe timeout');
     }, TIMEOUT);
     $iframe.onload = () => {

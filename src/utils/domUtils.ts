@@ -208,3 +208,18 @@ export function loadIframe(
     };
   });
 }
+
+export function createIframe(iframeId: string): HTMLIFrameElement {
+  let $iframe = document.querySelector(`#${iframeId}`) as HTMLIFrameElement;
+  if (!$iframe) {
+    $iframe = document.createElement('iframe');
+    $iframe.setAttribute(
+      'sandbox',
+      'allow-forms allow-same-origin allow-scripts'
+    );
+    $iframe.style.display = 'none';
+    $iframe.id = iframeId;
+    document.body.appendChild($iframe);
+  }
+  return $iframe;
+}

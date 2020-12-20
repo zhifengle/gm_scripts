@@ -4,6 +4,7 @@
   "description": "gm scripts",
   "main": "src/index.js",
   "scripts": {
+    "build:export_tool": "cross-env SCRIPT_NAME=bangumi_collection_export_tool rollup -c build/rollup.config.us.js",
     "build:douban": "cross-env SCRIPT_NAME=migrate_douban_collection_to_bangumi rollup -c build/rollup.config.us.js",
     "dev:douban": "cross-env SCRIPT_NAME=migrate_douban_collection_to_bangumi rollup -w -c build/rollup.config.us.js",
     "dev:test": "rollup -w -c build/rollup.config.dev.js",

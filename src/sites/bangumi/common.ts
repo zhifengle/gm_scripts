@@ -91,8 +91,12 @@ export function convertItemInfo($item: HTMLElement): SubjectItem {
     itemSubject.rank = $rank.textContent.replace('Rank', '').trim();
   }
   const $collectInfo = $item.querySelector('.collectInfo');
+  const collectInfo: any = {};
+  const $comment = $item.querySelector('#comment_box');
+  if ($comment) {
+    collectInfo.comment = $comment.textContent.trim();
+  }
   if ($collectInfo) {
-    const collectInfo: any = {};
     const textArr = $collectInfo.textContent.split('/');
     collectInfo.date = textArr[0].trim();
     textArr.forEach((str) => {
@@ -100,10 +104,6 @@ export function convertItemInfo($item: HTMLElement): SubjectItem {
         collectInfo.tags = str.replace(/标签:/, '').trim();
       }
     });
-    const $comment = $item.querySelector('#comment_box');
-    if ($comment) {
-      collectInfo.comment = $comment.textContent.trim();
-    }
     const $starlight = $collectInfo.querySelector('.starlight');
     if ($starlight) {
       $starlight.classList.forEach((s) => {
@@ -112,6 +112,8 @@ export function convertItemInfo($item: HTMLElement): SubjectItem {
         }
       });
     }
+  }
+  if (Object.keys(collectInfo).length) {
     itemSubject.collectInfo = collectInfo;
   }
   const $cover = $item.querySelector('.subjectCover img');
@@ -137,7 +139,7 @@ export function getItemInfos($doc: Document | Element = document) {
 export function getTotalPageNum($doc: Document | Element = document) {
   const $multipage = $doc.querySelector('#multipage');
   let totalPageNum = 1;
-  const pList = $multipage.querySelectorAll('.page_inner>.p');
+  const pList = $multipage?.querySelectorAll('.page_inner>.p');
   if (pList && pList.length) {
     let tempNum = parseInt(
       pList[pList.length - 2].getAttribute('href').match(/page=(\d*)/)[1]

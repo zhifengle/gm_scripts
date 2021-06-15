@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "build:douban": "cross-env SCRIPT_NAME=migrate_douban_collection_to_bangumi rollup -c build/rollup.config.us.js",
+    "build:qiandao": "cross-env SCRIPT_NAME=qiandao rollup -c build/rollup.config.us.js",
     "dev:douban": "cross-env SCRIPT_NAME=migrate_douban_collection_to_bangumi rollup -w -c build/rollup.config.us.js",
     "dev:test": "rollup -w -c build/rollup.config.dev.js",
     "clean": "rimraf dist/",
@@ -32,7 +33,9 @@
     "typescript": "3.8.3"
   },
   "dependencies": {
+    "@types/puppeteer": "^5.4.0",
     "bangumi-data": "0.3.36",
-    "fuse.js": "6.4.1"
+    "fuse.js": "6.4.1",
+    "puppeteer": "^5.4.1"
   }
 }

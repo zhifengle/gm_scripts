@@ -24,7 +24,7 @@
 
 ## [qiandao.user.js](scripts/qiandao.user.js?raw=true)
 
-自用签到脚本，目前支持 KF、v2ex、2dj、south-plus、52pojie。
+自用签到脚本，目前支持 v2ex、2dj、south-plus、52pojie。
 
 ## DEPRECATED
 

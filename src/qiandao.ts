@@ -92,7 +92,8 @@ const siteDict: {
         const content = await fetchText(this.href);
         if (!content.match(pathname)) return;
       }
-      fetchText(genUrl(this.href, pathname));
+      await fetchText(genUrl(this.href, pathname));
+      setSignResult(this.name, true);
     },
   },
   {
@@ -134,19 +135,20 @@ const siteDict: {
 
 async function main() {
   // @TODO 增加设置选项，用于当个网站签到或者全部签到
-  let flag = true;
+  // let flag = true;
   const checked = getSignResult(ALL_SITES);
-  if (checked) return;
-  if (flag) {
+  // if (checked) return;
+  if (!checked) {
     siteDict.forEach((obj) => {
       obj.signFn();
     });
     setSignResult(ALL_SITES, true);
     return;
-  }
-  const site = siteDict.find((obj) => obj.href.includes(location.href));
-  if (site) {
-    site.signFn();
+  } else {
+    const site = siteDict.find((obj) => obj.href.includes(location.href));
+    if (site) {
+      site.signFn();
+    }
   }
 }
 main();

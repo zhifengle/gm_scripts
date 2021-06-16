@@ -10,7 +10,7 @@
 // @include     https://bbs4.2djgame.net/home/forum.php
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
-// @version     0.0.1
+// @version     0.0.2
 // @run-at      document-end
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setValue
@@ -94,6 +94,7 @@ const siteDict = [
         href: 'https://www.52pojie.cn/',
         async signFn() {
             if (getSignResult(this.name)) {
+                console.log(this.name, ': 已签到');
                 return;
             }
             const pathname = 'home.php?mod=task&do=apply&id=2';
@@ -107,7 +108,8 @@ const siteDict = [
                 if (!content.match(pathname))
                     return;
             }
-            fetchText(genUrl(this.href, pathname));
+            await fetchText(genUrl(this.href, pathname));
+            setSignResult(this.name, true);
         },
     },
     {
@@ -115,6 +117,7 @@ const siteDict = [
         href: 'https://www.v2ex.com/',
         async signFn() {
             if (getSignResult(this.name)) {
+                console.log(this.name, ': 已签到');
                 return;
             }
             const content = await fetchText(genUrl(this.href, 'mission/daily'));
@@ -133,6 +136,7 @@ const siteDict = [
         href: 'https://bbs4.2djgame.net/home/forum.php',
         async signFn() {
             if (getSignResult(this.name)) {
+                console.log(this.name, ': 已签到');
                 return;
             }
             const content = await fetchText(genUrl(this.href, 'home.php?mod=task&do=apply&id=1'));
@@ -144,15 +148,22 @@ const siteDict = [
     },
 ];
 async function main() {
+    // @TODO 增加设置选项，用于当个网站签到或者全部签到
+    // let flag = true;
     const checked = getSignResult(ALL_SITES);
-    if (checked)
-        return;
-    {
+    // if (checked) return;
+    if (!checked) {
         siteDict.forEach((obj) => {
             obj.signFn();
         });
         setSignResult(ALL_SITES, true);
         return;
+    }
+    else {
+        const site = siteDict.find((obj) => obj.href.includes(location.href));
+        if (site) {
+            site.signFn();
+        }
     }
 }
 main();

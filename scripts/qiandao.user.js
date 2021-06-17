@@ -5,12 +5,13 @@
 // @description qiandao for personal use
 // @description:zh-cn 自用签到.
 // @include     https://www.v2ex.com/
+// @include     https://v2ex.com/
 // @include     https://www.south-plus.net/
 // @include     https://www.52pojie.cn/
 // @include     https://bbs4.2djgame.net/home/forum.php
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
-// @version     0.0.2
+// @version     0.0.3
 // @run-at      document-end
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setValue
@@ -41,14 +42,17 @@ async function signSouth() {
     const site_name = this.name;
     const sign = async (taskId) => {
         const res = await fetchText(genUrl(this.href, `plugin.php?H_name=tasks&action=ajax&actions=job&cid=${taskId}`));
+        // 未登录
+        if (res.match('您还不是论坛会员,请先登录论坛')) {
+            console.log(this.name, ' 需要登录');
+            return;
+        }
         if (res.includes('success')) {
             await fetchText(genUrl(this.href, `plugin.php?H_name=tasks&action=ajax&actions=job2&cid=${taskId}`));
-        }
-        else {
             setSignResult('south-plus' + taskId, true);
         }
     };
-    if (!getSignResult(site_name + '14')) {
+    if (!getSignResult(site_name + '14', 1)) {
         await sign(14);
     }
     else {
@@ -67,15 +71,25 @@ function setSignResult(site, result) {
         date: +new Date(),
     }));
 }
-function getSignResult(site, numOfDays = 1) {
+function getSignResult(site, numOfDays) {
     let info = GM_getValue(USERJS_PREFIX + site.toUpperCase());
     if (info) {
         const obj = JSON.parse(info);
-        if (+new Date() - new Date(obj.date).getTime() <
-            UPDATE_INTERVAL * numOfDays) {
-            return Number(obj.result) === 1 ? true : false;
+        const now = new Date();
+        const preDate = new Date(obj.date);
+        // 存在时间限制
+        if (numOfDays) {
+            // 小于时间限制
+            if (+now - +preDate < UPDATE_INTERVAL * numOfDays) {
+                return Number(obj.result) === 1 ? true : false;
+            }
+            else {
+                return false;
+            }
         }
-        return false;
+        else {
+            return now.getDate() === preDate.getDate();
+        }
     }
     return false;
 }
@@ -105,8 +119,15 @@ const siteDict = [
             }
             else {
                 const content = await fetchText(this.href);
-                if (!content.match(pathname))
+                // 未登录
+                if (content.match('注册[Register]')) {
+                    console.log(this.name, ' 需要登录');
                     return;
+                }
+                else if (!content.match(pathname)) {
+                    setSignResult(this.name, true);
+                    return;
+                }
             }
             await fetchText(genUrl(this.href, pathname));
             setSignResult(this.name, true);
@@ -114,16 +135,22 @@ const siteDict = [
     },
     {
         name: 'v2ex',
-        href: 'https://www.v2ex.com/',
+        href: ['https://www.v2ex.com/', 'https://v2ex.com/'],
         async signFn() {
             if (getSignResult(this.name)) {
                 console.log(this.name, ': 已签到');
                 return;
             }
-            const content = await fetchText(genUrl(this.href, 'mission/daily'));
+            const href = this.href[0];
+            const content = await fetchText(genUrl(href, 'mission/daily'));
+            // 需要登录
+            if (content.match(/你是机器人么？/)) {
+                console.log(this.name, ' 需要登录');
+                return;
+            }
             const m = content.match(/mission\/daily\/redeem\?once=\d+/);
             if (m) {
-                await fetchText(genUrl(this.href, m[0]));
+                await fetchText(genUrl(href, m[0]));
             }
             else {
                 console.log(this.name, ': 已签到');
@@ -142,6 +169,10 @@ const siteDict = [
             const content = await fetchText(genUrl(this.href, 'home.php?mod=task&do=apply&id=1'));
             if (content.match('抱歉，本期您已申請過此任務，請下期再來')) {
                 console.log(this.name, ': 已签到');
+            }
+            else if (content.match('您需要先登錄才能繼續本操作')) {
+                console.log(this.name, ' 需要登录');
+                return;
             }
             setSignResult(this.name, true);
         },

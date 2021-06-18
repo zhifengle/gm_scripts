@@ -203,7 +203,7 @@ function loadIframe($iframe: HTMLIFrameElement, subjectId: string) {
     $iframe.onload = () => {
       clearTimeout(timer);
       $iframe.onload = null;
-      resolve();
+      resolve(null);
     };
   });
 }

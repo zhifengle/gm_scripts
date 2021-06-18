@@ -1,4 +1,4 @@
-import { fetchText } from './utils/fetchData';
+import { fetchInfo, fetchText } from './utils/fetchData';
 
 type SiteConfig = {
   name: string;
@@ -157,6 +157,39 @@ const siteDict: SiteConfig[] = [
       } else if (content.match('您需要先登錄才能繼續本操作')) {
         console.log(this.name, ' 需要登录');
         return;
+      }
+      setSignResult(this.name, true);
+    },
+  },
+  {
+    name: 'zodgame',
+    href: 'https://zodgame.xyz/',
+    async signFn() {
+      if (getSignResult(this.name)) {
+        console.log(this.name, ': 已签到');
+        return;
+      }
+      const content = await fetchText(
+        genUrl(this.href, 'plugin.php?id=dsu_paulsign:sign')
+      );
+      if (content.match('您好！登录后享受更多精彩')) {
+        console.log(this.name, ' 需要登录');
+        return;
+      }
+      const $doc = new DOMParser().parseFromString(content, 'text/html');
+      const $form = $doc.querySelector('#qiandao') as HTMLFormElement;
+      if ($form) {
+        // const url = 'plugin.php?id=dsu_paulsign:sign&operation=qiandao&infloat=1&inajax=1';
+        const fd = new FormData($form);
+        fd.append('qdxq', 'kx');
+        await fetchInfo(
+          genUrl(this.href, $form.getAttribute('action')),
+          'text',
+          {
+            method: 'POST',
+            data: fd,
+          }
+        );
       }
       setSignResult(this.name, true);
     },

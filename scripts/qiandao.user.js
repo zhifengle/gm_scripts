@@ -36,6 +36,10 @@ function fetchText(url, TIMEOUT = 10 * 1000) {
     return fetchInfo(url, 'text', {}, TIMEOUT);
 }
 
+function randomNum(max, min) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 const USERJS_PREFIX = 'E_USERJS_SIGN_';
 const UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
 const ALL_SITES = 'ALL_SITES';
@@ -53,13 +57,13 @@ async function signSouth() {
             setSignResult('south-plus' + taskId, true);
         }
     };
-    if (!getSignResult(site_name + '14', 1)) {
+    if (!getSignResult(site_name + '14', 7)) {
         await sign(14);
     }
     else {
         console.log('已经签到: ', site_name);
     }
-    if (!getSignResult(site_name + '15', 7)) {
+    if (!getSignResult(site_name + '15')) {
         await sign(15);
     }
     else {
@@ -194,10 +198,13 @@ const siteDict = [
             const $doc = new DOMParser().parseFromString(content, 'text/html');
             const $form = $doc.querySelector('#qiandao');
             if ($form) {
-                // const url = 'plugin.php?id=dsu_paulsign:sign&operation=qiandao&infloat=1&inajax=1';
+                const url = 'plugin.php?id=dsu_paulsign:sign&operation=qiandao&infloat=1&inajax=1';
                 const fd = new FormData($form);
-                fd.append('qdxq', 'kx');
-                await fetchInfo(genUrl(this.href, $form.getAttribute('action')), 'text', {
+                const arr = ['kx', 'ym', 'wl', 'nu', 'ch', 'fd', 'yl', 'shuai'];
+                fd.append('qdxq', arr[randomNum(5, 0)]);
+                await fetchInfo(
+                // genUrl(this.href, $form.getAttribute('action')),
+                genUrl(this.href, url), 'text', {
                     method: 'POST',
                     data: fd,
                 });

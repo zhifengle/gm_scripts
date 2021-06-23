@@ -92,7 +92,11 @@ export function contains(
 
 function findElementByKeyWord(selector: Selector, $parent?: Element): Element {
   let res: Element = null;
-  $parent = $parent ? $parent : $q(selector.selector);
+  if ($parent) {
+    $parent = $parent.querySelector(selector.selector);
+  } else {
+    $parent = $q(selector.selector);
+  }
   if (!$parent) return res;
   const targets = contains(selector.subSelector, selector.keyWord, $parent);
   if (targets && targets.length) {
@@ -250,9 +254,8 @@ export function htmlToElement(html: string) {
   return template.content.firstChild;
 }
 
-export function createFetchDataIframe(
-  iframeId: string = 'e-userjs-fetch-data'
-): HTMLIFrameElement {
+export function createFetchDataIframe(): HTMLIFrameElement {
+  const iframeId = 'e-userjs-fetch-data';
   let $iframe = document.querySelector(`#${iframeId}`) as HTMLIFrameElement;
   if (!$iframe) {
     $iframe = document.createElement('iframe');

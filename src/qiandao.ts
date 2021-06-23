@@ -104,7 +104,7 @@ const siteDict: SiteConfig[] = [
         const $btn = document.querySelector(`a[href="${pathname}"`);
         if (!$btn) return;
       } else {
-        const content = await fetchText(this.href);
+        const content = await fetchText(this.href, { decode: 'gbk' });
         // 未登录
         if (content.match('注册[Register]')) {
           console.log(this.name, ' 需要登录');
@@ -194,6 +194,8 @@ const siteDict: SiteConfig[] = [
             data: fd,
           }
         );
+        // 刷新
+        await fetchText(genUrl(this.href, 'plugin.php?id=dsu_paulsign:sign'));
       }
       setSignResult(this.name, true);
     },

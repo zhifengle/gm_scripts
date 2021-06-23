@@ -22,18 +22,36 @@
 
 // support GM_XMLHttpRequest
 function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
+    var _a;
+    const method = ((_a = opts === null || opts === void 0 ? void 0 : opts.method) === null || _a === void 0 ? void 0 : _a.toUpperCase()) || 'GET';
     // @ts-ignore
     {
+        const gmXhrOpts = Object.assign({}, opts);
+        if (method === 'POST') {
+            gmXhrOpts.data = gmXhrOpts.body;
+        }
+        if (opts.decode) {
+            type = 'arraybuffer';
+        }
         return new Promise((resolve, reject) => {
             // @ts-ignore
-            GM_xmlhttpRequest(Object.assign({ method: 'GET', timeout: TIMEOUT, url, responseType: type, onload: function (res) {
-                    resolve(res.response);
-                }, onerror: reject }, opts));
+            GM_xmlhttpRequest(Object.assign({ method, timeout: TIMEOUT, url, responseType: type, onload: function (res) {
+                    if (res.status === 404) {
+                        reject(404);
+                    }
+                    if (opts.decode && type === 'arraybuffer') {
+                        let decoder = new TextDecoder(opts.decode);
+                        resolve(decoder.decode(res.response));
+                    }
+                    else {
+                        resolve(res.response);
+                    }
+                }, onerror: reject }, gmXhrOpts));
         });
     }
 }
-function fetchText(url, TIMEOUT = 10 * 1000) {
-    return fetchInfo(url, 'text', {}, TIMEOUT);
+function fetchText(url, opts = {}, TIMEOUT = 10 * 1000) {
+    return fetchInfo(url, 'text', opts, TIMEOUT);
 }
 
 function randomNum(max, min) {
@@ -123,7 +141,7 @@ const siteDict = [
                     return;
             }
             else {
-                const content = await fetchText(this.href);
+                const content = await fetchText(this.href, { decode: 'gbk' });
                 // 未登录
                 if (content.match('注册[Register]')) {
                     console.log(this.name, ' 需要登录');
@@ -208,6 +226,8 @@ const siteDict = [
                     method: 'POST',
                     data: fd,
                 });
+                // 刷新
+                await fetchText(genUrl(this.href, 'plugin.php?id=dsu_paulsign:sign'));
             }
             setSignResult(this.name, true);
         },

@@ -426,7 +426,7 @@ async function updateInterest(subjectId: string, data: IInterestData) {
     body: formData,
   });
 }
-async function checkAnimeSubjectExist(
+export async function checkAnimeSubjectExist(
   subjectInfo: Subject
 ): Promise<SearchResult> {
   let query = (subjectInfo.name || '').trim();

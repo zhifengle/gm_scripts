@@ -1,19 +1,19 @@
+import { SearchResult, Subject } from './interface/subject';
 import { IFuncPromise } from './interface/types';
-import { Selector } from './interface/wiki';
+import { Selector, SubjectTypeId } from './interface/wiki';
+import { checkSubjectExist } from './sites/bangumi';
+import { getSubjectId } from './sites/bangumi/common';
+import { checkAnimeSubjectExist as checkAnimeSubjectExistDouban } from './sites/douban';
 import { findElement } from './utils/domUtils';
 
-const sites = ['douban', 'bangumi', 'mal'] as const;
+const sites = ['douban', 'bangumi', 'myanimelist'] as const;
 type ScoreSites = typeof sites[number];
 
 type ISelectors = Selector | Selector[];
-type ScoreInfo = {
-  name: ScoreSites;
-  url: string;
-  score: number | string;
-  count: number | string;
-} & {
-  [Properties in ScoreSites as `${Properties}Id`]?: number;
-};
+type ScoreInfo = SearchResult &
+  {
+    [Properties in ScoreSites as `${Properties}PageId`]?: number;
+  };
 
 if (GM_registerMenuCommand) {
   // 用户脚本命令增加清除评分信息缓存
@@ -29,6 +29,15 @@ const UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
 const CLEAR_INTERVAL = UPDATE_INTERVAL * 7;
 const E_ENABLE_AUTO_SHOW_SCORE_INFO = true;
 const TIMEOUT = 10 * 1000;
+const bgm = {
+  getSubjectId: getSubjectId,
+};
+const hostObj = {
+  'bgm.tv': bgm,
+  'bangumi.tv': bgm,
+  'www.douban.com': bgm,
+  'myanimelist.net': bgm,
+};
 
 function clearInfoStorage() {
   const keys = GM_listValues();
@@ -38,12 +47,16 @@ function clearInfoStorage() {
     }
   }
 }
-function readScoreInfo(site: ScoreSites, id: string) {
-  let scoreInfo = GM_getValue(USERJS_PREFIX + site.toUpperCase() + '_' + id);
+function genScoreKey(site: ScoreSites, id: string) {
+  return USERJS_PREFIX + site.toUpperCase() + '_' + id;
+}
+function readScoreInfo(site: ScoreSites, id: string): ScoreInfo | undefined {
+  if (!id) return;
+  let scoreInfo = GM_getValue(genScoreKey(site, id));
   if (scoreInfo) {
     scoreInfo = JSON.parse(scoreInfo);
     if (+new Date() - +new Date(scoreInfo.date) < UPDATE_INTERVAL) {
-      return scoreInfo;
+      return scoreInfo.info;
     }
   }
 }
@@ -58,8 +71,9 @@ function checkInfoUpdate() {
   }
 }
 
-function saveScoreInfo(info: ScoreInfo) {
-  GM_setValue(info.name, {
+function saveScoreInfo(site: ScoreSites, info: ScoreInfo) {
+  // @TODO id
+  GM_setValue(genScoreKey(site, 'sss'), {
     info,
     date: +new Date(),
   });
@@ -69,13 +83,17 @@ class AnimeScorePage {
   name: ScoreSites;
   controlSelector: ISelectors;
   pageSelector: ISelectors;
+  getSubjectInfo: () => SearchResult;
+  // 插入评分信息的 DOM
+  insertScoreInfo: (info: ScoreInfo) => void;
+  getSubjectId: (url: string) => string;
   constructor(
     name: ScoreSites,
-    ctrlSelector: ISelectors,
+    controlSelector: ISelectors,
     pageSelector: ISelectors
   ) {
     this.name = name;
-    this.controlSelector = ctrlSelector;
+    this.controlSelector = controlSelector;
     this.pageSelector = pageSelector;
   }
   init() {
@@ -83,6 +101,22 @@ class AnimeScorePage {
     if (!$page) return;
     const $title = findElement(this.controlSelector);
     if (!$title) return;
+    const currentScoreInfo = readScoreInfo(
+      this.name,
+      this.getSubjectId(location.href)
+    );
+    if (currentScoreInfo) {
+      sites.forEach((s) => {
+        if (s !== this.name) {
+          // @ts-ignore
+          let info = readScoreInfo(s, currentScoreInfo[`${s}PageId`]);
+          // 没有评分缓存
+          if (!info) {
+          }
+          info && this.insertScoreInfo(info);
+        }
+      });
+    }
   }
   initControlDOM($t: Element, cb: IFuncPromise) {
     if (!$t) return;
@@ -102,6 +136,21 @@ class AnimeScorePage {
       await cb(e, true);
     });
   }
-  getSubjectInfo() {}
-  insertScoreInfo() {}
+  async fetchScoreInfo(name: ScoreSites) {
+    const subjectInfo = this.getSubjectInfo();
+    switch (name) {
+      case 'bangumi':
+        return await checkSubjectExist(
+          subjectInfo,
+          'https://bgm.tv',
+          SubjectTypeId.anime
+        );
+      case 'myanimelist':
+        break;
+      case 'douban':
+        return await checkAnimeSubjectExistDouban(
+          this.getSubjectInfo() as Subject
+        );
+    }
+  }
 }

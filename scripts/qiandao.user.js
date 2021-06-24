@@ -226,13 +226,21 @@ const siteDict = [
                     method: 'POST',
                     body: fd,
                 });
-                if (signRes.match('未定义操作')) {
+                if (signRes.includes('未定义操作')) {
                     return;
                 }
-                // 刷新
-                await fetchText(genUrl(this.href, 'plugin.php?id=dsu_paulsign:sign'));
+                else if (signRes.includes('恭喜你签到成功')) {
+                    // 刷新
+                    await fetchText(genUrl(this.href, 'plugin.php?id=dsu_paulsign:sign'));
+                    setSignResult(this.name, true);
+                    return;
+                }
             }
-            setSignResult(this.name, true);
+            const $info = $doc.querySelector('#ct h1.mt');
+            if ($info &&
+                $info.textContent.includes('您今天已经签到过了或者签到时间还未开始')) {
+                setSignResult(this.name, true);
+            }
         },
     },
 ];

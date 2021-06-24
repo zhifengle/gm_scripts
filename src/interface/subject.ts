@@ -5,12 +5,9 @@ interface BaseSubject {
   releaseDate?: string;
 }
 
-export interface Subject extends BaseSubject {
-  kind: 'subject';
-}
+export interface Subject extends BaseSubject {}
 
 export interface BookSubject extends BaseSubject {
-  kind: 'book';
   isbn: string;
   asin?: string;
 }

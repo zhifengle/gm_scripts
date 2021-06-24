@@ -262,7 +262,7 @@ async function checkExist(
 export async function checkSubjectExist(
   subjectInfo: AllSubject,
   bgmHost: string = 'https://bgm.tv',
-  type: SubjectTypeId,
+  type: SubjectTypeId = SubjectTypeId.all,
   disableDate?: boolean
 ) {
   let result;
@@ -274,6 +274,7 @@ export async function checkSubjectExist(
         type
       );
       break;
+    case SubjectTypeId.all:
     case SubjectTypeId.game:
     case SubjectTypeId.anime:
       result = await checkExist(subjectInfo, bgmHost, type, disableDate);

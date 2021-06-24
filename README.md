@@ -22,6 +22,10 @@
 豆瓣上面非日语的电影类型，不会进行迁移同步。  
 因为无法区分动画还是日剧，默认搜索类型是动画，所以日剧会同步失败
 
+## [qiandao.user.js](scripts/qiandao.user.js?raw=true)
+
+自用签到脚本，目前支持 v2ex、2dj、south-plus、52pojie。
+
 ## DEPRECATED
 
 ### [bt_search_for_bgm.user.js](scripts/bt_search_for_bgm.user.js?raw=true)

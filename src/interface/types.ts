@@ -58,3 +58,11 @@ export interface MsgResponse {
   timestamp?: number;
   data: any;
 }
+
+export type IFetchOpts = {
+  method?: string;
+  body?: any;
+  // EUC-JP 部分网页编码
+  decode?: string;
+  [key: string]: any;
+};

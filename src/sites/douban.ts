@@ -162,6 +162,9 @@ export async function getAllPageInfo(
 
 function convertHomeSearchItem($item: HTMLElement): SearchResult {
   const dealHref = (href: string) => {
+    if (/^https:\/\/movie\.douban\.com\/subject\/\d+\/$/.test(href)) {
+      return href;
+    }
     const urlParam = href.split('?url=')[1];
     if (urlParam) {
       return decodeURIComponent(urlParam.split('&')[0]);
@@ -423,7 +426,7 @@ async function updateInterest(subjectId: string, data: IInterestData) {
     body: formData,
   });
 }
-async function checkAnimeSubjectExist(
+export async function checkAnimeSubjectExist(
   subjectInfo: Subject
 ): Promise<SearchResult> {
   let query = (subjectInfo.name || '').trim();

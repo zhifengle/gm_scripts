@@ -185,19 +185,31 @@ const siteDict: SiteConfig[] = [
         const fd = new FormData($form);
         const arr = ['kx', 'ym', 'wl', 'nu', 'ch', 'fd', 'yl', 'shuai'];
         fd.append('qdxq', arr[randomNum(5, 0)]);
-        await fetchInfo(
+        const signRes = await fetchInfo(
           // genUrl(this.href, $form.getAttribute('action')),
           genUrl(this.href, url),
           'text',
           {
             method: 'POST',
-            data: fd,
+            body: fd,
           }
         );
-        // 刷新
-        await fetchText(genUrl(this.href, 'plugin.php?id=dsu_paulsign:sign'));
+        if (signRes.includes('未定义操作')) {
+          return;
+        } else if (signRes.includes('恭喜你签到成功')) {
+          // 刷新
+          await fetchText(genUrl(this.href, 'plugin.php?id=dsu_paulsign:sign'));
+          setSignResult(this.name, true);
+          return;
+        }
       }
-      setSignResult(this.name, true);
+      const $info = $doc.querySelector('#ct h1.mt');
+      if (
+        $info &&
+        $info.textContent.includes('您今天已经签到过了或者签到时间还未开始')
+      ) {
+        setSignResult(this.name, true);
+      }
     },
   },
 ];

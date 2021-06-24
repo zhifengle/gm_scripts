@@ -12,7 +12,7 @@
 // @include     https://zodgame.xyz/
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
-// @version     0.0.4
+// @version     0.0.5
 // @run-at      document-end
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setValue
@@ -27,7 +27,7 @@ function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
     // @ts-ignore
     {
         const gmXhrOpts = Object.assign({}, opts);
-        if (method === 'POST') {
+        if (method === 'POST' && gmXhrOpts.body) {
             gmXhrOpts.data = gmXhrOpts.body;
         }
         if (opts.decode) {
@@ -220,12 +220,15 @@ const siteDict = [
                 const fd = new FormData($form);
                 const arr = ['kx', 'ym', 'wl', 'nu', 'ch', 'fd', 'yl', 'shuai'];
                 fd.append('qdxq', arr[randomNum(5, 0)]);
-                await fetchInfo(
+                const signRes = await fetchInfo(
                 // genUrl(this.href, $form.getAttribute('action')),
                 genUrl(this.href, url), 'text', {
                     method: 'POST',
-                    data: fd,
+                    body: fd,
                 });
+                if (signRes.match('未定义操作')) {
+                    return;
+                }
                 // 刷新
                 await fetchText(genUrl(this.href, 'plugin.php?id=dsu_paulsign:sign'));
             }

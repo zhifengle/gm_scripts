@@ -77,3 +77,15 @@ export function isEqualDate(d1: string, d2: string): boolean {
   }
   return false;
 }
+
+export function numToPercent(num: number) {
+  return Number(num || 0).toLocaleString(undefined, {
+    style: 'percent',
+    minimumFractionDigits: 2,
+  });
+}
+
+export function roundNum(num: number, len: number = 2) {
+  //@ts-ignore
+  return +(Math.round(num + `e+${len}`) + `e-${len}`);
+}

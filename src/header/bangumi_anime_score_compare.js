@@ -14,9 +14,13 @@
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
 // @grant       GM_xmlhttpRequest
+// @grant       GM_getResourceURL
 // @grant       GM_setValue
 // @grant       GM_getValue
 // @grant       GM_listValues
 // @grant       GM_deleteValue
 // @require     https://cdn.staticfile.org/fuse.js/6.4.0/fuse.min.js
+// @resource    bangumi_favicon https://bgm.tv/img/favicon.ico
+// @resource    douban_favicon https://img3.doubanio.com/favicon.ico
+// @resource    myanimelist_favicon https://cdn.myanimelist.net/images/favicon.ico
 // ==/UserScript==

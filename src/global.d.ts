@@ -12,6 +12,7 @@ declare var GM_registerMenuCommand: (
 declare var GM_addStyle: (style: string) => void;
 declare var GM_openInTab: any;
 declare var GM_getResourceText: (url: string) => string;
+declare var GM_getResourceURL: (url: string) => Blob;
 declare var GM_log: (url: string) => void;
 declare var GM_notification: (options: {
   text: string;

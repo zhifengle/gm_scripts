@@ -19,6 +19,7 @@
 // @grant       GM_getValue
 // @grant       GM_listValues
 // @grant       GM_deleteValue
+// @grant       GM_addValueChangeListener
 // @require     https://cdn.staticfile.org/fuse.js/6.4.0/fuse.min.js
 // @resource    bangumi_favicon https://bgm.tv/img/favicon.ico
 // @resource    douban_favicon https://img3.doubanio.com/favicon.ico

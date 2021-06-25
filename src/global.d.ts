@@ -21,6 +21,16 @@ declare var GM_notification: (options: {
   onClick: Function;
   onDone: Function;
 }) => any;
+declare var GM_addValueChangeListener: (
+  name: string,
+  callback: (
+    name: string,
+    oldValue: any,
+    newValue: any,
+    remote: boolean
+  ) => void
+) => string;
+declare var GM_removeValueChangeListener: (id: string) => void;
 
 // declare var bangumiDataURL: string;
 

@@ -19,6 +19,7 @@
 // @grant       GM_getValue
 // @grant       GM_listValues
 // @grant       GM_deleteValue
+// @grant       GM_addValueChangeListener
 // @require     https://cdn.staticfile.org/fuse.js/6.4.0/fuse.min.js
 // @resource    bangumi_favicon https://bgm.tv/img/favicon.ico
 // @resource    douban_favicon https://img3.doubanio.com/favicon.ico
@@ -74,6 +75,9 @@ function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
 }
 function fetchText(url, opts = {}, TIMEOUT = 10 * 1000) {
     return fetchInfo(url, 'text', opts, TIMEOUT);
+}
+function fetchJson(url, opts = {}) {
+    return fetchInfo(url, 'json', opts);
 }
 
 function dealDate(dataStr) {
@@ -585,13 +589,65 @@ async function checkAnimeSubjectExist(subjectInfo) {
     }
 }
 
-// const sites = ['douban', 'bangumi', 'myanimelist'] as const;
-const sites = ['douban', 'bangumi'];
+async function searchAnimeData(subjectInfo) {
+    const url = `https://myanimelist.net/search/prefix.json?type=anime&keyword=${subjectInfo.name}&v=1`;
+    console.info('myanimelist search URL: ', url);
+    const info = await fetchJson(url);
+    let startDate = null;
+    let items = info.categories[0].items;
+    let pageUrl = '';
+    if (subjectInfo.releaseDate) {
+        startDate = new Date(subjectInfo.releaseDate);
+        for (var item of items) {
+            let aired = null;
+            if (item.payload.aired.match('to')) {
+                aired = new Date(item.payload.aired.split('to')[0]);
+            }
+            else {
+                aired = new Date(item.payload.aired);
+            }
+            if (startDate.getFullYear() === aired.getFullYear() &&
+                startDate.getDate() === aired.getDate()) {
+                pageUrl = item.url;
+            }
+        }
+    }
+    else if (items && items[0]) {
+        pageUrl = items[0].url;
+    }
+    if (!pageUrl) {
+        throw new Error('No match results');
+    }
+    let result = {
+        name: '',
+        url: pageUrl,
+    };
+    const content = await fetchText(pageUrl);
+    const $doc = new DOMParser().parseFromString(content, 'text/html');
+    let $score = $doc.querySelector('.fl-l.score');
+    if ($score) {
+        //siteScoreInfo.averageScore = parseFloat($score.textContent.trim()).toFixed(1)
+        result.score = $score.textContent.trim();
+        if ($score.dataset.user) {
+            result.count = $score.dataset.user.replace(/users|,/g, '').trim();
+        }
+        else {
+            throw new Error('Invalid score info');
+        }
+    }
+    else {
+        throw new Error('Invalid results');
+    }
+    return result;
+}
+
+const sites = ['douban', 'bangumi', 'myanimelist'];
 if (GM_registerMenuCommand) {
     // 用户脚本命令增加清除评分信息缓存
     GM_registerMenuCommand('\u6e05\u9664\u8bc4\u5206\u7f13\u5b58', clearInfoStorage, 'c');
 }
 const USERJS_PREFIX = 'E_USERJS_ANIME_SCORE_';
+const BANGUMI_LOADING = `${USERJS_PREFIX}BANGUMI_LOADING`;
 const UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
 function getSubjectId(href) {
     const m = href.match(/\/(subject|anime)\/(\d+)/);
@@ -638,45 +694,26 @@ function saveScoreInfo(info) {
         date: +new Date(),
     });
 }
-async function init(page) {
-    const $page = findElement(page.pageSelector);
-    if (!$page)
+function initControlDOM($target) {
+    if (!$target)
         return;
-    const $title = findElement(page.controlSelector);
-    if (!$title)
-        return;
-    const curPageId = getSubjectId(location.href);
-    const curPageScoreInfo = Object.assign({ site: page.name }, page.getSubjectInfo());
-    saveScoreInfo(curPageScoreInfo);
-    const subjectIdDict = readSubjectIdDict(page.name, curPageId);
-    let dict = Object.assign({}, subjectIdDict);
-    for (const s of sites) {
-        let info;
-        if (s !== page.name) {
-            if (subjectIdDict) {
-                const id = subjectIdDict[s];
-                info = readScoreInfo(s, id);
-            }
-            // 不存在缓存数据
-            if (!info) {
-                info = await fetchScoreInfo(s, curPageScoreInfo);
-            }
-            if (info) {
-                page.insertScoreInfo(info);
-                // 索引里面没有这个数据
-                if (!dict[s]) {
-                    dict[s] = getSubjectId(info.url);
-                }
-            }
-        }
-    }
-    // 保存索引数据
-    saveValue(genSubjectIdDictKey(page.name, curPageId), dict);
+    const rawHTML = `<a title="强制刷新豆瓣和MAL评分" class="e-userjs-score-ctrl e-userjs-score-fresh">O</a>
+      <a title="清除所有评分缓存" class="e-userjs-score-ctrl e-userjs-score-clear">X</a>
+`;
+    $target.innerHTML = $target.innerHTML + rawHTML;
+    addStyle();
+    document
+        .querySelector('.e-userjs-score-clear')
+        .addEventListener('click', clearInfoStorage, false);
+    document.querySelector('.e-userjs-score-fresh').addEventListener('click', () => {
+        init(BangumiScorePage, true);
+    }, false);
 }
 async function fetchScoreInfo(name, subjectInfo) {
     let info;
     let res;
     let bgmOrigin = 'https://bgm.tv';
+    GM_setValue(BANGUMI_LOADING, true);
     switch (name) {
         case 'bangumi':
             res = await checkSubjectExist(subjectInfo, bgmOrigin, SubjectTypeId.anime);
@@ -684,8 +721,9 @@ async function fetchScoreInfo(name, subjectInfo) {
                 res.url = `${bgmOrigin}${res.url}`;
             }
             break;
-        // case 'myanimelist':
-        //   break;
+        case 'myanimelist':
+            res = await searchAnimeData(subjectInfo);
+            break;
         case 'douban':
             res = await checkAnimeSubjectExist(subjectInfo);
             break;
@@ -693,6 +731,7 @@ async function fetchScoreInfo(name, subjectInfo) {
     if (res) {
         info = Object.assign({ site: name }, res);
     }
+    GM_setValue(BANGUMI_LOADING, false);
     return info;
 }
 const DoubanScorePage = {
@@ -782,16 +821,116 @@ const BangumiScorePage = {
     insertScoreInfo(info) {
         let $panel = document.querySelector('.SidePanel.png_bg');
         if ($panel) {
-            const score = roundNum(Number(info.score || 0), 1);
+            const score = roundNum(Number(info.score || 0), 2);
             let $div = document.createElement('div');
             $div.classList.add('frdScore');
             $div.classList.add('e-userjs-score-compare');
-            $div.innerHTML = `${info.site}评价：<span class="num">${score}</span> <span class="desc" style="visibility:hidden">还行</span> <a href="${info.url}" target="_blank" class="l">${info.count || 0} 人评分</a>
+            const convertName = (site) => {
+                if (site === 'myanimelist') {
+                    return 'MAL';
+                }
+                else if (site === 'douban') {
+                    return '豆瓣';
+                }
+                return site;
+            };
+            $div.innerHTML = `${convertName(info.site)}评价：<span class="num">${score}</span> <span class="desc" style="visibility:hidden">还行</span> <a href="${info.url}" target="_blank" class="l">${info.count || 0} 人评分</a>
 `;
-            // toggleLoading(true);
             $panel.appendChild($div);
         }
     },
 };
-init(DoubanScorePage);
-init(BangumiScorePage);
+function addStyle(css) {
+    if (css) {
+        GM_addStyle(css);
+    }
+    else {
+        GM_addStyle(`
+      .e-userjs-score-ctrl {color:#f09199;font-weight:800;float:right;}
+      .e-userjs-score-ctrl:hover {cursor: pointer;}
+      .e-userjs-score-clear {margin-right: 12px;}
+      .e-userjs-score-loading { width: 208px; height: 13px; background-image: url("/img/loadingAnimation.gif"); }
+      `);
+    }
+}
+// Bangumi Loading
+function toggleLoading(hidden) {
+    let $div = document.querySelector('.e-userjs-score-loading');
+    if (!$div) {
+        $div = document.createElement('div');
+        $div.classList.add('e-userjs-score-loading');
+        let $panel = document.querySelector('.SidePanel.png_bg');
+        $panel.appendChild($div);
+    }
+    // const $infos: NodeListOf<HTMLElement> = document.querySelectorAll(
+    //   '.frdScore.e-userjs-score-compare'
+    // );
+    // $infos?.forEach(($el) => {
+    //   if (hidden) {
+    //     $el.style.display = 'none';
+    //   } else {
+    //     $el.style.display = '';
+    //   }
+    // });
+    if (hidden) {
+        $div.style.display = 'none';
+    }
+    else {
+        $div.style.display = '';
+    }
+}
+async function init(page, force) {
+    const $page = findElement(page.pageSelector);
+    if (!$page)
+        return;
+    const $title = findElement(page.controlSelector);
+    if (!$title)
+        return;
+    const curPageId = getSubjectId(location.href);
+    const curPageScoreInfo = Object.assign({ site: page.name }, page.getSubjectInfo());
+    saveScoreInfo(curPageScoreInfo);
+    let subjectIdDict = readSubjectIdDict(page.name, curPageId);
+    // 强制刷新，不使用缓存
+    if (force) {
+        subjectIdDict = undefined;
+    }
+    let dict = Object.assign({}, subjectIdDict);
+    for (const s of sites) {
+        let info;
+        if (s !== page.name) {
+            if (subjectIdDict) {
+                const id = subjectIdDict[s];
+                info = readScoreInfo(s, id);
+            }
+            // 不存在缓存数据
+            if (!info) {
+                info = await fetchScoreInfo(s, curPageScoreInfo);
+            }
+            if (info) {
+                page.insertScoreInfo(info);
+                saveScoreInfo(info);
+                // 索引里面没有这个数据
+                if (!dict[s]) {
+                    dict[s] = getSubjectId(info.url);
+                }
+            }
+        }
+    }
+    // 保存索引数据
+    saveValue(genSubjectIdDictKey(page.name, curPageId), dict);
+}
+if (location.hostname.match(/bgm.tv|bangumi.tv|chii.in/)) {
+    GM_addValueChangeListener(BANGUMI_LOADING, (n, oldValue, newValue) => {
+        if (newValue === false) {
+            toggleLoading(true);
+        }
+        else if (newValue === true) {
+            toggleLoading();
+        }
+    });
+    init(BangumiScorePage);
+    initControlDOM(document.querySelector('#panelInterestWrapper h2'));
+}
+if (location.hostname.match('movie.douban.com')) {
+    init(DoubanScorePage);
+}

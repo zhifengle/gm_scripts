@@ -662,7 +662,10 @@ if (GM_registerMenuCommand) {
 }
 const USERJS_PREFIX = 'E_USERJS_ANIME_SCORE_';
 const BANGUMI_LOADING = `${USERJS_PREFIX}BANGUMI_LOADING`;
+const CURRENT_ID_DICT = `${USERJS_PREFIX}CURRENT_ID_DICT`;
 const UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
+// 30天清理所有数据
+const CLEAR_INTERVAL = UPDATE_INTERVAL * 30;
 function getSubjectId(href) {
     const m = href.match(/\/(subject|anime)\/(\d+)/);
     if (m) {
@@ -700,7 +703,24 @@ function readScoreInfo(site, id) {
 function readSubjectIdDict(site, id) {
     if (!id)
         return;
+    const currentDict = GM_getValue(CURRENT_ID_DICT) || {};
+    if (currentDict[site] === id) {
+        return currentDict;
+    }
     return GM_getValue(genSubjectIdDictKey(site, id));
+}
+async function checkInfoUpdate() {
+    let time = GM_getValue(USERJS_PREFIX + 'LATEST_UPDATE_TIME');
+    let now = new Date();
+    if (!time) {
+        GM_setValue(USERJS_PREFIX + 'LATEST_UPDATE_TIME', now.getTime());
+        return;
+    }
+    else if (+now - +new Date(time) > CLEAR_INTERVAL) {
+        clearInfoStorage();
+        // 清理后延迟执行一下
+        await sleep(200);
+    }
 }
 function saveScoreInfo(info) {
     GM_setValue(genScoreKey(info.site, getSubjectId(info.url)), {
@@ -908,6 +928,7 @@ async function init(page, force) {
     const $title = findElement(page.controlSelector);
     if (!$title)
         return;
+    await checkInfoUpdate();
     (_a = page === null || page === void 0 ? void 0 : page.initControlDOM) === null || _a === void 0 ? void 0 : _a.call(page, $title);
     const curPageId = getSubjectId(location.href);
     const curPageScoreInfo = Object.assign({ site: page.name }, page.getSubjectInfo());
@@ -945,6 +966,7 @@ async function init(page, force) {
     }
     // 保存索引数据
     saveValue(genSubjectIdDictKey(page.name, curPageId), dict);
+    saveValue(CURRENT_ID_DICT, Object.assign(Object.assign({}, dict), { [page.name]: curPageId }));
 }
 if (location.hostname.match(/bgm.tv|bangumi.tv|chii.in/)) {
     GM_addValueChangeListener(BANGUMI_LOADING, (n, oldValue, newValue) => {

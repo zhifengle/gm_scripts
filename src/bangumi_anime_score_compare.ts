@@ -1,10 +1,9 @@
-import { SearchResult, Subject } from './interface/subject';
-import { IFuncPromise } from './interface/types';
+import { SearchResult } from './interface/subject';
 import { Selector, SubjectTypeId } from './interface/wiki';
 import { checkSubjectExist } from './sites/bangumi';
 import { checkAnimeSubjectExist as checkAnimeSubjectExistDouban } from './sites/douban';
 import { searchAnimeData } from './sites/myanimelist';
-import { findElement } from './utils/domUtils';
+import { $q, $qa, findElement } from './utils/domUtils';
 import { dealDate, roundNum } from './utils/utils';
 
 const sites = ['douban', 'bangumi', 'myanimelist'] as const;
@@ -23,6 +22,7 @@ interface ScorePage {
   getSubjectInfo: () => SearchResult;
   // 插入评分信息的 DOM
   insertScoreInfo: (info: ScoreInfo) => void;
+  initControlDOM?: ($el: Element) => void;
 }
 
 if (GM_registerMenuCommand) {
@@ -38,8 +38,6 @@ const USERJS_PREFIX = 'E_USERJS_ANIME_SCORE_';
 const BANGUMI_LOADING = `${USERJS_PREFIX}BANGUMI_LOADING`;
 const UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
 const CLEAR_INTERVAL = UPDATE_INTERVAL * 7;
-const E_ENABLE_AUTO_SHOW_SCORE_INFO = true;
-const TIMEOUT = 10 * 1000;
 
 function getSubjectId(href: string): string {
   const m = href.match(/\/(subject|anime)\/(\d+)/);
@@ -100,24 +98,6 @@ function saveScoreInfo(info: ScoreInfo) {
   });
 }
 
-function initControlDOM($target: Element) {
-  if (!$target) return;
-  const rawHTML = `<a title="强制刷新豆瓣和MAL评分" class="e-userjs-score-ctrl e-userjs-score-fresh">O</a>
-      <a title="清除所有评分缓存" class="e-userjs-score-ctrl e-userjs-score-clear">X</a>
-`;
-  $target.innerHTML = $target.innerHTML + rawHTML;
-  addStyle();
-  document
-    .querySelector('.e-userjs-score-clear')
-    .addEventListener('click', clearInfoStorage, false);
-  document.querySelector('.e-userjs-score-fresh').addEventListener(
-    'click',
-    () => {
-      init(BangumiScorePage, true);
-    },
-    false
-  );
-}
 async function fetchScoreInfo(name: ScoreSites, subjectInfo: SearchResult) {
   let info: ScoreInfo;
   let res: SearchResult;
@@ -166,24 +146,32 @@ const DoubanScorePage: ScorePage = {
     },
   ],
   getSubjectInfo() {
-    const $title = document.querySelector('#content h1>span');
+    const $title = $q('#content h1>span');
     const rawName = $title.textContent.trim();
+    const keywords = $q('meta[name="keywords"]')?.getAttribute?.('content');
+    let name = rawName;
+    if (keywords) {
+      // 可以考虑剔除第二个关键字里面的 Season 3
+      const firstKeyword = keywords.split(',')[0];
+      name = rawName.replace(firstKeyword, '').trim();
+      // name: rawName.replace(/第.季/, ''),
+    }
     const subjectInfo: SearchResult = {
-      name: rawName.replace(/第.季/, ''),
+      name,
+      score: $q('.ll.rating_num')?.textContent ?? 0,
+      count: $q('.rating_people > span')?.textContent ?? 0,
       rawName,
       url: location.href,
     };
-    const $date = document.querySelector(
-      'span[property="v:initialReleaseDate"]'
-    );
+    const $date = $q('span[property="v:initialReleaseDate"]');
     if ($date) {
       subjectInfo.releaseDate = $date.textContent.replace(/\(.*\)/, '');
     }
     return subjectInfo;
   },
   insertScoreInfo(info: ScoreInfo) {
-    let $panel = document.querySelector('#interest_sectl');
-    let $friendsRatingWrap = document.querySelector('.friends_rating_wrap');
+    let $panel = $q('#interest_sectl');
+    let $friendsRatingWrap = $q('.friends_rating_wrap');
     if (!$friendsRatingWrap) {
       $friendsRatingWrap = document.createElement('div');
       $friendsRatingWrap.className = 'friends_rating_wrap clearbox';
@@ -202,7 +190,7 @@ const DoubanScorePage: ScorePage = {
                     </div>
                     <a href="${
                       info.url
-                    }" class="friends_count" target="_blank">${
+                    }" rel="noopener noreferrer nofollow" class="friends_count" target="_blank">${
       info.count || 0
     }人评价</a>
 `;
@@ -227,10 +215,12 @@ const BangumiScorePage: ScorePage = {
   ],
   getSubjectInfo: function () {
     let info: SearchResult = {
-      name: document.querySelector('h1>a').textContent.trim(),
+      name: $q('h1>a').textContent.trim(),
+      score: $q('.global_score span[property="v:average"')?.textContent ?? 0,
+      count: $q('span[property="v:votes"')?.textContent ?? 0,
       url: location.href,
     };
-    let infoList = document.querySelectorAll('#infobox>li');
+    let infoList = $qa('#infobox>li');
     if (infoList && infoList.length) {
       for (let i = 0, len = infoList.length; i < len; i++) {
         let el = infoList[i];
@@ -245,7 +235,7 @@ const BangumiScorePage: ScorePage = {
     return info;
   },
   insertScoreInfo(info: ScoreInfo) {
-    let $panel = document.querySelector('.SidePanel.png_bg');
+    let $panel = $q('.SidePanel.png_bg');
     if ($panel) {
       const score = roundNum(Number(info.score || 0), 2);
       let $div = document.createElement('div');
@@ -263,10 +253,32 @@ const BangumiScorePage: ScorePage = {
         info.site
       )}评价：<span class="num">${score}</span> <span class="desc" style="visibility:hidden">还行</span> <a href="${
         info.url
-      }" target="_blank" class="l">${info.count || 0} 人评分</a>
+      }" target="_blank" rel="noopener noreferrer nofollow" class="l">${
+        info.count || 0
+      } 人评分</a>
 `;
       $panel.appendChild($div);
     }
+  },
+  initControlDOM($target: Element) {
+    if (!$target) return;
+    // 已存在控件时返回
+    if ($q('.e-userjs-score-ctrl')) return;
+    const rawHTML = `<a title="强制刷新豆瓣和MAL评分" class="e-userjs-score-ctrl e-userjs-score-fresh">O</a>
+      <a title="清除所有评分缓存" class="e-userjs-score-ctrl e-userjs-score-clear">X</a>
+`;
+    $target.innerHTML = $target.innerHTML + rawHTML;
+    addStyle();
+    document
+      .querySelector('.e-userjs-score-clear')
+      .addEventListener('click', clearInfoStorage, false);
+    $q('.e-userjs-score-fresh').addEventListener(
+      'click',
+      () => {
+        init(BangumiScorePage, true);
+      },
+      false
+    );
   },
 };
 
@@ -284,23 +296,13 @@ function addStyle(css?: string) {
 }
 // Bangumi Loading
 function toggleLoading(hidden?: boolean) {
-  let $div = document.querySelector('.e-userjs-score-loading') as HTMLElement;
+  let $div = $q('.e-userjs-score-loading') as HTMLElement;
   if (!$div) {
     $div = document.createElement('div');
     $div.classList.add('e-userjs-score-loading');
-    let $panel = document.querySelector('.SidePanel.png_bg');
+    let $panel = $q('.SidePanel.png_bg');
     $panel.appendChild($div);
   }
-  // const $infos: NodeListOf<HTMLElement> = document.querySelectorAll(
-  //   '.frdScore.e-userjs-score-compare'
-  // );
-  // $infos?.forEach(($el) => {
-  //   if (hidden) {
-  //     $el.style.display = 'none';
-  //   } else {
-  //     $el.style.display = '';
-  //   }
-  // });
   if (hidden) {
     $div.style.display = 'none';
   } else {
@@ -313,6 +315,7 @@ async function init(page: ScorePage, force?: boolean) {
   if (!$page) return;
   const $title = findElement(page.controlSelector);
   if (!$title) return;
+  page?.initControlDOM?.($title);
   const curPageId = getSubjectId(location.href);
   const curPageScoreInfo: ScoreInfo = {
     site: page.name,
@@ -323,6 +326,10 @@ async function init(page: ScorePage, force?: boolean) {
   // 强制刷新，不使用缓存
   if (force) {
     subjectIdDict = undefined;
+    // 刷新时，移除原来的数据
+    $qa('.frdScore.e-userjs-score-compare')?.forEach(($el) => {
+      $el.remove();
+    });
   }
   let dict: SubjectIdDict = { ...subjectIdDict };
   for (const s of sites) {
@@ -358,7 +365,6 @@ if (location.hostname.match(/bgm.tv|bangumi.tv|chii.in/)) {
     }
   });
   init(BangumiScorePage);
-  initControlDOM(document.querySelector('#panelInterestWrapper h2'));
 }
 if (location.hostname.match('movie.douban.com')) {
   init(DoubanScorePage);

@@ -16,6 +16,7 @@ export interface SearchResult extends BaseSubject {
   url: string;
   score?: number | string;
   count?: number | string;
+  // 日文名
   greyName?: string;
   rawName?: string;
 }

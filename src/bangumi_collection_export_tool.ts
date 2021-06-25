@@ -75,10 +75,10 @@ function genExportBtn(filename: string) {
 }
 
 function addExportBtn() {
-  const $nav = document.querySelector('#headerProfile .navSubTabs');
+  const $nav = $q('#headerProfile .navSubTabs');
   if (!$nav) return;
   const type = $nav.querySelector('.focus')?.textContent || '';
-  const $username = document.querySelector('.nameSingle .inner>a');
+  const $username = $q('.nameSingle .inner>a');
   let name = '导出收藏';
   if ($username) {
     name = $username.textContent;
@@ -89,7 +89,7 @@ function addExportBtn() {
 
 // 索引
 if (location.href.match(/index\/\d+/)) {
-  const $header = document.querySelector('#header');
+  const $header = $q('#header');
   const title = $header.querySelector('h1').textContent.trim();
   $header.appendChild(genExportBtn(`${title}.csv`));
 }

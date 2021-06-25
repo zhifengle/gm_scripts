@@ -1,39 +1,49 @@
-import { AllSubject, SearchResult } from '../interface/subject';
+import { SearchResult, Subject } from '../interface/subject';
+import { randomSleep } from '../utils/async/sleep';
 import { fetchJson, fetchText } from '../utils/fetchData';
 
 export async function searchAnimeData(
-  subjectInfo: AllSubject
+  subjectInfo: Subject
 ): Promise<SearchResult> {
-  const url = `https://myanimelist.net/search/prefix.json?type=anime&keyword=${subjectInfo.name}&v=1`;
+  const url = `https://myanimelist.net/search/prefix.json?type=anime&keyword=${encodeURIComponent(
+    subjectInfo.name
+  )}&v=1`;
   console.info('myanimelist search URL: ', url);
   const info = await fetchJson(url);
+  await randomSleep(300, 100);
   let startDate = null;
   let items = info.categories[0].items;
   let pageUrl = '';
+  let name = '';
   if (subjectInfo.releaseDate) {
     startDate = new Date(subjectInfo.releaseDate);
-    for (var item of items) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
       let aired = null;
       if (item.payload.aired.match('to')) {
         aired = new Date(item.payload.aired.split('to')[0]);
       } else {
         aired = new Date(item.payload.aired);
       }
+      // 选择第一个匹配日期的
       if (
         startDate.getFullYear() === aired.getFullYear() &&
-        startDate.getDate() === aired.getDate()
+        startDate.getMonth() === aired.getMonth()
       ) {
         pageUrl = item.url;
+        name = item.name;
+        break;
       }
     }
   } else if (items && items[0]) {
+    name = items[0].name;
     pageUrl = items[0].url;
   }
   if (!pageUrl) {
     throw new Error('No match results');
   }
   let result: SearchResult = {
-    name: '',
+    name,
     url: pageUrl,
   };
   const content = await fetchText(pageUrl);
@@ -50,5 +60,6 @@ export async function searchAnimeData(
   } else {
     throw new Error('Invalid results');
   }
+  console.info('myanimelist search result: ', result);
   return result;
 }

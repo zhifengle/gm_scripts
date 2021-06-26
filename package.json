@@ -11,6 +11,7 @@
     "dev:douban": "cross-env SCRIPT_NAME=migrate_douban_collection_to_bangumi rollup -w -c build/rollup.config.us.js",
     "dev:anime_score": "cross-env SCRIPT_NAME=bangumi_anime_score_compare rollup -w -c build/rollup.config.us.js",
     "dev:test": "rollup -w -c build/rollup.config.dev.js",
+    "dev:user_script": "cross-env SCRIPT_NAME=dev rollup -w -c build/rollup.config.us.js",
     "clean": "rimraf dist/",
     "test": "jest --all"
   },

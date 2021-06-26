@@ -200,7 +200,7 @@ function loadIframe($iframe: HTMLIFrameElement, subjectId: string) {
     $iframe.src = `/update/${subjectId}`;
     let timer = setTimeout(() => {
       timer = null;
-      reject('iframe timeout');
+      reject('bangumi iframe timeout');
     }, 5000);
     $iframe.onload = () => {
       clearTimeout(timer);

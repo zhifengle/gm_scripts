@@ -1,5 +1,7 @@
+import { SEARCH_RESULT } from '../contants';
 import { AllSubject, SearchResult } from '../interface/subject';
-import { InterestType, InterestTypeId } from '../interface/types';
+import { InterestType, InterestTypeId, MsgResponse } from '../interface/types';
+import { sleep } from '../utils/async/sleep';
 import { isEqualDate } from '../utils/utils';
 
 /**
@@ -78,9 +80,11 @@ export const typeIdDict: {
     id: '1',
   },
 };
-export function findInterestStatusById(
-  id: InterestTypeId
-): { key: InterestType; id: InterestTypeId; name: string } {
+export function findInterestStatusById(id: InterestTypeId): {
+  key: InterestType;
+  id: InterestTypeId;
+  name: string;
+} {
   for (let key in typeIdDict) {
     const obj = typeIdDict[key as InterestType];
     if (obj.id === id) {
@@ -90,4 +94,39 @@ export function findInterestStatusById(
       };
     }
   }
+}
+
+export async function getSearchResultByGM(): Promise<SearchResult[]> {
+  return new Promise((resolve, reject) => {
+    const listenId = window.gm_val_listen_id;
+    if (listenId) {
+      GM_removeValueChangeListener(listenId);
+    }
+    window.gm_val_listen_id = GM_addValueChangeListener(
+      // const listenId = GM_addValueChangeListener(
+      SEARCH_RESULT,
+      (n, oldValue, newValue: MsgResponse) => {
+        console.log('enter promise');
+        const now = +new Date();
+        if (
+          newValue.type === SEARCH_RESULT &&
+          newValue.timestamp &&
+          newValue.timestamp < now
+        ) {
+          // GM_removeValueChangeListener(listenId);
+          resolve(newValue.data);
+        }
+        reject('mismatch timestamp');
+      }
+    );
+  });
+}
+
+export async function setSearchResultByGM(data: any) {
+  const res: MsgResponse = {
+    type: SEARCH_RESULT,
+    timestamp: +new Date(),
+    data,
+  };
+  GM_setValue(SEARCH_RESULT, res);
 }

@@ -1,17 +1,20 @@
-import { SEARCH_RESULT } from '../contants';
 import { SearchResult, Subject } from '../interface/subject';
 import {
   IInterestData,
   InterestType,
-  MsgResponse,
   SiteUtils,
   SubjectItem,
   SubjectType,
 } from '../interface/types';
-import { randomSleep, sleep } from '../utils/async/sleep';
-import { htmlToElement, loadIframe } from '../utils/domUtils';
+import { sleep } from '../utils/async/sleep';
+import { loadIframe } from '../utils/domUtils';
 import { fetchJson, fetchText } from '../utils/fetchData';
-import { filterResults, findInterestStatusById } from './common';
+import {
+  filterResults,
+  findInterestStatusById,
+  getSearchResultByGM,
+  setSearchResultByGM,
+} from './common';
 
 function genCollectionURL(
   userId: string,
@@ -290,7 +293,6 @@ export function convertSubjectSearchItem($item: HTMLElement): SearchResult {
  */
 export async function getSubjectSearchResults(
   query: string,
-  type = 'gm',
   cat = '1002'
 ): Promise<SearchResult[]> {
   const url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(
@@ -309,74 +311,14 @@ export async function getSubjectSearchResults(
     $iframe.id = iframeId;
     document.body.appendChild($iframe);
   }
-  await loadIframe($iframe, url);
-  if (type === 'gm') {
-    return await getSearchResultByGM();
-  } else {
-    return await getSearchResultByMessage();
-  }
+  // 这里不能使用 await 否则数据加载完毕了监听器还没有初始化
+  loadIframe($iframe, url, 1000 * 10);
+  return await getSearchResultByGM();
 }
-function filterSearchResultsByYear(results: SearchResult[], year: string) {
-  for (let i = 0; i < results.length; i++) {
-    if (results[i].releaseDate === year) {
-      return results[i];
-    }
-  }
-}
+
 export async function sendSearchResults() {
-  let counter = 0;
-  // 尝试 8s
-  while (counter < 20) {
-    await sleep(400);
-    const searchItems: SearchResult[] = getAllSearchResult();
-    parent.postMessage({ type: SEARCH_RESULT, data: searchItems }, '*');
-    console.info('Retry counter: ', counter);
-    counter++;
-  }
-}
-export function getSearchResultByMessage(): Promise<SearchResult[]> {
-  return new Promise((resolve, reject) => {
-    window.addEventListener('message', receiveMessage, false);
-    let timer = setTimeout(() => {
-      timer = null;
-      reject('message timeout');
-    }, 10000);
-    function receiveMessage(event: MessageEvent) {
-      if (event.data && event.data.type === SEARCH_RESULT) {
-        window.removeEventListener('message', receiveMessage);
-        clearTimeout(timer);
-        resolve(event.data.data);
-      }
-    }
-  });
-}
-export async function getSearchResultByGM(): Promise<SearchResult[]> {
-  const now = +new Date();
-  const getData = () => {
-    const obj: MsgResponse = JSON.parse(GM_getValue(SEARCH_RESULT) || '{}');
-    if (obj.type === SEARCH_RESULT && obj.timestamp && obj.timestamp < now) {
-      return obj.data;
-    }
-  };
-  await sleep(1000);
-  // 尝试 8s
-  let counter = 0;
-  let data: SearchResult[];
-  while (counter < 20 && !data) {
-    await sleep(400);
-    console.info('Read GM_getValue, retry counter: ', counter);
-    data = getData();
-    counter++;
-  }
-  return data;
-}
-export async function setSearchResultByGM() {
-  const res: MsgResponse = {
-    type: SEARCH_RESULT,
-    timestamp: +new Date(),
-    data: getAllSearchResult(),
-  };
-  GM_setValue(SEARCH_RESULT, JSON.stringify(res));
+  const searchItems: SearchResult[] = getAllSearchResult();
+  setSearchResultByGM(searchItems);
 }
 async function updateInterest(subjectId: string, data: IInterestData) {
   const interestObj = findInterestStatusById(data.interest);
@@ -426,8 +368,15 @@ async function updateInterest(subjectId: string, data: IInterestData) {
     body: formData,
   });
 }
+/**
+ *
+ * @param subjectInfo 条目信息
+ * @param type 默认使用主页搜索
+ * @returns 搜索结果
+ */
 export async function checkAnimeSubjectExist(
-  subjectInfo: Subject
+  subjectInfo: Subject,
+  type: string = 'home_search'
 ): Promise<SearchResult> {
   let query = (subjectInfo.name || '').trim();
   if (!query) {
@@ -439,19 +388,12 @@ export async function checkAnimeSubjectExist(
   const options = {
     keys: ['name', 'greyName'],
   };
-  rawInfoList = await getHomeSearchResults(query);
+  if (type === 'home_search') {
+    rawInfoList = await getHomeSearchResults(query);
+  } else {
+    rawInfoList = await getSubjectSearchResults(query);
+  }
   searchResult = filterResults(rawInfoList, subjectInfo, options, true);
-  // if (Math.random() > 0.2) {
-  //   rawInfoList = await getHomeSearchResults(query);
-  //   searchResult = filterResults(rawInfoList, subjectInfo, options, true);
-  // } else {
-  //   rawInfoList = await getSubjectSearchResults(query);
-  //   searchResult = filterResults(rawInfoList, subjectInfo, options, true);
-  //   // searchResult = filterSearchResultsByYear(
-  //   //   rawInfoList,
-  //   //   new Date(subjectInfo.releaseDate).getFullYear() + ''
-  //   // );
-  // }
   console.info(`Search result of ${query} on Douban: `, searchResult);
   if (searchResult && searchResult.url) {
     return searchResult;

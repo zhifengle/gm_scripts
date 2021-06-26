@@ -7,7 +7,7 @@
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/subject\/.*$/
 // @include     https://movie.douban.com/subject/*
 // @updateURL   https://raw.githubusercontent.com/bangumi/scripts/master/a_little/bangumi_anime_score_compare.user.js
-// @version     0.3.0
+// @version     0.3.1
 // @note        0.2.0 支持豆瓣上显示Bangumi评分,暂时禁用豆瓣上显示MAL的评分功能以及修改过滤方式
 // @note        0.2.4 豆瓣 api 失效，使用搜索页面查询结果
 // @TODO        统一豆瓣和Bangumi的缓存数据信息,
@@ -122,10 +122,6 @@ function isEqualDate(d1, d2) {
         return true;
     }
     return false;
-}
-function roundNum(num, len = 2) {
-    //@ts-ignore
-    return +(Math.round(num + `e+${len}`) + `e-${len}`);
 }
 
 /**
@@ -800,7 +796,7 @@ const DoubanScorePage = {
             $friendsRatingWrap.className = 'friends_rating_wrap clearbox';
             $panel.appendChild($friendsRatingWrap);
         }
-        const score = roundNum(Number(info.score || 0), 1);
+        const score = info.score || 0;
         const $div = document.createElement('div');
         const favicon = GM_getResourceURL(`${info.site}_favicon`);
         const rawHTML = `<strong class="rating_avg">${score}</strong>
@@ -854,7 +850,7 @@ const BangumiScorePage = {
     insertScoreInfo(info) {
         let $panel = $q('.SidePanel.png_bg');
         if ($panel) {
-            const score = roundNum(Number(info.score || 0), 2);
+            const score = info.score || 0;
             let $div = document.createElement('div');
             $div.classList.add('frdScore');
             $div.classList.add('e-userjs-score-compare');

@@ -5,7 +5,7 @@ import { checkAnimeSubjectExist as checkAnimeSubjectExistDouban } from './sites/
 import { searchAnimeData } from './sites/myanimelist';
 import { sleep } from './utils/async/sleep';
 import { $q, $qa, findElement } from './utils/domUtils';
-import { dealDate, roundNum } from './utils/utils';
+import { dealDate } from './utils/utils';
 
 const sites = ['douban', 'bangumi', 'myanimelist'] as const;
 // const sites = ['douban', 'bangumi'] as const;
@@ -186,7 +186,7 @@ const DoubanScorePage: ScorePage = {
       $friendsRatingWrap.className = 'friends_rating_wrap clearbox';
       $panel.appendChild($friendsRatingWrap);
     }
-    const score = roundNum(Number(info.score || 0), 1);
+    const score = info.score || 0;
     const $div = document.createElement('div');
     const favicon = GM_getResourceURL(`${info.site}_favicon`);
     const rawHTML = `<strong class="rating_avg">${score}</strong>
@@ -246,7 +246,7 @@ const BangumiScorePage: ScorePage = {
   insertScoreInfo(info: ScoreInfo) {
     let $panel = $q('.SidePanel.png_bg');
     if ($panel) {
-      const score = roundNum(Number(info.score || 0), 2);
+      const score = info.score || 0;
       let $div = document.createElement('div');
       $div.classList.add('frdScore');
       $div.classList.add('e-userjs-score-compare');

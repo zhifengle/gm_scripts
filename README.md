@@ -22,6 +22,10 @@
 豆瓣上面非日语的电影类型，不会进行迁移同步。  
 因为无法区分动画还是日剧，默认搜索类型是动画，所以日剧会同步失败
 
+## [bangumi_anime_score_compare.user.js](scripts/bangumi_anime_score_compare.user.js?raw=true)
+
+在 Bangumi 和 豆瓣上面显示其它网站的动画评分信息
+
 ## [qiandao.user.js](scripts/qiandao.user.js?raw=true)
 
 自用签到脚本，目前支持 v2ex、2dj、south-plus、52pojie。

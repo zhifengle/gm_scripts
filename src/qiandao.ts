@@ -51,18 +51,14 @@ async function signSouth() {
 }
 
 function setSignResult(site: string, result: boolean) {
-  GM_setValue(
-    USERJS_PREFIX + site.toUpperCase(),
-    JSON.stringify({
-      result: Number(result),
-      date: +new Date(),
-    })
-  );
+  GM_setValue(USERJS_PREFIX + site.toUpperCase(), {
+    result: Number(result),
+    date: +new Date(),
+  });
 }
 function getSignResult(site: string, numOfDays?: number): boolean {
-  let info = GM_getValue(USERJS_PREFIX + site.toUpperCase());
-  if (info) {
-    const obj: any = JSON.parse(info);
+  let obj = GM_getValue(USERJS_PREFIX + site.toUpperCase());
+  if (obj) {
     const now = new Date();
     const preDate = new Date(obj.date as any);
     // 存在时间限制
@@ -100,7 +96,7 @@ const siteDict: SiteConfig[] = [
         return;
       }
       const pathname = 'home.php?mod=task&do=apply&id=2';
-      if (location.href === this.href) {
+      if (globalThis?.location?.href === this.href) {
         const $btn = document.querySelector(`a[href="${pathname}"`);
         if (!$btn) return;
       } else {
@@ -126,7 +122,12 @@ const siteDict: SiteConfig[] = [
         console.log(this.name, ': 已签到');
         return;
       }
-      const href = this.href[0];
+      let href = this.href[0];
+      const curHref = globalThis?.location?.href;
+      if (curHref && this.href.includes(curHref)) {
+        href = curHref;
+      }
+      const missionUrl = genUrl(href, 'mission/daily');
       const content = await fetchText(genUrl(href, 'mission/daily'));
       // 需要登录
       if (content.match(/你是机器人么？/)) {
@@ -135,7 +136,11 @@ const siteDict: SiteConfig[] = [
       }
       const m = content.match(/mission\/daily\/redeem\?once=\d+/);
       if (m) {
-        await fetchText(genUrl(href, m[0]));
+        await fetchText(genUrl(href, m[0]), {
+          headers: {
+            Referer: missionUrl,
+          },
+        });
       } else {
         console.log(this.name, ': 已签到');
       }
@@ -177,12 +182,17 @@ const siteDict: SiteConfig[] = [
         console.log(this.name, ' 需要登录');
         return;
       }
-      const $doc = new DOMParser().parseFromString(content, 'text/html');
-      const $form = $doc.querySelector('#qiandao') as HTMLFormElement;
-      if ($form) {
+      const formhashRe =
+        /<input\s*type="hidden"\s*name="formhash"\s*value="([^"]+)"\s*\/?>/;
+      const matchFormhash = content.match(formhashRe);
+      if (
+        matchFormhash &&
+        /<form\s*id="qiandao"\s*method="post"/.test(content)
+      ) {
         const url =
           'plugin.php?id=dsu_paulsign:sign&operation=qiandao&infloat=1&inajax=1';
-        const fd = new FormData($form);
+        const fd = new URLSearchParams();
+        fd.append('formhash', matchFormhash[1]);
         const arr = ['kx', 'ym', 'wl', 'nu', 'ch', 'fd', 'yl', 'shuai'];
         fd.append('qdxq', arr[randomNum(5, 0)]);
         const signRes = await fetchInfo(
@@ -192,6 +202,7 @@ const siteDict: SiteConfig[] = [
           {
             method: 'POST',
             body: fd,
+            headers: { 'content-type': 'application/x-www-form-urlencoded' },
           }
         );
         if (signRes.includes('未定义操作')) {
@@ -203,11 +214,7 @@ const siteDict: SiteConfig[] = [
           return;
         }
       }
-      const $info = $doc.querySelector('#ct h1.mt');
-      if (
-        $info &&
-        $info.textContent.includes('您今天已经签到过了或者签到时间还未开始')
-      ) {
+      if (content.includes('您今天已经签到过了或者签到时间还未开始')) {
         setSignResult(this.name, true);
       }
     },

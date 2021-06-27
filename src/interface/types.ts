@@ -61,6 +61,7 @@ export interface MsgResponse {
 
 export type IFetchOpts = {
   method?: string;
+  headers?: any;
   body?: any;
   // EUC-JP 部分网页编码
   decode?: string;

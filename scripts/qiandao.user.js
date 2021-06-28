@@ -12,11 +12,12 @@
 // @include     https://zodgame.xyz/
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
-// @version     0.0.5
+// @version     0.0.6
 // @run-at      document-end
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setValue
 // @grant       GM_getValue
+// @grant       GM_registerMenuCommand
 // ==/UserScript==
 
 
@@ -54,6 +55,19 @@ function fetchText(url, opts = {}, TIMEOUT = 10 * 1000) {
     return fetchInfo(url, 'text', opts, TIMEOUT);
 }
 
+// 暂时使用控制台
+const logger = {
+    info(str) {
+        console.info(str);
+    },
+    log(str) {
+        console.log(str);
+    },
+    error(str) {
+        console.error(str);
+    },
+};
+
 function randomNum(max, min) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -67,25 +81,29 @@ async function signSouth() {
         const res = await fetchText(genUrl(this.href, `plugin.php?H_name=tasks&action=ajax&actions=job&cid=${taskId}`));
         // 未登录
         if (res.match('您还不是论坛会员,请先登录论坛')) {
-            console.log(this.name, ' 需要登录');
+            logger.error(`${this.name} 需要登录`);
             return;
         }
         if (res.includes('success')) {
             await fetchText(genUrl(this.href, `plugin.php?H_name=tasks&action=ajax&actions=job2&cid=${taskId}`));
             setSignResult('south-plus' + taskId, true);
         }
+        else if (res.includes('上次申请')) {
+            setSignResult('south-plus' + taskId, true);
+            // 已经签到了
+        }
     };
     if (!getSignResult(site_name + '14', 7)) {
         await sign(14);
     }
     else {
-        console.log('已经签到: ', site_name);
+        logger.info(`${site_name} 已签到`);
     }
     if (!getSignResult(site_name + '15')) {
         await sign(15);
     }
     else {
-        console.log('周任务已经完成: ', site_name);
+        logger.info(`${site_name} 已签到`);
     }
 }
 function setSignResult(site, result) {
@@ -131,7 +149,7 @@ const siteDict = [
         async signFn() {
             var _a;
             if (getSignResult(this.name)) {
-                console.log(this.name, ': 已签到');
+                logger.info(`${this.name} 已签到`);
                 return;
             }
             const pathname = 'home.php?mod=task&do=apply&id=2';
@@ -143,11 +161,11 @@ const siteDict = [
             else {
                 const content = await fetchText(this.href, { decode: 'gbk' });
                 // 未登录
-                if (content.match('注册[Register]')) {
-                    console.log(this.name, ' 需要登录');
+                if (content.includes('注册[Register]')) {
+                    logger.error(`${this.name} 需要登录`);
                     return;
                 }
-                else if (!content.match(pathname)) {
+                else if (!content.includes(pathname)) {
                     setSignResult(this.name, true);
                     return;
                 }
@@ -158,11 +176,11 @@ const siteDict = [
     },
     {
         name: 'v2ex',
-        href: ['https://www.v2ex.com/', 'https://v2ex.com/'],
+        href: ['https://v2ex.com/', 'https://www.v2ex.com/'],
         async signFn() {
             var _a;
             if (getSignResult(this.name)) {
-                console.log(this.name, ': 已签到');
+                logger.info(`${this.name} 已签到`);
                 return;
             }
             let href = this.href[0];
@@ -172,9 +190,8 @@ const siteDict = [
             }
             const missionUrl = genUrl(href, 'mission/daily');
             const content = await fetchText(genUrl(href, 'mission/daily'));
-            // 需要登录
             if (content.match(/你是机器人么？/)) {
-                console.log(this.name, ' 需要登录');
+                logger.error(`${this.name} 需要登录`);
                 return;
             }
             const m = content.match(/mission\/daily\/redeem\?once=\d+/);
@@ -186,7 +203,7 @@ const siteDict = [
                 });
             }
             else {
-                console.log(this.name, ': 已签到');
+                logger.info(`${this.name} 已签到`);
             }
             setSignResult(this.name, true);
         },
@@ -196,15 +213,15 @@ const siteDict = [
         href: 'https://bbs4.2djgame.net/home/forum.php',
         async signFn() {
             if (getSignResult(this.name)) {
-                console.log(this.name, ': 已签到');
+                logger.info(`${this.name} 已签到`);
                 return;
             }
             const content = await fetchText(genUrl(this.href, 'home.php?mod=task&do=apply&id=1'));
             if (content.match('抱歉，本期您已申請過此任務，請下期再來')) {
-                console.log(this.name, ': 已签到');
+                logger.info(`${this.name} 已签到`);
             }
             else if (content.match('您需要先登錄才能繼續本操作')) {
-                console.log(this.name, ' 需要登录');
+                logger.error(`${this.name} 需要登录`);
                 return;
             }
             setSignResult(this.name, true);
@@ -215,12 +232,12 @@ const siteDict = [
         href: 'https://zodgame.xyz/',
         async signFn() {
             if (getSignResult(this.name)) {
-                console.log(this.name, ': 已签到');
+                logger.info(`${this.name} 已签到`);
                 return;
             }
             const content = await fetchText(genUrl(this.href, 'plugin.php?id=dsu_paulsign:sign'));
-            if (content.match('您好！登录后享受更多精彩')) {
-                console.log(this.name, ' 需要登录');
+            if (content.includes('您好！登录后享受更多精彩')) {
+                logger.error(`${this.name} 需要登录`);
                 return;
             }
             const formhashRe = /<input\s*type="hidden"\s*name="formhash"\s*value="([^"]+)"\s*\/?>/;
@@ -256,22 +273,28 @@ const siteDict = [
     },
 ];
 async function main() {
-    // @TODO 增加设置选项，用于当个网站签到或者全部签到
-    // let flag = true;
-    const checked = getSignResult(ALL_SITES);
-    // if (checked) return;
-    if (!checked) {
-        siteDict.forEach((obj) => {
-            obj.signFn();
-        });
-        setSignResult(ALL_SITES, true);
-        return;
-    }
-    else {
-        const site = siteDict.find((obj) => obj.href.includes(location.href));
-        if (site) {
-            site.signFn();
-        }
+    // 禁用自动一键签到，改成访问当前网站时，签到当前网站
+    // const checked = getSignResult(ALL_SITES);
+    // if (!checked) {
+    //   siteDict.forEach((obj) => {
+    //     obj.signFn();
+    //   });
+    //   setSignResult(ALL_SITES, true);
+    //   return;
+    // }
+    const site = siteDict.find((obj) => obj.href.includes(location.href));
+    if (site) {
+        site.signFn();
     }
 }
 main();
+function qiandaoAllSites() {
+    siteDict.forEach((obj) => {
+        obj.signFn();
+    });
+    setSignResult(ALL_SITES, true);
+}
+// 签到脚本命令
+if (GM_registerMenuCommand) {
+    GM_registerMenuCommand('一键签到', qiandaoAllSites);
+}

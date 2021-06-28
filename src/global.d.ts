@@ -18,8 +18,8 @@ declare var GM_notification: (options: {
   text: string;
   title?: string;
   image?: string;
-  onClick: Function;
-  onDone: Function;
+  onClick?: Function;
+  onDone?: Function;
 }) => any;
 declare var GM_addValueChangeListener: (
   name: string,

@@ -5,6 +5,8 @@
 // @description 导出 Bangumi 收藏
 // @description:en-US export collection on bangumi.tv
 // @description:zh-CN 导出 Bangumi 收藏
+// @author      22earth
+// @homepage    https://github.com/22earth/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/\w+\/list\/.*$/
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/index\/\d+/
 // @version     0.0.3

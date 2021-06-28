@@ -116,7 +116,7 @@ const siteDict: SiteConfig[] = [
   },
   {
     name: 'v2ex',
-    href: ['https://www.v2ex.com/', 'https://v2ex.com/'],
+    href: ['https://v2ex.com/', 'https://www.v2ex.com/'],
     async signFn() {
       if (getSignResult(this.name)) {
         console.log(this.name, ': 已签到');

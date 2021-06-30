@@ -5,7 +5,7 @@ import {
   getTotalPageNum,
 } from './sites/bangumi/common';
 import { sleep } from './utils/async/sleep';
-import { downloadFile, htmlToElement } from './utils/domUtils';
+import { $q, downloadFile, htmlToElement } from './utils/domUtils';
 import { fetchText } from './utils/fetchData';
 import { formatDate } from './utils/utils';
 

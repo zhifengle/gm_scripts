@@ -5,6 +5,7 @@ const ENV_FLAG = '__ENV_EXT__';
 
 type IAjaxType = 'text' | 'json' | 'blob' | 'arraybuffer';
 
+let retryCounter = 0;
 export function fetchInfo(
   url: string,
   type: IAjaxType,
@@ -30,16 +31,25 @@ export function fetchInfo(
         responseType: type,
         onload: function (res: any) {
           if (res.status === 404) {
+            retryCounter = 0;
             reject(404);
+          } else if (res.status === 302 && retryCounter < 5) {
+            retryCounter++;
+            resolve(fetchInfo(res.finalUrl, type, opts, TIMEOUT));
           }
           if (opts.decode && type === 'arraybuffer') {
+            retryCounter = 0;
             let decoder = new TextDecoder(opts.decode);
             resolve(decoder.decode(res.response));
           } else {
+            retryCounter = 0;
             resolve(res.response);
           }
         },
-        onerror: reject,
+        onerror: (e: any) => {
+          retryCounter = 0;
+          reject(e);
+        },
         ...gmXhrOpts,
       });
     });
@@ -58,7 +68,11 @@ export function fetchInfo(
     TIMEOUT
   ).then(
     (response) => {
-      if (response.ok) {
+      if (response.status === 302 && retryCounter < 5) {
+        retryCounter++;
+        return fetchInfo(response.url, type, opts, TIMEOUT);
+      } else if (response.ok) {
+        retryCounter = 0;
         if (opts.decode) {
           return response.arrayBuffer().then((buffer: ArrayBuffer) => {
             let decoder = new TextDecoder(opts.decode);
@@ -68,6 +82,7 @@ export function fetchInfo(
         }
         return response[type]();
       }
+      retryCounter = 0;
       throw new Error('Not 2xx response');
     },
     (err) => console.log('fetch err: ', err)

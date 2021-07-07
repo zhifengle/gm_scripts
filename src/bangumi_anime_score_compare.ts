@@ -352,11 +352,16 @@ async function init(page: ScorePage, force?: boolean) {
     if (s !== page.name) {
       if (subjectIdDict) {
         const id = subjectIdDict[s];
+        if (id === '-1') continue;
         info = readScoreInfo(s, id);
       }
       // 不存在缓存数据
       if (!info) {
         info = await fetchScoreInfo(s, curPageScoreInfo);
+        if (!info) {
+          dict[s] = '-1';
+          continue;
+        }
       }
       if (info) {
         page.insertScoreInfo(info);

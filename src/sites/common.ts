@@ -21,11 +21,12 @@ export function filterResults(
   if (items.length === 1 && isSearch) {
     return items[0];
   }
-  let results = new Fuse(items, Object.assign({}, opts)).search(
+  var results = new Fuse(items, Object.assign({}, opts)).search(
     subjectInfo.name
   );
   if (!results.length) return;
   // 有参考的发布时间
+  const tempResults = [];
   if (subjectInfo.releaseDate) {
     for (const item of results) {
       const result = item.item;
@@ -38,6 +39,12 @@ export function filterResults(
         if (isEqualDate(result.releaseDate, subjectInfo.releaseDate)) {
           return result;
         }
+      }
+      // 过滤年份不一致的数据
+      if (
+        result.releaseDate.slice(0, 4) === subjectInfo.releaseDate.slice(0, 4)
+      ) {
+        tempResults.push(item);
       }
     }
   }
@@ -53,6 +60,7 @@ export function filterResults(
       return result;
     }
   }
+  results = tempResults;
   return results[0]?.item;
 }
 

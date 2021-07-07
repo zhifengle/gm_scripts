@@ -4,9 +4,11 @@
 // @namespace   https://github.com/22earth
 // @description show subject score information of douban and MAL in bangumi.tv
 // @description:zh-cn bangumi动画页面显示豆瓣和MAL的评分
+// @author      22earth
+// @homepage    https://github.com/22earth/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/subject\/.*$/
 // @include     https://movie.douban.com/subject/*
-// @version     0.3.1
+// @version     0.3.2
 // @note        0.2.0 支持豆瓣上显示Bangumi评分,暂时禁用豆瓣上显示MAL的评分功能以及修改过滤方式
 // @note        0.2.4 豆瓣 api 失效，使用搜索页面查询结果
 // @TODO        统一豆瓣和Bangumi的缓存数据信息,
@@ -49,6 +51,7 @@ function randomNum(max, min) {
 }
 
 // support GM_XMLHttpRequest
+let retryCounter = 0;
 function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
     var _a;
     const method = ((_a = opts === null || opts === void 0 ? void 0 : opts.method) === null || _a === void 0 ? void 0 : _a.toUpperCase()) || 'GET';
@@ -65,16 +68,26 @@ function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
             // @ts-ignore
             GM_xmlhttpRequest(Object.assign({ method, timeout: TIMEOUT, url, responseType: type, onload: function (res) {
                     if (res.status === 404) {
+                        retryCounter = 0;
                         reject(404);
                     }
+                    else if (res.status === 302 && retryCounter < 5) {
+                        retryCounter++;
+                        resolve(fetchInfo(res.finalUrl, type, opts, TIMEOUT));
+                    }
                     if (opts.decode && type === 'arraybuffer') {
+                        retryCounter = 0;
                         let decoder = new TextDecoder(opts.decode);
                         resolve(decoder.decode(res.response));
                     }
                     else {
+                        retryCounter = 0;
                         resolve(res.response);
                     }
-                }, onerror: reject }, gmXhrOpts));
+                }, onerror: (e) => {
+                    retryCounter = 0;
+                    reject(e);
+                } }, gmXhrOpts));
         });
     }
 }
@@ -139,10 +152,11 @@ function filterResults(items, subjectInfo, opts = {}, isSearch = true) {
     if (items.length === 1 && isSearch) {
         return items[0];
     }
-    let results = new Fuse(items, Object.assign({}, opts)).search(subjectInfo.name);
+    var results = new Fuse(items, Object.assign({}, opts)).search(subjectInfo.name);
     if (!results.length)
         return;
     // 有参考的发布时间
+    const tempResults = [];
     if (subjectInfo.releaseDate) {
         for (const item of results) {
             const result = item.item;
@@ -157,6 +171,10 @@ function filterResults(items, subjectInfo, opts = {}, isSearch = true) {
                     return result;
                 }
             }
+            // 过滤年份不一致的数据
+            if (result.releaseDate.slice(0, 4) === subjectInfo.releaseDate.slice(0, 4)) {
+                tempResults.push(item);
+            }
         }
     }
     // 比较名称
@@ -169,6 +187,7 @@ function filterResults(items, subjectInfo, opts = {}, isSearch = true) {
             return result;
         }
     }
+    results = tempResults;
     return (_a = results[0]) === null || _a === void 0 ? void 0 : _a.item;
 }
 async function getSearchResultByGM() {
@@ -794,19 +813,25 @@ async function fetchScoreInfo(name, subjectInfo) {
     let res;
     let bgmOrigin = 'https://bgm.tv';
     GM_setValue(BANGUMI_LOADING, true);
-    switch (name) {
-        case 'bangumi':
-            res = await checkSubjectExist(subjectInfo, bgmOrigin, SubjectTypeId.anime);
-            if (!res.url.includes('http')) {
-                res.url = `${bgmOrigin}${res.url}`;
-            }
-            break;
-        case 'myanimelist':
-            res = await searchAnimeData(subjectInfo);
-            break;
-        case 'douban':
-            res = await checkAnimeSubjectExist(subjectInfo);
-            break;
+    try {
+        switch (name) {
+            case 'bangumi':
+                res = await checkSubjectExist(subjectInfo, bgmOrigin, SubjectTypeId.anime);
+                if (!res.url.includes('http')) {
+                    res.url = `${bgmOrigin}${res.url}`;
+                }
+                break;
+            case 'myanimelist':
+                res = await searchAnimeData(subjectInfo);
+                break;
+            case 'douban':
+                res = await checkAnimeSubjectExist(subjectInfo);
+                break;
+        }
+    }
+    catch (error) {
+        console.error(error);
+        info = undefined;
     }
     if (res) {
         info = Object.assign({ site: name }, res);

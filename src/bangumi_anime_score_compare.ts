@@ -112,23 +112,28 @@ async function fetchScoreInfo(name: ScoreSites, subjectInfo: SearchResult) {
   let res: SearchResult;
   let bgmOrigin = 'https://bgm.tv';
   GM_setValue(BANGUMI_LOADING, true);
-  switch (name) {
-    case 'bangumi':
-      res = await checkSubjectExist(
-        subjectInfo,
-        bgmOrigin,
-        SubjectTypeId.anime
-      );
-      if (!res.url.includes('http')) {
-        res.url = `${bgmOrigin}${res.url}`;
-      }
-      break;
-    case 'myanimelist':
-      res = await searchAnimeData(subjectInfo);
-      break;
-    case 'douban':
-      res = await checkAnimeSubjectExistDouban(subjectInfo);
-      break;
+  try {
+    switch (name) {
+      case 'bangumi':
+        res = await checkSubjectExist(
+          subjectInfo,
+          bgmOrigin,
+          SubjectTypeId.anime
+        );
+        if (!res.url.includes('http')) {
+          res.url = `${bgmOrigin}${res.url}`;
+        }
+        break;
+      case 'myanimelist':
+        res = await searchAnimeData(subjectInfo);
+        break;
+      case 'douban':
+        res = await checkAnimeSubjectExistDouban(subjectInfo);
+        break;
+    }
+  } catch (error) {
+    console.error(error);
+    info = undefined;
   }
   if (res) {
     info = {

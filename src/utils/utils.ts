@@ -77,6 +77,17 @@ export function isEqualDate(d1: string, d2: string): boolean {
   }
   return false;
 }
+export function isEqualMonth(d1: string, d2: string): boolean {
+  const resultDate = new Date(d1);
+  const originDate = new Date(d2);
+  if (
+    resultDate.getFullYear() === originDate.getFullYear() &&
+    resultDate.getMonth() === originDate.getMonth()
+  ) {
+    return true;
+  }
+  return false;
+}
 
 export function numToPercent(num: number) {
   return Number(num || 0).toLocaleString(undefined, {

@@ -27,7 +27,7 @@ async function signSouth() {
       logger.error(`${this.name} 需要登录`);
       return;
     }
-    if (res.includes('success')) {
+    if (res.includes('success') || res.includes('未完成')) {
       await fetchText(
         genUrl(
           this.href,

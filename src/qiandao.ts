@@ -142,10 +142,11 @@ const siteDict: SiteConfig[] = [
             Referer: missionUrl,
           },
         });
-      } else {
+        setSignResult(this.name, true);
+      } else if (content.includes('每日登录奖励已领取')) {
         logger.info(`${this.name} 已签到`);
+        setSignResult(this.name, true);
       }
-      setSignResult(this.name, true);
     },
   },
   {
@@ -182,6 +183,9 @@ const siteDict: SiteConfig[] = [
       if (content.includes('您好！登录后享受更多精彩')) {
         logger.error(`${this.name} 需要登录`);
         return;
+      } else if (content.includes('您今天已经签到过了或者签到时间还未开始')) {
+        setSignResult(this.name, true);
+        return;
       }
       const formhashRe =
         /<input\s*type="hidden"\s*name="formhash"\s*value="([^"]+)"\s*\/?>/;
@@ -214,9 +218,6 @@ const siteDict: SiteConfig[] = [
           setSignResult(this.name, true);
           return;
         }
-      }
-      if (content.includes('您今天已经签到过了或者签到时间还未开始')) {
-        setSignResult(this.name, true);
       }
     },
   },

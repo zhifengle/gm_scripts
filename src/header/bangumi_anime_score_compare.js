@@ -8,7 +8,8 @@
 // @homepage    https://github.com/22earth/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/subject\/.*$/
 // @include     https://movie.douban.com/subject/*
-// @version     0.3.2
+// @version     0.3.3
+// @note        0.3.3 支持 Anidb
 // @note        0.2.0 支持豆瓣上显示Bangumi评分,暂时禁用豆瓣上显示MAL的评分功能以及修改过滤方式
 // @note        0.2.4 豆瓣 api 失效，使用搜索页面查询结果
 // @TODO        统一豆瓣和Bangumi的缓存数据信息,
@@ -25,4 +26,5 @@
 // @resource    bangumi_favicon https://bgm.tv/img/favicon.ico
 // @resource    douban_favicon https://img3.doubanio.com/favicon.ico
 // @resource    myanimelist_favicon https://cdn.myanimelist.net/images/favicon.ico
+// @resource    anidb_favicon https://cdn-us.anidb.net/css/icons/touch/favicon.ico
 // ==/UserScript==

@@ -2,13 +2,16 @@ import { SearchResult } from './interface/subject';
 import { Selector, SubjectTypeId } from './interface/wiki';
 import { checkSubjectExist } from './sites/bangumi';
 import { checkAnimeSubjectExist as checkAnimeSubjectExistDouban } from './sites/douban';
-import { searchAnimeData } from './sites/myanimelist';
+import { searchAnimeData as searchAnimeDataMAL } from './sites/myanimelist';
+import {
+  searchAnimeData as searchAnimeDataAnidb,
+  favicon as anidbFavicon,
+} from './sites/anidb';
 import { sleep } from './utils/async/sleep';
 import { $q, $qa, findElement } from './utils/domUtils';
 import { dealDate } from './utils/utils';
 
-const sites = ['douban', 'bangumi', 'myanimelist'] as const;
-// const sites = ['douban', 'bangumi'] as const;
+const sites = ['douban', 'bangumi', 'myanimelist', 'anidb'] as const;
 type ScoreSites = typeof sites[number];
 
 type ScoreInfo = SearchResult & { site: ScoreSites };
@@ -42,8 +45,23 @@ const UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
 // 30天清理所有数据
 const CLEAR_INTERVAL = UPDATE_INTERVAL * 30;
 
+function getFavicon(site: ScoreSites) {
+  let favicon: any = '';
+  const dict: { [key in ScoreSites]?: string } = {
+    anidb: anidbFavicon,
+  };
+  if (dict[site]) {
+    return dict[site];
+  }
+  try {
+    favicon = GM_getResourceURL(`${site}_favicon`);
+  } catch (error) {}
+  return favicon;
+}
+
 function getSubjectId(href: string): string {
-  const m = href.match(/\/(subject|anime)\/(\d+)/);
+  // https://anidb.net/a15320
+  const m = href.match(/\/(subject\/|anime\/|anidb.net\/a)(\d+)/);
   if (m) {
     return m[2];
   }
@@ -125,7 +143,10 @@ async function fetchScoreInfo(name: ScoreSites, subjectInfo: SearchResult) {
         }
         break;
       case 'myanimelist':
-        res = await searchAnimeData(subjectInfo);
+        res = await searchAnimeDataMAL(subjectInfo);
+        break;
+      case 'anidb':
+        res = await searchAnimeDataAnidb(subjectInfo);
         break;
       case 'douban':
         res = await checkAnimeSubjectExistDouban(subjectInfo);
@@ -146,7 +167,7 @@ async function fetchScoreInfo(name: ScoreSites, subjectInfo: SearchResult) {
 }
 
 const DoubanScorePage: ScorePage = {
-  name: sites[0],
+  name: 'douban',
   controlSelector: [
     {
       selector: '#interest_sectl',
@@ -193,7 +214,7 @@ const DoubanScorePage: ScorePage = {
     }
     const score = info.score || 0;
     const $div = document.createElement('div');
-    const favicon = GM_getResourceURL(`${info.site}_favicon`);
+    const favicon = getFavicon(info.site);
     const rawHTML = `<strong class="rating_avg">${score}</strong>
                     <div class="friends">
                             <a class="avatar" title="${
@@ -216,7 +237,7 @@ const DoubanScorePage: ScorePage = {
 };
 
 const BangumiScorePage: ScorePage = {
-  name: sites[1],
+  name: 'bangumi',
   controlSelector: [
     {
       selector: '#panelInterestWrapper h2',
@@ -255,17 +276,16 @@ const BangumiScorePage: ScorePage = {
       let $div = document.createElement('div');
       $div.classList.add('frdScore');
       $div.classList.add('e-userjs-score-compare');
-      const convertName = (site: ScoreSites) => {
-        if (site === 'myanimelist') {
-          return 'MAL';
-        } else if (site === 'douban') {
-          return '豆瓣';
-        }
-        return site;
-      };
-      $div.innerHTML = `${convertName(
+      const favicon = getFavicon(info.site);
+      $div.innerHTML = `
+<a class="avatar" style="vertical-align:-3px;margin-right:10px;" title="${
         info.site
-      )}评价：<span class="num">${score}</span> <span class="desc" style="visibility:hidden">还行</span> <a href="${
+      }" href="javascript:;">
+<img style="width:16px;" src="${favicon}"/>
+</a>
+      <span class="num">${Number(score).toFixed(
+        2
+      )}</span> <span class="desc" style="visibility:hidden">还行</span> <a href="${
         info.url
       }" target="_blank" rel="noopener noreferrer nofollow" class="l">${
         info.count || 0

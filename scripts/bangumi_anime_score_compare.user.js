@@ -160,22 +160,24 @@ function filterResults(items, subjectInfo, opts = {}, isSearch = true) {
     // 有参考的发布时间
     const tempResults = [];
     if (subjectInfo.releaseDate) {
-        for (const item of results) {
-            const result = item.item;
-            // 只有年的时候
-            if (result.releaseDate && result.releaseDate.length === '4') {
-                if (result.releaseDate === subjectInfo.releaseDate.slice(0, 4)) {
-                    return result;
+        for (const obj of results) {
+            const result = obj.item;
+            if (result.releaseDate) {
+                // 只有年的时候
+                if (result.releaseDate.length === '4') {
+                    if (result.releaseDate === subjectInfo.releaseDate.slice(0, 4)) {
+                        return result;
+                    }
                 }
-            }
-            else if (result.releaseDate) {
-                if (isEqualDate(result.releaseDate, subjectInfo.releaseDate)) {
-                    return result;
+                else {
+                    if (isEqualDate(result.releaseDate, subjectInfo.releaseDate)) {
+                        return result;
+                    }
                 }
-            }
-            // 过滤年份不一致的数据
-            if (result.releaseDate.slice(0, 4) === subjectInfo.releaseDate.slice(0, 4)) {
-                tempResults.push(item);
+                // 过滤年份不一致的数据
+                if (result.releaseDate.slice(0, 4) === subjectInfo.releaseDate.slice(0, 4)) {
+                    tempResults.push(obj);
+                }
             }
         }
     }

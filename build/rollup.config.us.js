@@ -20,6 +20,11 @@ function addScriptHeader(name) {
   };
 }
 
+let extraPlugins = [replace({ __ENV_EXT__: '__ENV_GM__' })];
+if (process.env.XHR_MODE === 'fetch') {
+  extraPlugins = [];
+}
+
 export default {
   input: pathResolve(__dirname, `../src/${outputName}.ts`),
   output: {
@@ -29,7 +34,7 @@ export default {
     // sourcemap: true
   },
   plugins: [
-    replace({ __ENV_EXT__: '__ENV_GM__' }),
+    ...extraPlugins,
     ...base.plugins,
     resolve(),
     commonjs(),

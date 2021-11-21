@@ -7,7 +7,7 @@
     "build:export_tool": "cross-env SCRIPT_NAME=bangumi_collection_export_tool rollup -c build/rollup.config.us.js",
     "build:douban": "cross-env SCRIPT_NAME=migrate_douban_collection_to_bangumi rollup -c build/rollup.config.us.js",
     "build:anime_score": "cross-env SCRIPT_NAME=bangumi_anime_score_compare rollup -c build/rollup.config.us.js",
-    "build:qiandao": "cross-env SCRIPT_NAME=qiandao rollup -c build/rollup.config.us.js",
+    "build:qiandao": "cross-env SCRIPT_NAME=qiandao XHR_MODE=fetch rollup -c build/rollup.config.us.js",
     "dev:douban": "cross-env SCRIPT_NAME=migrate_douban_collection_to_bangumi rollup -w -c build/rollup.config.us.js",
     "dev:anime_score": "cross-env SCRIPT_NAME=bangumi_anime_score_compare rollup -w -c build/rollup.config.us.js",
     "dev:test": "rollup -w -c build/rollup.config.dev.js",

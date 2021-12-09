@@ -6,6 +6,7 @@ type SiteConfig = {
   name: string;
   href: string | string[];
   hostname?: string | string[];
+  headers?: Record<string, string>;
   signFn: () => Promise<void>;
 };
 
@@ -20,7 +21,10 @@ async function signSouth() {
       genUrl(
         this.href,
         `plugin.php?H_name=tasks&action=ajax&actions=job&cid=${taskId}`
-      )
+      ),
+      {
+        headers: this.headers,
+      }
     );
     // 未登录
     if (res.match('您还不是论坛会员,请先登录论坛')) {
@@ -32,7 +36,10 @@ async function signSouth() {
         genUrl(
           this.href,
           `plugin.php?H_name=tasks&action=ajax&actions=job2&cid=${taskId}`
-        )
+        ),
+        {
+          headers: this.headers,
+        }
       );
       setSignResult('south-plus' + taskId, true);
     } else if (res.includes('上次申请')) {
@@ -87,8 +94,12 @@ const siteDict: SiteConfig[] = [
   {
     name: 'south-plus',
     href: 'https://www.south-plus.net/',
+    headers: {
+      Referer: 'https://www.south-plus.net/plugin.php?H_name-tasks.html',
+    },
     signFn: signSouth,
   },
+  /*
   {
     name: '52pojie',
     href: 'https://www.52pojie.cn/',
@@ -116,9 +127,13 @@ const siteDict: SiteConfig[] = [
       setSignResult(this.name, true);
     },
   },
+  */
   {
     name: 'v2ex',
     href: ['https://v2ex.com/', 'https://www.v2ex.com/'],
+    headers: {
+      Referer: 'https://v2ex.com/',
+    },
     async signFn() {
       if (getSignResult(this.name)) {
         logger.info(`${this.name} 已签到`);
@@ -152,6 +167,9 @@ const siteDict: SiteConfig[] = [
   {
     name: '2djgame',
     href: 'https://bbs4.2djgame.net/home/forum.php',
+    headers: {
+      Referer: 'https://bbs4.2djgame.net/home/forum.php',
+    },
     async signFn() {
       if (getSignResult(this.name)) {
         logger.info(`${this.name} 已签到`);
@@ -172,13 +190,19 @@ const siteDict: SiteConfig[] = [
   {
     name: 'zodgame',
     href: 'https://zodgame.xyz/',
+    headers: {
+      Referer: 'https://zodgame.xyz/',
+    },
     async signFn() {
       if (getSignResult(this.name)) {
         logger.info(`${this.name} 已签到`);
         return;
       }
       const content = await fetchText(
-        genUrl(this.href, 'plugin.php?id=dsu_paulsign:sign')
+        genUrl(this.href, 'plugin.php?id=dsu_paulsign:sign'),
+        {
+          headers: this.headers,
+        }
       );
       if (content.includes('您好！登录后享受更多精彩')) {
         logger.error(`${this.name} 需要登录`);

@@ -12,7 +12,7 @@
 // @include     https://zodgame.xyz/
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
-// @version     0.0.6
+// @version     0.0.7
 // @run-at      document-end
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setValue
@@ -22,37 +22,49 @@
 
 
 // support GM_XMLHttpRequest
+let retryCounter = 0;
 function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
     var _a;
     const method = ((_a = opts === null || opts === void 0 ? void 0 : opts.method) === null || _a === void 0 ? void 0 : _a.toUpperCase()) || 'GET';
-    // @ts-ignore
-    {
-        const gmXhrOpts = Object.assign({}, opts);
-        if (method === 'POST' && gmXhrOpts.body) {
-            gmXhrOpts.data = gmXhrOpts.body;
-        }
-        if (opts.decode) {
-            type = 'arraybuffer';
-        }
-        return new Promise((resolve, reject) => {
-            // @ts-ignore
-            GM_xmlhttpRequest(Object.assign({ method, timeout: TIMEOUT, url, responseType: type, onload: function (res) {
-                    if (res.status === 404) {
-                        reject(404);
-                    }
-                    if (opts.decode && type === 'arraybuffer') {
-                        let decoder = new TextDecoder(opts.decode);
-                        resolve(decoder.decode(res.response));
-                    }
-                    else {
-                        resolve(res.response);
-                    }
-                }, onerror: reject }, gmXhrOpts));
-        });
+    if (method === 'POST' && opts.data) {
+        opts.body = opts.data;
     }
+    return internalFetch(fetch(url, Object.assign({ method }, opts)), TIMEOUT).then((response) => {
+        if (response.status === 302 && retryCounter < 5) {
+            retryCounter++;
+            return fetchInfo(response.url, type, opts, TIMEOUT);
+        }
+        else if (response.ok) {
+            retryCounter = 0;
+            if (opts.decode) {
+                return response.arrayBuffer().then((buffer) => {
+                    let decoder = new TextDecoder(opts.decode);
+                    let text = decoder.decode(buffer);
+                    return text;
+                });
+            }
+            return response[type]();
+        }
+        retryCounter = 0;
+        throw new Error('Not 2xx response');
+    }, (err) => console.log('fetch err: ', err));
 }
 function fetchText(url, opts = {}, TIMEOUT = 10 * 1000) {
     return fetchInfo(url, 'text', opts, TIMEOUT);
+}
+// TODO: promise type
+function internalFetch(fetchPromise, TIMEOUT) {
+    let abortFn = null;
+    const abortPromise = new Promise(function (resolve, reject) {
+        abortFn = function () {
+            reject('abort promise');
+        };
+    });
+    let abortablePromise = Promise.race([fetchPromise, abortPromise]);
+    setTimeout(function () {
+        abortFn();
+    }, TIMEOUT);
+    return abortablePromise;
 }
 
 // 暂时使用控制台
@@ -78,14 +90,18 @@ const ALL_SITES = 'ALL_SITES';
 async function signSouth() {
     const site_name = this.name;
     const sign = async (taskId) => {
-        const res = await fetchText(genUrl(this.href, `plugin.php?H_name=tasks&action=ajax&actions=job&cid=${taskId}`));
+        const res = await fetchText(genUrl(this.href, `plugin.php?H_name=tasks&action=ajax&actions=job&cid=${taskId}`), {
+            headers: this.headers,
+        });
         // 未登录
         if (res.match('您还不是论坛会员,请先登录论坛')) {
             logger.error(`${this.name} 需要登录`);
             return;
         }
-        if (res.includes('success')) {
-            await fetchText(genUrl(this.href, `plugin.php?H_name=tasks&action=ajax&actions=job2&cid=${taskId}`));
+        if (res.includes('success') || res.includes('未完成')) {
+            await fetchText(genUrl(this.href, `plugin.php?H_name=tasks&action=ajax&actions=job2&cid=${taskId}`), {
+                headers: this.headers,
+            });
             setSignResult('south-plus' + taskId, true);
         }
         else if (res.includes('上次申请')) {
@@ -141,42 +157,46 @@ const siteDict = [
     {
         name: 'south-plus',
         href: 'https://www.south-plus.net/',
+        headers: {
+            Referer: 'https://www.south-plus.net/plugin.php?H_name-tasks.html',
+        },
         signFn: signSouth,
     },
+    /*
     {
-        name: '52pojie',
-        href: 'https://www.52pojie.cn/',
-        async signFn() {
-            var _a;
-            if (getSignResult(this.name)) {
-                logger.info(`${this.name} 已签到`);
-                return;
-            }
-            const pathname = 'home.php?mod=task&do=apply&id=2';
-            if (((_a = globalThis === null || globalThis === void 0 ? void 0 : globalThis.location) === null || _a === void 0 ? void 0 : _a.href) === this.href) {
-                const $btn = document.querySelector(`a[href="${pathname}"`);
-                if (!$btn)
-                    return;
-            }
-            else {
-                const content = await fetchText(this.href, { decode: 'gbk' });
-                // 未登录
-                if (content.includes('注册[Register]')) {
-                    logger.error(`${this.name} 需要登录`);
-                    return;
-                }
-                else if (!content.includes(pathname)) {
-                    setSignResult(this.name, true);
-                    return;
-                }
-            }
-            await fetchText(genUrl(this.href, pathname));
+      name: '52pojie',
+      href: 'https://www.52pojie.cn/',
+      async signFn() {
+        if (getSignResult(this.name)) {
+          logger.info(`${this.name} 已签到`);
+          return;
+        }
+        const pathname = 'home.php?mod=task&do=apply&id=2';
+        if (globalThis?.location?.href === this.href) {
+          const $btn = document.querySelector(`a[href="${pathname}"`);
+          if (!$btn) return;
+        } else {
+          const content = await fetchText(this.href, { decode: 'gbk' });
+          // 未登录
+          if (content.includes('注册[Register]')) {
+            logger.error(`${this.name} 需要登录`);
+            return;
+          } else if (!content.includes(pathname)) {
             setSignResult(this.name, true);
-        },
+            return;
+          }
+        }
+        await fetchText(genUrl(this.href, pathname));
+        setSignResult(this.name, true);
+      },
     },
+    */
     {
         name: 'v2ex',
         href: ['https://v2ex.com/', 'https://www.v2ex.com/'],
+        headers: {
+            Referer: 'https://v2ex.com/',
+        },
         async signFn() {
             var _a;
             if (getSignResult(this.name)) {
@@ -201,16 +221,20 @@ const siteDict = [
                         Referer: missionUrl,
                     },
                 });
+                setSignResult(this.name, true);
             }
-            else {
+            else if (content.includes('每日登录奖励已领取')) {
                 logger.info(`${this.name} 已签到`);
+                setSignResult(this.name, true);
             }
-            setSignResult(this.name, true);
         },
     },
     {
         name: '2djgame',
         href: 'https://bbs4.2djgame.net/home/forum.php',
+        headers: {
+            Referer: 'https://bbs4.2djgame.net/home/forum.php',
+        },
         async signFn() {
             if (getSignResult(this.name)) {
                 logger.info(`${this.name} 已签到`);
@@ -230,14 +254,23 @@ const siteDict = [
     {
         name: 'zodgame',
         href: 'https://zodgame.xyz/',
+        headers: {
+            Referer: 'https://zodgame.xyz/',
+        },
         async signFn() {
             if (getSignResult(this.name)) {
                 logger.info(`${this.name} 已签到`);
                 return;
             }
-            const content = await fetchText(genUrl(this.href, 'plugin.php?id=dsu_paulsign:sign'));
+            const content = await fetchText(genUrl(this.href, 'plugin.php?id=dsu_paulsign:sign'), {
+                headers: this.headers,
+            });
             if (content.includes('您好！登录后享受更多精彩')) {
                 logger.error(`${this.name} 需要登录`);
+                return;
+            }
+            else if (content.includes('您今天已经签到过了或者签到时间还未开始')) {
+                setSignResult(this.name, true);
                 return;
             }
             const formhashRe = /<input\s*type="hidden"\s*name="formhash"\s*value="([^"]+)"\s*\/?>/;
@@ -265,9 +298,6 @@ const siteDict = [
                     setSignResult(this.name, true);
                     return;
                 }
-            }
-            if (content.includes('您今天已经签到过了或者签到时间还未开始')) {
-                setSignResult(this.name, true);
             }
         },
     },

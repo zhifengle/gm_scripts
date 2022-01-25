@@ -20,6 +20,9 @@ function getInputNameEl() {
   if (!$username) {
     $username = document.querySelector('input[type=email]');
   }
+  if (!$username) {
+    $username = document.querySelector('input[placeholder*="输入用户名"]');
+  }
   return $username;
 }
 

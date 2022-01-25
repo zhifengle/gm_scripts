@@ -82,13 +82,19 @@ function getAccount() {
 function fillForm() {
   const account = getAccount();
   if (!account) return;
+  var evt = new Event('input', {
+    bubbles: true,
+    cancelable: true,
+  });
   const $name = getInputNameEl();
   if ($name) {
     $name.value = account.name;
+    $name.dispatchEvent(evt);
   }
   const $pw = getInputPwEl();
   if ($pw) {
     $pw.value = account.pw;
+    $pw.dispatchEvent(evt);
   }
 }
 function init() {

@@ -2,7 +2,15 @@
 
 > 自用脚本和 userChromejs
 
-## [migrate_douban_collection_to_bangumi.js](scripts/migrate_douban_collection_to_bangumi.user.js?raw=true)
+## [bangumi_collection_export_tool.user.js](scripts/bangumi_collection_export_tool.user.js?raw=true)
+
+导出 bangumi.tv 或者 bgm.tv 用户的收藏为 csv 文件 (可以用 excel 打开）
+
+在用户的收藏页面，新增一个“导出收藏”按钮。通过点击 “看过” “想看” ，然后点击 “导出收藏”，导出对应的数据。
+
+支持和导出格式相同的 csv 文件的导入
+
+## [migrate_douban_collection_to_bangumi.user.js](scripts/migrate_douban_collection_to_bangumi.user.js?raw=true)
 
 迁移豆瓣动画的收藏到 Bangumi。
 迁移 Bangumi 的数据到豆瓣， 只能同步“在看” “看过” “想看”。

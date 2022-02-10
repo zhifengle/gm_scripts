@@ -4,9 +4,67 @@ import { sleep } from '../../utils/async/sleep';
 import {
   IInterestData,
   InterestType,
+  InterestTypeId,
   SubjectItem,
   SubjectType,
 } from '../../interface/types';
+
+// @TODO 听和读没有区分开
+export const typeIdDict: {
+  [key in InterestType]: { name: string; id: InterestTypeId };
+} = {
+  dropped: {
+    name: '抛弃',
+    id: '5',
+  },
+  on_hold: {
+    name: '搁置',
+    id: '4',
+  },
+  do: {
+    name: '在看',
+    id: '3',
+  },
+  collect: {
+    name: '看过',
+    id: '2',
+  },
+  wish: {
+    name: '想看',
+    id: '1',
+  },
+};
+
+// 默认返回 2， 表示看过
+export function getInterestTypeIdByName(name: string): InterestTypeId {
+  let type: InterestTypeId = '2';
+  if (!name) return type;
+  let key: InterestType;
+  for (key in typeIdDict) {
+    if (typeIdDict[key].name === name) {
+      return typeIdDict[key].id;
+    }
+  }
+  return type;
+}
+export function getInterestTypeId(type: InterestType): InterestTypeId {
+  return typeIdDict[type].id;
+}
+
+export function getInterestTypeName(type: InterestType): string {
+  return typeIdDict[type].name;
+}
+
+export function getInterestName(id: InterestTypeId): string {
+  let name = '看过';
+  let key: InterestType;
+  for (key in typeIdDict) {
+    if (typeIdDict[key].id === id) {
+      return typeIdDict[key].name;
+    }
+  }
+  return name;
+}
 
 export function getBgmHost() {
   return `${location.protocol}//${location.host}`;
@@ -243,8 +301,13 @@ export async function updateInterest(subjectId: string, data: IInterestData) {
   for (let [key, val] of Object.entries(obj)) {
     if (!formData.has(key)) {
       formData.append(key, val);
-    } else if (formData.has(key) && !formData.get(key) && val) {
-      formData.set(key, val);
+    } else {
+      // 标签和吐槽可以直接清空
+      if (['tags', 'comment', 'rating'].includes(key)) {
+        formData.set(key, val);
+      } else if (!formData.get(key) && val) {
+        formData.set(key, val);
+      }
     }
   }
   await fetch($form.action, {

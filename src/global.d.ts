@@ -1,4 +1,5 @@
 declare var Fuse: any;
+declare var jschardet: any;
 
 declare var GM_setValue: (key: string, value: any) => void;
 declare var GM_getValue: (key: string, defaultValue?: any) => any;

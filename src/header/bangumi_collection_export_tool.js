@@ -9,7 +9,9 @@
 // @homepage    https://github.com/22earth/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/\w+\/list\/.*$/
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/index\/\d+/
-// @version     0.0.3
+// @version     0.0.4
+// @note        0.0.4 添加导入功能。注意：不支持是否对自己可见的导入
 // @grant       GM_xmlhttpRequest
+// @require     https://cdn.staticfile.org/jschardet/1.4.1/jschardet.min.js
 // @run-at      document-end
 // ==/UserScript==

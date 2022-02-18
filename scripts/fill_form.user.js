@@ -3,8 +3,9 @@
 // @namespace   https://github.com/22earth
 // @description fill form
 // @include     https://115.com/
+// @include     *://*
 // @match       https://greasyfork.org/zh-CN/users/sign_in
-// @version     0.0.1
+// @version     0.0.2
 // @grant       GM_setValue
 // @grant       GM_getValue
 // @require     https://cdn.bootcdn.net/ajax/libs/crypto-js/4.1.1/crypto-js.min.js
@@ -28,6 +29,9 @@ function getInputNameEl() {
 
 function getInputPwEl() {
   let $pw = document.querySelector('input[type=password]');
+  if (!$pw) {
+    $pw = document.querySelector('input[name=password]');
+  }
   return $pw;
 }
 

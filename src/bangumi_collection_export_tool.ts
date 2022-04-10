@@ -102,7 +102,12 @@ function genCSVContent(res: SubjectItem[], status?: string) {
     const tag = collectInfo.tag || '';
     csvContent += `,"${tag}"`;
     const comment = collectInfo.comment || '';
-    csvContent += `,"${comment}"`;
+    // 评论使用的 "" 包裹时
+    if (/^".*"$/.test(comment)) {
+      csvContent += `,""${comment}""`;
+    } else {
+      csvContent += `,"${comment}"`;
+    }
     const rawInfos = item.rawInfos || '';
     csvContent += `,"${rawInfos}"`;
     if (status) {

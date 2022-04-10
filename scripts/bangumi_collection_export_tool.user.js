@@ -9,7 +9,7 @@
 // @homepage    https://github.com/22earth/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/\w+\/list\/.*$/
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/index\/\d+/
-// @version     0.0.4
+// @version     0.0.5
 // @note        0.0.4 添加导入功能。注意：不支持是否对自己可见的导入
 // @grant       GM_xmlhttpRequest
 // @require     https://cdn.staticfile.org/jschardet/1.4.1/jschardet.min.js
@@ -439,7 +439,7 @@ function genCSVContent(res, status) {
     const hostUrl = getBgmHost();
     let csvContent = '';
     res.forEach((item) => {
-        csvContent += `\r\n${item.name || ''},${item.greyName || ''},${item.releaseDate || ''}`;
+        csvContent += `\r\n"${item.name || ''}","${item.greyName || ''}",${item.releaseDate || ''}`;
         const subjectUrl = hostUrl + item.url;
         csvContent += `,${subjectUrl}`;
         const cover = item.cover || '';
@@ -450,7 +450,7 @@ function genCSVContent(res, status) {
         const score = collectInfo.score || '';
         csvContent += `,${score}`;
         const tag = collectInfo.tag || '';
-        csvContent += `,${tag}`;
+        csvContent += `,"${tag}"`;
         const comment = collectInfo.comment || '';
         csvContent += `,"${comment}"`;
         const rawInfos = item.rawInfos || '';
@@ -533,7 +533,8 @@ function handleInputChange() {
             }
             try {
                 // @TODO 硬编码的索引
-                const arr = str.split(',');
+                // 剔除开头和结尾的引号
+                const arr = str.split(',').map((s) => s.replace(/^"|"$/g, ''));
                 const subjectId = getSubjectId(arr[3]);
                 let interest = '2';
                 // 为空时，取 URL 的

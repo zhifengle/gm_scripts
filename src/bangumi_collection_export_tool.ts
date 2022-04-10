@@ -87,7 +87,7 @@ function genCSVContent(res: SubjectItem[], status?: string) {
   const hostUrl = getBgmHost();
   let csvContent = '';
   res.forEach((item) => {
-    csvContent += `\r\n${item.name || ''},${item.greyName || ''},${
+    csvContent += `\r\n"${item.name || ''}","${item.greyName || ''}",${
       item.releaseDate || ''
     }`;
     const subjectUrl = hostUrl + item.url;
@@ -100,7 +100,7 @@ function genCSVContent(res: SubjectItem[], status?: string) {
     const score = collectInfo.score || '';
     csvContent += `,${score}`;
     const tag = collectInfo.tag || '';
-    csvContent += `,${tag}`;
+    csvContent += `,"${tag}"`;
     const comment = collectInfo.comment || '';
     csvContent += `,"${comment}"`;
     const rawInfos = item.rawInfos || '';
@@ -186,7 +186,8 @@ function handleInputChange() {
       }
       try {
         // @TODO 硬编码的索引
-        const arr = str.split(',');
+        // 剔除开头和结尾的引号
+        const arr = str.split(',').map((s) => s.replace(/^"|"$/g, ''));
         const subjectId = getSubjectId(arr[3]);
         let interest: InterestTypeId = '2';
         // 为空时，取 URL 的

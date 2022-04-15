@@ -16,6 +16,13 @@ export type IInterestData = {
   // 1 为自己可见
   privacy?: '1' | '0';
 };
+export interface CollectionInfo {
+  date: string;
+  score?: string;
+  tags?: string;
+  comment?: string;
+  interestType?: InterestType;
+}
 export interface SubjectItem {
   name: string;
   url: string;
@@ -28,12 +35,7 @@ export interface SubjectItem {
     score?: number | string;
     count?: number | string;
   };
-  collectInfo?: {
-    date: string;
-    score?: string;
-    tags?: string;
-    comment?: string;
-  };
+  collectInfo?: CollectionInfo;
 }
 
 export interface SiteUtils {

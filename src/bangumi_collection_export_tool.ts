@@ -1,8 +1,10 @@
+import { SearchResult } from './interface/subject';
 import {
   IInterestData,
   InterestType,
   InterestTypeId,
   SubjectItem,
+  CollectionInfo,
 } from './interface/types';
 import {
   getBgmHost,
@@ -74,6 +76,57 @@ async function getCollectionInfo(url: string) {
   return res;
 }
 
+function getRowItem(item: SubjectItem) {
+  const dict: { [key in keyof SubjectItem]: string } = {
+    name: '名称',
+    greyName: '别名',
+    releaseDate: '发行日期',
+    url: '地址',
+    cover: '封面地址',
+    rawInfos: '其它信息',
+  };
+  const dictCollection: { [key in keyof CollectionInfo]: string } = {
+    date: '收藏日期',
+    score: '我的评分',
+    tags: '标签',
+    comment: '吐槽',
+    interestType: WATCH_STATUS_STR,
+  };
+  const res: any = {};
+  for (const [key, value] of Object.entries(dict)) {
+    // @ts-ignore
+    res[value] = item[key] || '';
+  }
+  for (const [key, value] of Object.entries(dictCollection)) {
+    const collect = item.collectInfo || {};
+    if (key === 'interestType') {
+      res[value] = getInterestTypeName(item.collectInfo.interestType) || '';
+      continue;
+    }
+    // @ts-ignore
+    res[value] = collect[key] || '';
+  }
+  return res;
+}
+
+function downloadExcel(filename: string, items: SubjectItem[]) {
+  const rows = items.map((item) => getRowItem(item));
+  // @TODO 采用分步写入的方式
+  const header = CSV_HEADER.split(',');
+  header.push(WATCH_STATUS_STR);
+  const worksheet = XLSX.utils.json_to_sheet(rows, {
+    header,
+  });
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, '用户收藏');
+  XLSX.writeFile(workbook, filename);
+}
+
+function downloadCSV(filename: string, item: SubjectItem[]) {
+  const csv = genCSVHeader() + genCSVContent(item);
+  downloadFile(csv, filename);
+}
+
 function genCSVHeader(type: boolean = false) {
   let csvHeader = `\ufeff${CSV_HEADER}`;
   // 添加 想看 在看 搁置
@@ -124,15 +177,24 @@ function genAllExportBtn(filename: string) {
     const $text = $node.querySelector('span');
     $text.innerText = '导出中...';
     $node.style.pointerEvents = 'none';
-    let csvContent = '';
+    let infos: SubjectItem[] = [];
     for (const t of interestTypeArr) {
-      const res = await getCollectionInfo(genListUrl(t));
-      csvContent += genCSVContent(res, getInterestTypeName(t));
+      let res: SubjectItem[] = [];
+      try {
+        res = await getCollectionInfo(genListUrl(t));
+      } catch (error) {
+        console.error('抓取错误: ', error);
+      }
+      infos = infos.concat(
+        res.map((item) => {
+          item.collectInfo.interestType = t;
+          return item;
+        })
+      );
     }
-    const csv = genCSVHeader(true) + csvContent;
+    downloadExcel(filename, infos);
     $text.innerText = '完成所有导出';
     $node.style.pointerEvents = 'auto';
-    downloadFile(csv, filename);
   });
   return $node;
 }
@@ -143,90 +205,109 @@ function genExportBtn(filename: string) {
     const $text = ($node as HTMLElement).querySelector('span');
     $text.innerText = '导出中...';
     $node.style.pointerEvents = 'none';
-    const res = await getCollectionInfo(location.href);
-    const csv = genCSVHeader() + genCSVContent(res);
+    let res: SubjectItem[] = [];
+    try {
+      res = await getCollectionInfo(location.href);
+    } catch (error) {
+      console.error('抓取错误: ', error);
+    }
+    const interestType = getInterestTypeByUrl(location.href);
+    downloadExcel(
+      filename,
+      res.map((item) => {
+        item.collectInfo.interestType = interestType;
+        return item;
+      })
+    );
     $text.innerText = '导出完成';
     $node.style.pointerEvents = 'auto';
-    downloadFile(csv, filename);
   });
   return $node;
 }
 
-function handleInputChange() {
-  const file = this.files[0];
-  const $parent = this.closest('li') as HTMLElement;
-  const reader = new FileReader();
-  const detectReader = new FileReader();
-  detectReader.onload = function (e) {
-    const contents = this.result as string;
-    const arr = contents.split(/\r\n|\n/);
-    // 检测文件编码
-    reader.readAsText(file, jschardet.detect(arr[0].toString()).encoding);
-  };
-  reader.onload = async function (e) {
-    const contents = this.result as string;
-    var contentsArr = contents.split(/\r\n|\n/);
-    const $container = document.querySelector(
-      '#columnSubjectBrowserB'
-    ) as HTMLElement;
-    clearLogInfo($container);
-    $parent.style.pointerEvents = 'none';
-    $parent.querySelector('a > span').innerHTML = '导入中...';
-    const $menu = document.querySelector('#columnSubjectBrowserB .menu_inner');
-    for (let i = 0; i < contentsArr.length; i++) {
-      const str = contentsArr[i];
-      if (i === 0) {
-        // 为了避免错误，暂时只支持导出格式的 csv.
-        if (!str.includes(CSV_HEADER)) {
-          alert(`只支持 csv 文件\r\n文件开头为:\r\n"${CSV_HEADER}"`);
-          break;
-        }
-        console.log('==========Header==========');
-        console.log(str);
-        continue;
-      }
-      console.log(str);
-      if (!str.includes(',')) {
-        continue;
-      }
-      try {
-        // @TODO 硬编码的索引
-        // 剔除开头和结尾的引号
-        const arr = str.split(',').map((s) => s.replace(/^"|"$/g, ''));
-        const subjectId = getSubjectId(arr[3]);
-        let interest: InterestTypeId = '2';
-        // 为空时，取 URL 的
-        if (!arr[10]) {
-          interest = getInterestTypeId(getInterestTypeByUrl(location.href));
-        } else {
-          interest = getInterestTypeIdByName(arr[10]);
-        }
-        if (subjectId) {
-          const data: IInterestData = {
-            interest: interest,
-            rating: arr[6],
-            tags: arr[7],
-            // 剔除多余引号
-            comment: arr[8]?.replace(/^"|"$/g, ''),
-          };
-          const nameStr = `<span style="color:tomato">《${arr[0]}》</span>`;
-          insertLogInfo($menu, `更新收藏 ${nameStr} 中...`);
-          await updateInterest(subjectId, data);
-          insertLogInfo($menu, `更新收藏 ${nameStr} 成功`);
-          await randomSleep(2000, 1000);
-        }
-      } catch (error) {
-        console.error('导入错误: ', error);
-      }
+async function updateUserInterest(
+  subject: SearchResult,
+  data: IInterestData,
+  $infoDom: Element
+) {
+  const nameStr = `<span style="color:tomato">《${subject.name}》</span>`;
+  try {
+    const subjectId = getSubjectId(subject.url);
+    if (!subjectId) {
+      throw new Error('条目地址无效');
     }
-    $parent.querySelector('a > span').innerHTML = '导入完成';
-    $parent.style.pointerEvents = 'auto';
-  };
-  detectReader.readAsBinaryString(file);
+    insertLogInfo($infoDom, `更新收藏 ${nameStr} 中...`);
+    await updateInterest(subjectId, data);
+    insertLogInfo($infoDom, `更新收藏 ${nameStr} 成功`);
+    await randomSleep(2000, 1000);
+  } catch (error) {
+    insertLogInfo($infoDom, `导入 ${nameStr} 错误: ${error}`);
+    console.error('导入错误: ', error);
+  }
+}
+
+function readCSV(file: File) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    const detectReader = new FileReader();
+    detectReader.readAsBinaryString(file);
+    detectReader.onload = function (e) {
+      const contents = this.result as string;
+      const arr = contents.split(/\r\n|\n/);
+      // 检测文件编码
+      reader.readAsText(file, jschardet.detect(arr[0].toString()).encoding);
+    };
+    reader.onload = function (e) {
+      resolve(this.result);
+    };
+    reader.onerror = function (e) {
+      reject(e);
+    };
+  });
+}
+
+async function handleFileAsync(e: Event) {
+  const target = e.target as HTMLInputElement;
+  const $parent = this.closest('li') as HTMLElement;
+  const file = target.files[0];
+  let workbook;
+  if (file.name.includes('.csv')) {
+    const data = await readCSV(file);
+    workbook = XLSX.read(data, { type: 'string' });
+  } else {
+    const data = await file.arrayBuffer();
+    workbook = XLSX.read(data);
+  }
+  var first_sheet_name = workbook.SheetNames[0];
+  var worksheet = workbook.Sheets[first_sheet_name];
+  const jsonData = XLSX.utils.sheet_to_json(worksheet);
+  const $menu = document.querySelector('#columnSubjectBrowserB .menu_inner');
+  for (const item of jsonData) {
+    try {
+      const subject: SearchResult = {
+        name: item['名称'],
+        url: item['地址'],
+      };
+      if (!subject.name || !subject.url) {
+        throw new Error('没有条目信息');
+      }
+      const info: IInterestData = {
+        interest: getInterestTypeIdByName(item[WATCH_STATUS_STR]),
+        rating: item['我的评分'],
+        comment: item['吐槽'],
+        tags: item['标签'],
+      };
+      await updateUserInterest(subject, info, $menu);
+    } catch (error) {
+      console.error('导入错误: ', error);
+    }
+  }
+  $parent.querySelector('a > span').innerHTML = '导入完成';
+  $parent.style.pointerEvents = 'auto';
 }
 
 function genImportControl() {
-  const btnStr = `<li title="只支持和导出格式一致的 csv 文件">
+  const btnStr = `<li title="支持和导出表头相同的 csv 和 xlsx 文件">
   <a href="javascript:void(0);"><span style="color:tomato;"><label for="e-userjs-import-csv-file">导入收藏</label></span></a>
   <input type="file" id="e-userjs-import-csv-file" style="display:none" />
 </li>`;
@@ -234,11 +315,12 @@ function genImportControl() {
   const $file = $node.querySelector(
     '#e-userjs-import-csv-file'
   ) as HTMLInputElement;
-  $file.addEventListener('change', handleInputChange);
+  // $file.addEventListener('change', handleInputChange);
+  $file.addEventListener('change', handleFileAsync);
   return $node;
 }
 
-function addExportBtn() {
+function addExportBtn(ext: 'csv' | 'xlsx' = 'xlsx') {
   const $nav = $q('#headerProfile .navSubTabs');
   if (!$nav) return;
   const type = $nav.querySelector('.focus')?.textContent || '';
@@ -247,8 +329,8 @@ function addExportBtn() {
   if ($username) {
     name = $username.textContent;
   }
-  const filename = `${name}-${type}-${formatDate(new Date())}.csv`;
-  $nav.appendChild(genAllExportBtn(`${name}-${formatDate(new Date())}.csv`));
+  const filename = `${name}-${type}-${formatDate(new Date())}.${ext}`;
+  $nav.appendChild(genAllExportBtn(`${name}-${formatDate(new Date())}.${ext}`));
   // 判断是否在单个分类页面
   const interestType = getInterestTypeByUrl(location.href);
   if (interestTypeArr.includes(interestType)) {
@@ -261,7 +343,7 @@ function addExportBtn() {
 if (location.href.match(/index\/\d+/)) {
   const $header = $q('#header');
   const title = $header.querySelector('h1').textContent.trim();
-  $header.appendChild(genExportBtn(`${title}.csv`));
+  $header.appendChild(genExportBtn(`${title}.xlsx`));
 }
 
 if (location.href.match(/\w+\/list\//)) {

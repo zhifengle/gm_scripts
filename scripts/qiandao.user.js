@@ -7,12 +7,12 @@
 // @include     https://www.v2ex.com/
 // @include     https://v2ex.com/
 // @include     https://www.south-plus.net/
-// @include     https://www.52pojie.cn/
+// @include     /https:\/\/www\.52pojie\.cn\/(forum\.php)?$/
 // @include     https://bbs4.2djgame.net/home/forum.php
 // @include     https://zodgame.xyz/
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
-// @version     0.0.7
+// @version     0.0.8
 // @run-at      document-end
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setValue
@@ -20,6 +20,32 @@
 // @grant       GM_registerMenuCommand
 // ==/UserScript==
 
+
+/**
+ * 为页面添加样式
+ * @param style
+ */
+/**
+ * 载入 iframe
+ * @param $iframe iframe DOM
+ * @param src iframe URL
+ * @param TIMEOUT time out
+ */
+function loadIframe($iframe, src, TIMEOUT = 5000) {
+    return new Promise((resolve, reject) => {
+        $iframe.src = src;
+        let timer = setTimeout(() => {
+            timer = null;
+            $iframe.onload = undefined;
+            reject('iframe timeout');
+        }, TIMEOUT);
+        $iframe.onload = () => {
+            clearTimeout(timer);
+            $iframe.onload = null;
+            resolve(null);
+        };
+    });
+}
 
 // support GM_XMLHttpRequest
 let retryCounter = 0;
@@ -87,6 +113,18 @@ function randomNum(max, min) {
 const USERJS_PREFIX = 'E_USERJS_SIGN_';
 const UPDATE_INTERVAL = 24 * 60 * 60 * 1000;
 const ALL_SITES = 'ALL_SITES';
+async function loadSignInIframe(url) {
+    const iframeId = 'e-userjs-qiandao';
+    let $iframe = document.querySelector(`#${iframeId}`);
+    if (!$iframe) {
+        $iframe = document.createElement('iframe');
+        $iframe.style.display = 'none';
+        $iframe.id = iframeId;
+        document.body.appendChild($iframe);
+    }
+    await loadIframe($iframe, url);
+    return $iframe;
+}
 async function signSouth() {
     const site_name = this.name;
     const sign = async (taskId) => {
@@ -162,35 +200,36 @@ const siteDict = [
         },
         signFn: signSouth,
     },
-    /*
     {
-      name: '52pojie',
-      href: 'https://www.52pojie.cn/',
-      async signFn() {
-        if (getSignResult(this.name)) {
-          logger.info(`${this.name} 已签到`);
-          return;
-        }
-        const pathname = 'home.php?mod=task&do=apply&id=2';
-        if (globalThis?.location?.href === this.href) {
-          const $btn = document.querySelector(`a[href="${pathname}"`);
-          if (!$btn) return;
-        } else {
-          const content = await fetchText(this.href, { decode: 'gbk' });
-          // 未登录
-          if (content.includes('注册[Register]')) {
-            logger.error(`${this.name} 需要登录`);
-            return;
-          } else if (!content.includes(pathname)) {
+        name: '52pojie',
+        href: 'https://www.52pojie.cn/',
+        async signFn() {
+            var _a;
+            if (window.top !== window.self) {
+                return;
+            }
+            if (getSignResult(this.name)) {
+                logger.info(`${this.name} 已签到`);
+                return;
+            }
+            const pathname = 'home.php?mod=task&do=apply&id=2';
+            if (!((_a = globalThis === null || globalThis === void 0 ? void 0 : globalThis.location) === null || _a === void 0 ? void 0 : _a.href)) {
+                logger.error('52pojie 只支持在浏览器上签到');
+                return;
+            }
+            if (!document.querySelector('#myprompt_check')) {
+                logger.error(`${this.name} 需要登录`);
+                return;
+            }
+            const $btn = document.querySelector(`a[href^="${pathname}"`);
+            if ($btn) {
+                const $iframe = await loadSignInIframe(globalThis.location.href);
+                const $signBtn = $iframe.contentDocument.querySelector(`a[href^="${pathname}"`);
+                $signBtn.click();
+            }
             setSignResult(this.name, true);
-            return;
-          }
-        }
-        await fetchText(genUrl(this.href, pathname));
-        setSignResult(this.name, true);
-      },
+        },
     },
-    */
     {
         name: 'v2ex',
         href: ['https://v2ex.com/', 'https://www.v2ex.com/'],
@@ -303,16 +342,14 @@ const siteDict = [
     },
 ];
 async function main() {
-    // 禁用自动一键签到，改成访问当前网站时，签到当前网站
-    // const checked = getSignResult(ALL_SITES);
-    // if (!checked) {
-    //   siteDict.forEach((obj) => {
-    //     obj.signFn();
-    //   });
-    //   setSignResult(ALL_SITES, true);
-    //   return;
-    // }
-    const site = siteDict.find((obj) => obj.href.includes(location.href));
+    const site = siteDict.find((obj) => {
+        if (Array.isArray(obj.href)) {
+            return obj.href.some((href) => href.includes(location.host));
+        }
+        else {
+            return obj.href.includes(location.host);
+        }
+    });
     if (site) {
         site.signFn();
     }

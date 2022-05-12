@@ -7,12 +7,12 @@
 // @include     https://www.v2ex.com/
 // @include     https://v2ex.com/
 // @include     https://www.south-plus.net/
-// @include     https://www.52pojie.cn/
+// @include     /https:\/\/www\.52pojie\.cn\/(forum\.php)?$/
 // @include     https://bbs4.2djgame.net/home/forum.php
 // @include     https://zodgame.xyz/
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
-// @version     0.0.7
+// @version     0.0.8
 // @run-at      document-end
 // @grant       GM_xmlhttpRequest
 // @grant       GM_setValue

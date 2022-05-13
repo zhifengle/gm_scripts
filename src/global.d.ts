@@ -38,6 +38,6 @@ declare var GM_removeValueChangeListener: (id: string) => void;
 
 // @TODO avoid use global variable
 interface Window {
-  _parsedEl: Element | Document;
-  gm_val_listen_id: string;
+  _parsedEl?: Element | Document;
+  gm_val_listen_id?: string;
 }

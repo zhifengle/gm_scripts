@@ -38,6 +38,10 @@
 
 自用签到脚本，目前支持 v2ex、2dj、south-plus、52pojie。
 
+## [skip_intro.user.js](scripts/skip_intro.user.js?raw=true)
+
+跳过音频的片头和片尾。目前支持喜马拉雅。需要新增网站欢迎反馈
+
 ## DEPRECATED
 
 ### [bt_search_for_bgm.user.js](scripts/bt_search_for_bgm.user.js?raw=true)

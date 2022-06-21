@@ -33,6 +33,7 @@ declare var GM_addValueChangeListener: (
   ) => void
 ) => string;
 declare var GM_removeValueChangeListener: (id: string) => void;
+declare var unsafeWindow: typeof window;
 
 // declare var bangumiDataURL: string;
 

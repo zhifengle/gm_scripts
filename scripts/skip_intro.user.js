@@ -4,6 +4,7 @@
 // @namespace   https://github.com/22earth
 // @description skip audio intro
 // @description:zh-cn 跳过音频片头和片尾
+// @author      22earth
 // @include     https://www.ximalaya.com/*
 // @version     0.0.1
 // @grant       GM_registerMenuCommand

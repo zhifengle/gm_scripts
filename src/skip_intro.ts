@@ -3,15 +3,17 @@ const SKIP_END_CONFIG = 'e_user_skip_end_config';
 
 function hookAudioInst(obj: HTMLAudioElement) {
   var fakeObj = new Proxy(obj, {
-    get(target, p) {
-      return Reflect.get(target, p);
-    },
-    set(target, prop, value) {
-      if (prop === 'src') {
-        console.log('set src: ', value);
+    get(target, prop) {
+      const val = Reflect.get(target, prop);
+      if (!!val && !!val.bind) {
+        // 使用 bind 绑定 this 指向
+        return val.bind(target);
+      } else {
+        return val;
       }
-      // @ts-ignore
-      return Reflect.set(...arguments);
+    },
+    set(target, p, value, receiver) {
+      return Reflect.set(target, p, value, target);
     },
   });
 
@@ -19,12 +21,12 @@ function hookAudioInst(obj: HTMLAudioElement) {
 }
 
 function setStart() {
-  var start = +prompt('设置跳过片头秒数', '20');
+  var start = +prompt('设置跳过片头秒数', skipStartSec);
   skipStartSec = start;
   GM_setValue(SKIP_START_CONFIG, start);
 }
 function setEnd() {
-  var sec = +prompt('设置跳过片尾秒数', '10');
+  var sec = +prompt('设置跳过片尾秒数', skipEndSec);
   skipEndSec = +sec;
   GM_setValue(SKIP_END_CONFIG, sec);
 }
@@ -56,9 +58,6 @@ function setAudioEvents(audio: HTMLAudioElement) {
 (function (window) {
   function hookAudioContructor() {
     var fakeObj = new Proxy(window.Audio, {
-      get: function (target, p) {
-        return Reflect.get(target, p);
-      },
       construct(target, args) {
         let inst = new target(...args);
         setAudioEvents(inst);

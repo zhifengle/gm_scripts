@@ -6,7 +6,7 @@
 // @description:zh-cn 跳过音频片头和片尾
 // @author      22earth
 // @include     https://www.ximalaya.com/*
-// @version     0.0.1
+// @version     0.0.2
 // @grant       GM_registerMenuCommand
 // @grant       GM_setValue
 // @grant       GM_getValue
@@ -18,12 +18,12 @@
 const SKIP_START_CONFIG = 'e_user_skip_start_config';
 const SKIP_END_CONFIG = 'e_user_skip_end_config';
 function setStart() {
-    var start = +prompt('设置跳过片头秒数', '20');
+    var start = +prompt('设置跳过片头秒数', skipStartSec);
     skipStartSec = start;
     GM_setValue(SKIP_START_CONFIG, start);
 }
 function setEnd() {
-    var sec = +prompt('设置跳过片尾秒数', '10');
+    var sec = +prompt('设置跳过片尾秒数', skipEndSec);
     skipEndSec = +sec;
     GM_setValue(SKIP_END_CONFIG, sec);
 }
@@ -51,9 +51,6 @@ function setAudioEvents(audio) {
 (function (window) {
     function hookAudioContructor() {
         var fakeObj = new Proxy(window.Audio, {
-            get: function (target, p) {
-                return Reflect.get(target, p);
-            },
             construct(target, args) {
                 let inst = new target(...args);
                 setAudioEvents(inst);

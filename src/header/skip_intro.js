@@ -6,7 +6,7 @@
 // @description:zh-cn 跳过音频片头和片尾
 // @author      22earth
 // @include     https://www.ximalaya.com/*
-// @version     0.0.1
+// @version     0.0.2
 // @grant       GM_registerMenuCommand
 // @grant       GM_setValue
 // @grant       GM_getValue

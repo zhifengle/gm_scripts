@@ -179,6 +179,11 @@ const DoubanScorePage: ScorePage = {
       subSelector: '.tags-body',
       keyWord: ['动画', '动漫'],
     },
+    {
+      selector: '#info',
+      subSelector: 'span[property="v:genre"]',
+      keyWord: ['动画', '动漫'],
+    },
   ],
   getSubjectInfo() {
     const $title = $q('#content h1>span');

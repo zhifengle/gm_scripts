@@ -1,22 +1,15 @@
-import { SEARCH_RESULT } from './contants';
-import { MsgResponse } from './interface/types';
-import { checkAnimeSubjectExist, sendSearchResults } from './sites/douban';
+import { GmEngine, KvCache } from './lib/kv-cache';
 
-async function main() {
-  const r = await checkAnimeSubjectExist(
-    {
-      name: '战斗员派遣中',
-      releaseDate: '2021-04-04',
-    },
-    'subject_search'
-  );
+const engine = new GmEngine();
+const kvCache = new KvCache(engine, 'e_user_js');
 
-  console.log('rrrrrrrrrrrr: ', r);
-}
-
-if (location.href.includes('https://search.douban.com/movie/subject_search')) {
-  sendSearchResults();
-}
-if (location.href.includes('https://movie.douban.com/subject')) {
-  main();
-}
+kvCache.set(
+  'test',
+  {
+    a: 1,
+  },
+  1
+);
+setTimeout(() => {
+  console.log(kvCache.get('test'));
+}, 5000);

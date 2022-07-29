@@ -3,22 +3,22 @@ import { KvEngine } from './types';
 // https://github.com/pamelafox/lscache
 
 export class LsEngine implements KvEngine {
-  setItem(key: string, value: string) {
-    localStorage.setItem(key, value);
-  }
   set(key: string, value: any): boolean {
-    if (typeof value === 'object') {
-      try {
-        value = JSON.stringify(value);
-      } catch (e) {
-        return false;
-      }
+    try {
+      value = JSON.stringify(value);
+    } catch (e) {
+      return false;
     }
-    this.setItem(key, value);
+    localStorage.setItem(key, value);
     return true;
   }
   get(key: string) {
-    localStorage.getItem(key);
+    let value = localStorage.getItem(key);
+    try {
+      return JSON.parse(value);
+    } catch (e) {
+      return value;
+    }
   }
   remove(key: string): void {
     localStorage.removeItem(key);

@@ -1,6 +1,6 @@
 import { KvEngine } from './types';
 
-export class Storage {
+export class KvCache {
   constructor(
     private engine: KvEngine,
     private prefix: string,

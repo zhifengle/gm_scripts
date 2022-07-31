@@ -17,7 +17,8 @@ function getMilliseconds(opt: TimeOpt): number {
   }
   const d = (opt.dd || 0) + 1;
   return (
-    +new Date(1970, 1, d, opt.hh, opt.mm, opt.ss, opt.ms) - +new Date(1970, 1)
+    +new Date(1970, 1, d, opt.hh || 0, opt.mm || 0, opt.ss || 0, opt.ms || 0) -
+    +new Date(1970, 1)
   );
 }
 

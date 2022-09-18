@@ -39,6 +39,7 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "bangumi-data": "0.3.96"
+    "bangumi-data": "0.3.96",
+    "kv-expiration": "0.0.5"
   }
 }

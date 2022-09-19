@@ -1,25 +1,12 @@
 import { KvExpiration, GmEngine } from 'kv-expiration';
 import { SearchResult, Subject } from '../../interface/subject';
-import { Selector } from '../../interface/wiki';
-import { checkSubjectExist } from '../../sites/bangumi';
-import { findElement } from '../../utils/domUtils';
+import { $q, $qa, findElement } from '../../utils/domUtils';
+import { PageConfig } from './types';
 
 const USERJS_PREFIX = 'E_SCORE_';
 const CURRENT_ID_DICT = 'CURRENT_ID_DICT';
 
 const storage = new KvExpiration(new GmEngine(), USERJS_PREFIX);
-
-type SiteConfig = {
-  name: string;
-  href: string | string[];
-  favicon?: string;
-  controlSelector: Selector[];
-  pageSelector: Selector[];
-  getSearchResult: (subjectInfo: Subject) => Promise<SearchResult>;
-  getScoreInfo: () => SearchResult;
-  // 插入评分信息的 DOM
-  insertScoreInfo: (name: string, info: SearchResult) => void;
-};
 
 function saveInfo(info: SearchResult) {
   storage.set(info.url, info, 7);
@@ -60,28 +47,7 @@ function setScoreMap(url: string, map: Record<string, string>) {
   storage.set('DICT_ID' + url, map, 7);
 }
 
-const siteDict: SiteConfig[] = [
-  {
-    name: 'bangumi',
-    href: ['https://bgm.tv/'],
-    controlSelector: [
-      {
-        selector: '#panelInterestWrapper h2',
-      },
-    ],
-    pageSelector: [
-      {
-        selector: '.focus.chl.anime',
-      },
-    ],
-    getSearchResult: checkSubjectExist,
-    getScoreInfo: () => {
-      return {} as any;
-    },
-    // 插入评分信息的 DOM
-    insertScoreInfo: (name: string, info: SearchResult) => {},
-  },
-];
+const siteDict: PageConfig[] = [];
 
 async function main() {
   const idx = siteDict.findIndex((obj) => {

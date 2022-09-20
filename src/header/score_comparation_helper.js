@@ -8,6 +8,7 @@
 // @homepage    https://github.com/22earth/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/subject\/.*$/
 // @include     https://movie.douban.com/subject/*
+// @include     https://myanimelist.net/anime/*
 // @version     0.1.0
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand

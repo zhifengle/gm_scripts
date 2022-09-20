@@ -17,3 +17,25 @@ export function getFavicon(site: string) {
   } catch (error) {}
   return favicon;
 }
+
+export function genScoreRowStr(info: {
+  favicon: string;
+  searchUrl: string;
+  score: string;
+  url: string;
+  count: string;
+}): string {
+  return `
+<div class="e-userjs-score-compare-row" style="display:flex;align-items:center;margin-bottom:10px;">
+<a target="_blank" rel="noopener noreferrer nofollow"
+  style="margin-right:1em;"  title="点击搜索" href="${info.searchUrl}">
+<img style="width:16px;" src="${info.favicon}"/>
+</a>
+<strong style="margin-right:1em;">${info.score}</strong>
+<a href="${info.url}"
+  target="_blank" rel="noopener noreferrer nofollow">
+  ${info.count}
+</a>
+</div>
+`;
+}

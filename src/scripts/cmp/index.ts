@@ -3,6 +3,7 @@ import { SearchResult, Subject } from '../../interface/subject';
 import { findElement } from '../../utils/domUtils';
 import { bangumiAnimePage } from './bangumi';
 import { doubanAnimePage } from './douban';
+import { myanimelistPage } from './myanimelist';
 import { PageConfig } from './types';
 
 const USERJS_PREFIX = 'E_SCORE_';
@@ -19,9 +20,8 @@ function saveInfo(id: string, info: SearchResult) {
 }
 
 async function getSearchResult(
-  pages: PageConfig[],
+  page: PageConfig,
   subject: Subject,
-  name: string,
   subjectId: string
 ): Promise<SearchResult> {
   let info: SearchResult = undefined;
@@ -31,13 +31,9 @@ async function getSearchResult(
   if (info) {
     return info;
   }
-  const site = pages.find((s) => s.name === name);
-  if (!site) {
-    return null;
-  }
-  info = await site.getSearchResult(subject);
+  info = await page.getSearchResult(subject);
   if (info) {
-    saveInfo(site.getSubjectId(info.url), info);
+    saveInfo(page.getSubjectId(info.url), info);
   }
   return info;
 }
@@ -54,7 +50,11 @@ function setScoreMap(id: string, map: Record<string, string>) {
   storage.set('DICT_ID' + id, map, 7);
 }
 
-const animePages: PageConfig[] = [bangumiAnimePage, doubanAnimePage];
+const animePages: PageConfig[] = [
+  bangumiAnimePage,
+  doubanAnimePage,
+  myanimelistPage,
+];
 
 async function initPage(pages: PageConfig[]) {
   const idx = pages.findIndex((obj) => {
@@ -82,12 +82,7 @@ async function initPage(pages: PageConfig[]) {
     if (page.name === curPage.name) {
       continue;
     }
-    const searchResult = await getSearchResult(
-      pages,
-      curInfo,
-      name,
-      scoreMap[name]
-    );
+    const searchResult = await getSearchResult(page, curInfo, scoreMap[name]);
     if (searchResult) {
       map[name] = page.getSubjectId(searchResult.url);
     }

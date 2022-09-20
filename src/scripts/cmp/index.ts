@@ -1,6 +1,8 @@
 import { KvExpiration, GmEngine } from 'kv-expiration';
 import { SearchResult, Subject } from '../../interface/subject';
-import { $q, $qa, findElement } from '../../utils/domUtils';
+import { findElement } from '../../utils/domUtils';
+import { bangumiAnimePage } from './bangumi';
+import { doubanAnimePage } from './douban';
 import { PageConfig } from './types';
 
 const USERJS_PREFIX = 'E_SCORE_';
@@ -8,49 +10,54 @@ const CURRENT_ID_DICT = 'CURRENT_ID_DICT';
 
 const storage = new KvExpiration(new GmEngine(), USERJS_PREFIX);
 
-function saveInfo(info: SearchResult) {
-  storage.set(info.url, info, 7);
+function saveInfo(id: string, info: SearchResult) {
+  if (id === '') {
+    console.error('invalid id:  ', info);
+    return;
+  }
+  storage.set(id, info, 7);
 }
 
 async function getSearchResult(
+  pages: PageConfig[],
   subject: Subject,
   name: string,
-  url: string
+  subjectId: string
 ): Promise<SearchResult> {
   let info: SearchResult = undefined;
-  if (url) {
-    info = storage.get(url);
+  if (subjectId) {
+    info = storage.get(subjectId);
   }
   if (info) {
     return info;
   }
-  const site = siteDict.find((s) => s.name === name);
+  const site = pages.find((s) => s.name === name);
   if (!site) {
     return null;
   }
   info = await site.getSearchResult(subject);
   if (info) {
-    saveInfo(info);
+    saveInfo(site.getSubjectId(info.url), info);
   }
   return info;
 }
 
-function getScoreMap(site: string, url: string): Record<string, string> {
+function getScoreMap(site: string, id: string): Record<string, string> {
   const currentDict = storage.get(CURRENT_ID_DICT) || {};
-  if (currentDict[site] === url) {
+  if (currentDict[site] === id) {
     return currentDict;
   }
-  return storage.get('DICT_ID' + url) || {};
+  return storage.get('DICT_ID' + id) || {};
 }
-function setScoreMap(url: string, map: Record<string, string>) {
+function setScoreMap(id: string, map: Record<string, string>) {
   storage.set(CURRENT_ID_DICT, map);
-  storage.set('DICT_ID' + url, map, 7);
+  storage.set('DICT_ID' + id, map, 7);
 }
 
-const siteDict: PageConfig[] = [];
+const animePages: PageConfig[] = [bangumiAnimePage, doubanAnimePage];
 
-async function main() {
-  const idx = siteDict.findIndex((obj) => {
+async function initPage(pages: PageConfig[]) {
+  const idx = pages.findIndex((obj) => {
     if (Array.isArray(obj.href)) {
       return obj.href.some((href) => href.includes(location.host));
     } else {
@@ -60,26 +67,36 @@ async function main() {
   if (idx === -1) {
     return;
   }
-  const page = siteDict[idx];
-  const $page = findElement(page.pageSelector);
+  const curPage = pages[idx];
+  const $page = findElement(curPage.pageSelector);
   if (!$page) return;
-  const $title = findElement(page.controlSelector);
+  const $title = findElement(curPage.controlSelector);
   if (!$title) return;
-  const curInfo = page.getScoreInfo();
-  saveInfo(curInfo);
-  let scoreMap = getScoreMap(page.name, location.href);
-  const map = { ...scoreMap, [page.name]: location.href };
-  for (const s of siteDict) {
-    const name = s.name;
-    if (s.name === page.name) {
+  const curInfo = curPage.getScoreInfo();
+  const subjectId = curPage.getSubjectId(curInfo.url);
+  saveInfo(subjectId, curInfo);
+  let scoreMap = getScoreMap(curPage.name, subjectId);
+  const map = { ...scoreMap, [curPage.name]: subjectId };
+  for (const page of pages) {
+    const name = page.name;
+    if (page.name === curPage.name) {
       continue;
     }
-    const searchResult = await getSearchResult(curInfo, name, scoreMap[name]);
+    const searchResult = await getSearchResult(
+      pages,
+      curInfo,
+      name,
+      scoreMap[name]
+    );
     if (searchResult) {
-      map[name] = searchResult.url;
-      page.insertScoreInfo(name, searchResult);
+      map[name] = page.getSubjectId(searchResult.url);
     }
+    const searchUrl = page.searchApi.replace(
+      '{kw}',
+      encodeURIComponent(curInfo.name)
+    );
+    curPage.insertScoreInfo(name, searchUrl, searchResult);
   }
-  setScoreMap(location.href, map);
+  setScoreMap(subjectId, map);
 }
-main();
+initPage(animePages);

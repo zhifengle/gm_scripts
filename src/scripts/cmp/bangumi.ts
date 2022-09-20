@@ -3,10 +3,18 @@ import { SubjectTypeId } from '../../interface/wiki';
 import { checkSubjectExist } from '../../sites/bangumi';
 import { $q, $qa } from '../../utils/domUtils';
 import { dealDate } from '../../utils/utils';
-import { getFavicon } from './common';
+import { getFavicon, NO_MATCH_DATA } from './common';
 import { PageConfig } from './types';
 
+// http://mirror.bgm.rincat.ch
 let bgm_origin = 'https://bgm.tv';
+
+export function genBgmUrl(url: string) {
+  if (url.startsWith('http')) {
+    return url;
+  }
+  return new URL(url, bgm_origin).href;
+}
 
 export function setBgmOrigin(url: string) {
   bgm_origin = url;
@@ -17,8 +25,9 @@ export function getBgmOrigin(): string {
 }
 
 export const bangumiAnimePage: PageConfig = {
-  name: 'bangumi',
-  href: ['https://bgm.tv/'],
+  name: 'bangumi-anime',
+  href: ['https://bgm.tv/', 'https://bangumi.tv/', 'https://chii.in/'],
+  searchApi: 'https://bgm.tv/subject_search/{kw}?cat=2',
   controlSelector: [
     {
       selector: '#panelInterestWrapper h2',
@@ -29,8 +38,27 @@ export const bangumiAnimePage: PageConfig = {
       selector: '.focus.chl.anime',
     },
   ],
-  getSearchResult: (subject: Subject) =>
-    checkSubjectExist(subject, bgm_origin, SubjectTypeId.anime),
+  getSubjectId(url: string) {
+    const m = url.match(/\/(subject)\/(\d+)/);
+    if (m) {
+      return `${this.name}_${m[2]}`;
+    }
+    return '';
+  },
+  genSubjectUrl(id) {
+    return `${bgm_origin}/subject/${id}`;
+  },
+  async getSearchResult(subject: Subject) {
+    const res = await checkSubjectExist(
+      subject,
+      bgm_origin,
+      SubjectTypeId.anime
+    );
+    if (res) {
+      res.url = genBgmUrl(res.url);
+    }
+    return res;
+  },
   getScoreInfo: () => {
     const info: SearchResult = {
       name: $q('h1>a').textContent.trim(),
@@ -53,23 +81,33 @@ export const bangumiAnimePage: PageConfig = {
     return info;
   },
   // 插入评分信息的 DOM
-  insertScoreInfo: (name: string, info: SearchResult) => {
+  insertScoreInfo(name: string, searchUrl: string, info: SearchResult) {
     let $panel = $q('.SidePanel.png_bg');
     if ($panel) {
-      const score = info.score || 0;
       let $div = document.createElement('div');
       $div.classList.add('frdScore');
       $div.classList.add('e-userjs-score-compare');
       const favicon = getFavicon(name);
+      // const score = info.score || 0;
+      let score: any = '-';
+      let count = NO_MATCH_DATA;
+      let url = searchUrl;
+      if (info && info.url) {
+        score = Number(info.score || 0).toFixed(2);
+        count = (info.count || 0) + ' 人评分';
+        url = info.url;
+      }
       $div.innerHTML = `
-<a class="avatar" style="vertical-align:-3px;margin-right:10px;" title="${name}" href="javascript:;">
+<a class="avatar"
+target="_blank" rel="noopener noreferrer nofollow"
+style="vertical-align:-3px;margin-right:10px;" title="点击搜索" href="${searchUrl}">
 <img style="width:16px;" src="${favicon}"/>
 </a>
-<span class="num">${Number(score).toFixed(2)}</span>
+<span class="num">${score}</span>
 <span class="desc" style="visibility:hidden">还行</span>
-<a href="${info.url}"
+<a href="${url}"
       target="_blank" rel="noopener noreferrer nofollow" class="l">
-      ${info.count || 0} 人评分
+      ${count}
 </a>
 `;
       $panel.appendChild($div);
@@ -79,6 +117,7 @@ export const bangumiAnimePage: PageConfig = {
 
 export const bangumiGamePage: PageConfig = {
   ...bangumiAnimePage,
+  name: 'bangumi-game',
   pageSelector: [
     {
       selector: '.focus.chl.game',

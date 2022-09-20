@@ -9,6 +9,11 @@ import base from './rollup.config.base';
 // const outputName = name.replace(/-|\d+/g, '_');
 const outputName = process.env.SCRIPT_NAME;
 
+function getHeaderContent(name) {
+  const header = pathResolve(__dirname, `../src/header/${name}.js`);
+  return fs.readFileSync(header, 'utf-8');
+}
+
 function addScriptHeader(name) {
   return {
     name: 'add_script_header',
@@ -30,15 +35,16 @@ export default {
   output: {
     name: outputName,
     file: pathResolve(__dirname, `../scripts/${outputName}.user.js`),
-    // format: 'iife',
+    format: 'iife',
     // sourcemap: true
+    banner: getHeaderContent(outputName),
   },
   plugins: [
     ...extraPlugins,
     ...base.plugins,
     resolve(),
     commonjs(),
-    addScriptHeader(outputName),
+    // addScriptHeader(outputName),
   ],
   external: ['bangumi-data', 'fuse.js'],
 };

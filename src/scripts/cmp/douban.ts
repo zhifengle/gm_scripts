@@ -1,12 +1,13 @@
 import { SearchResult } from '../../interface/subject';
 import { checkAnimeSubjectExist } from '../../sites/douban';
 import { $q } from '../../utils/domUtils';
-import { getFavicon } from './common';
+import { BLANK_LINK, getFavicon, NO_MATCH_DATA } from './common';
 import { PageConfig } from './types';
 
 export const doubanAnimePage: PageConfig = {
-  name: 'douban',
+  name: 'douban-anime',
   href: ['https://movie.douban.com/'],
+  searchApi: 'https://www.douban.com/search?cat=1002&q={kw}',
   controlSelector: [
     {
       selector: '#interest_sectl',
@@ -24,6 +25,16 @@ export const doubanAnimePage: PageConfig = {
       keyWord: ['动画', '动漫'],
     },
   ],
+  getSubjectId(url: string) {
+    const m = url.match(/\/(subject)\/(\d+)/);
+    if (m) {
+      return `${this.name}_${m[2]}`;
+    }
+    return '';
+  },
+  genSubjectUrl(id) {
+    return `https://movie.douban.com/subject/${id}/`;
+  },
   getSearchResult: checkAnimeSubjectExist,
   getScoreInfo() {
     const $title = $q('#content h1>span');
@@ -49,7 +60,7 @@ export const doubanAnimePage: PageConfig = {
     }
     return subjectInfo;
   },
-  insertScoreInfo(name: string, info: SearchResult) {
+  insertScoreInfo(name: string, searchUrl: string, info: SearchResult) {
     let $panel = $q('#interest_sectl');
     let $friendsRatingWrap = $q('.friends_rating_wrap');
     if (!$friendsRatingWrap) {
@@ -57,23 +68,32 @@ export const doubanAnimePage: PageConfig = {
       $friendsRatingWrap.className = 'friends_rating_wrap clearbox';
       $panel.appendChild($friendsRatingWrap);
     }
-    const score = info.score || 0;
     const $div = document.createElement('div');
+    $div.className = 'rating_content_wrap clearfix e-userjs-score-compare';
     const favicon = getFavicon(name);
-    const rawHTML = `
+    let score: any = '-';
+    let count = NO_MATCH_DATA;
+    let url = searchUrl;
+    if (info && info.url) {
+      score = info.score || 0;
+      count = (info.count || 0) + ' 人评价';
+      url = info.url;
+    }
+    $div.innerHTML = `
 <strong class="rating_avg">${score}</strong>
 <div class="friends">
-  <a class="avatar" title="${name}" href="javascript:;">
+  <a class="avatar"
+  ${BLANK_LINK}
+  href="${searchUrl}"
+  title="点击搜索">
   <img src="${favicon}"/>
   </a>
 </div>
-<a href="${info.url}"
+<a href="${url}"
   rel="noopener noreferrer nofollow" class="friends_count" target="_blank">
-    ${info.count || 0}人评价
+    ${count}
 </a>
 `;
-    $div.className = 'rating_content_wrap clearfix e-userjs-score-compare';
-    $div.innerHTML = rawHTML;
     $friendsRatingWrap.appendChild($div);
   },
 };

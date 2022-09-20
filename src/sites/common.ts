@@ -32,7 +32,7 @@ export function filterResults(
       const result = obj.item;
       if (result.releaseDate) {
         // 只有年的时候
-        if (result.releaseDate.length === '4') {
+        if (result.releaseDate.length === 4) {
           if (result.releaseDate === subjectInfo.releaseDate.slice(0, 4)) {
             return result;
           }

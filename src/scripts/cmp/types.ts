@@ -5,6 +5,7 @@ export type PageConfig = {
   name: string;
   href: string | string[];
   favicon?: string;
+  expiration?: number;
   searchApi?: string;
   getSubjectId: (url: string) => string;
   genSubjectUrl: (id: string) => string;
@@ -13,9 +14,5 @@ export type PageConfig = {
   getSearchResult: (subjectInfo: Subject) => Promise<SearchResult>;
   getScoreInfo: () => SearchResult;
   // 插入评分信息的 DOM
-  insertScoreInfo: (
-    name: string,
-    searchUrl: string,
-    info: SearchResult
-  ) => void;
+  insertScoreInfo: (page: PageConfig, info: SearchResult) => void;
 };

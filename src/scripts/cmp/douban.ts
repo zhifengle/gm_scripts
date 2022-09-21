@@ -8,6 +8,7 @@ export const doubanAnimePage: PageConfig = {
   name: 'douban-anime',
   href: ['https://movie.douban.com/'],
   searchApi: 'https://www.douban.com/search?cat=1002&q={kw}',
+  expiration: 21,
   controlSelector: [
     {
       selector: '#interest_sectl',
@@ -60,7 +61,7 @@ export const doubanAnimePage: PageConfig = {
     }
     return subjectInfo;
   },
-  insertScoreInfo(name: string, searchUrl: string, info: SearchResult) {
+  insertScoreInfo(page: PageConfig, info: SearchResult) {
     let $panel = $q('#interest_sectl');
     let $friendsRatingWrap = $q('.friends_rating_wrap');
     if (!$friendsRatingWrap) {
@@ -70,9 +71,12 @@ export const doubanAnimePage: PageConfig = {
     }
     const $div = document.createElement('div');
     $div.className = 'rating_content_wrap clearfix e-userjs-score-compare';
-    const favicon = getFavicon(name);
+    const favicon = getFavicon(page.name);
     let score: any = '-';
     let count = NO_MATCH_DATA;
+    // 直接用 this.getScoreInfo() 似乎有点冗余。 也许改用 genSearchUrl
+    const name = this.getScoreInfo().name;
+    const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(name));
     let url = searchUrl;
     if (info && info.url) {
       score = info.score || 0;

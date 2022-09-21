@@ -11,12 +11,13 @@ const CURRENT_ID_DICT = 'CURRENT_ID_DICT';
 
 const storage = new KvExpiration(new GmEngine(), USERJS_PREFIX);
 
-function saveInfo(id: string, info: SearchResult) {
+function saveInfo(id: string, info: SearchResult, expiration?: number) {
+  expiration = expiration || 7;
   if (id === '') {
     console.error('invalid id:  ', info);
     return;
   }
-  storage.set(id, info, 7);
+  storage.set(id, info, expiration);
 }
 
 async function getSearchResult(
@@ -33,7 +34,7 @@ async function getSearchResult(
   }
   info = await page.getSearchResult(subject);
   if (info) {
-    saveInfo(page.getSubjectId(info.url), info);
+    saveInfo(page.getSubjectId(info.url), info, page.expiration);
   }
   return info;
 }
@@ -48,6 +49,14 @@ function getScoreMap(site: string, id: string): Record<string, string> {
 function setScoreMap(id: string, map: Record<string, string>) {
   storage.set(CURRENT_ID_DICT, map);
   storage.set('DICT_ID' + id, map, 7);
+}
+
+function isValidPage(curPage: PageConfig): boolean {
+  const $page = findElement(curPage.pageSelector);
+  if (!$page) return false;
+  const $title = findElement(curPage.controlSelector);
+  if (!$title) return false;
+  return true;
 }
 
 const animePages: PageConfig[] = [
@@ -68,13 +77,10 @@ async function initPage(pages: PageConfig[]) {
     return;
   }
   const curPage = pages[idx];
-  const $page = findElement(curPage.pageSelector);
-  if (!$page) return;
-  const $title = findElement(curPage.controlSelector);
-  if (!$title) return;
+  if (!isValidPage(curPage)) return;
   const curInfo = curPage.getScoreInfo();
   const subjectId = curPage.getSubjectId(curInfo.url);
-  saveInfo(subjectId, curInfo);
+  saveInfo(subjectId, curInfo, curPage.expiration);
   let scoreMap = getScoreMap(curPage.name, subjectId);
   const map = { ...scoreMap, [curPage.name]: subjectId };
   for (const page of pages) {
@@ -86,11 +92,7 @@ async function initPage(pages: PageConfig[]) {
     if (searchResult) {
       map[name] = page.getSubjectId(searchResult.url);
     }
-    const searchUrl = page.searchApi.replace(
-      '{kw}',
-      encodeURIComponent(curInfo.name)
-    );
-    curPage.insertScoreInfo(name, searchUrl, searchResult);
+    curPage.insertScoreInfo(page, searchResult);
   }
   setScoreMap(subjectId, map);
 }

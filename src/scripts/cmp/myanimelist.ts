@@ -52,14 +52,12 @@ export const myanimelistPage: PageConfig = {
     });
     return info;
   },
-  insertScoreInfo: function (
-    name: string,
-    searchUrl: string,
-    info: SearchResult
-  ): void {
-    const favicon = getFavicon(name);
+  insertScoreInfo: function (page: PageConfig, info: SearchResult): void {
+    const favicon = getFavicon(page.name);
     let score: any = '-';
     let count = NO_MATCH_DATA;
+    const name = this.getScoreInfo().name;
+    const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(name));
     let url = searchUrl;
     if (info && info.url) {
       score = Number(info.score || 0).toFixed(2);

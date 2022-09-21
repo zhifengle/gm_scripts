@@ -1,4 +1,5 @@
 import { favicon as anidbFavicon } from '../../sites/anidb';
+import { PageConfig } from './types';
 
 export const BLANK_LINK = 'target="_blank" rel="noopener noreferrer nofollow"';
 export const NO_MATCH_DATA = '点击搜索';
@@ -38,4 +39,16 @@ export function genScoreRowStr(info: {
 </a>
 </div>
 `;
+}
+
+export function genSearchUrl(
+  page: PageConfig,
+  titleSelector: string,
+  name: string
+) {
+  const $title = document.querySelector(titleSelector);
+  if ($title) {
+    name = $title.textContent.trim();
+  }
+  return page.searchApi.replace('{kw}', encodeURIComponent(name));
 }

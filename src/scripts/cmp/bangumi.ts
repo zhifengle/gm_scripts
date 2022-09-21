@@ -39,6 +39,11 @@ export const bangumiAnimePage: PageConfig = {
     },
   ],
   getSubjectId(url: string) {
+    // @TODO 修改域名。
+    // const urlObj = new URL(url);
+    // setBgmOrigin(urlObj.origin);
+    // this.searchApi = `${bgm_origin}/subject_search/{kw}?cat=2`;
+
     const m = url.match(/\/(subject)\/(\d+)/);
     if (m) {
       return `${this.name}_${m[2]}`;
@@ -81,16 +86,19 @@ export const bangumiAnimePage: PageConfig = {
     return info;
   },
   // 插入评分信息的 DOM
-  insertScoreInfo(name: string, searchUrl: string, info: SearchResult) {
+  insertScoreInfo(page: PageConfig, info: SearchResult) {
     let $panel = $q('.SidePanel.png_bg');
     if ($panel) {
       let $div = document.createElement('div');
       $div.classList.add('frdScore');
       $div.classList.add('e-userjs-score-compare');
-      const favicon = getFavicon(name);
-      // const score = info.score || 0;
+      const favicon = getFavicon(page.name);
       let score: any = '-';
       let count = NO_MATCH_DATA;
+      const searchUrl = page.searchApi.replace(
+        '{kw}',
+        encodeURIComponent($q('h1>a').textContent.trim())
+      );
       let url = searchUrl;
       if (info && info.url) {
         score = Number(info.score || 0).toFixed(2);

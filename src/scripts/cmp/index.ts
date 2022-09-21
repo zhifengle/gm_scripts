@@ -1,64 +1,23 @@
-import { KvExpiration, GmEngine } from 'kv-expiration';
-import { SearchResult, Subject } from '../../interface/subject';
+import { SearchResult } from '../../interface/subject';
 import { findElement } from '../../utils/domUtils';
 import { anidbPage } from './anidb';
 import { bangumiAnimePage } from './bangumi';
 import { doubanAnimePage } from './douban';
 import { myanimelistPage } from './myanimelist';
-import { PageConfig } from './types';
+import {
+  clearInfoStorage,
+  getInfo,
+  getScoreMap,
+  saveInfo,
+  setScoreMap,
+} from './storage';
+import { PageConfig, ScoreMap } from './types';
 
-const USERJS_PREFIX = 'E_SCORE_';
-const CURRENT_ID_DICT = 'CURRENT_ID_DICT';
-
-const storage = new KvExpiration(new GmEngine(), USERJS_PREFIX);
-
-function saveInfo(id: string, info: SearchResult, expiration?: number) {
-  expiration = expiration || 7;
-  if (id === '') {
-    console.error('invalid id:  ', info);
-    return;
-  }
-  storage.set(id, info, expiration);
-}
-
-async function getSearchResult(
-  page: PageConfig,
-  subject: Subject,
-  subjectId: string
-): Promise<SearchResult> {
-  let info: SearchResult = undefined;
-  if (subjectId) {
-    info = storage.get(subjectId);
-  }
-  if (info) {
-    return info;
-  }
-  info = await page.getSearchResult(subject);
-  if (info) {
-    saveInfo(page.getSubjectId(info.url), info, page.expiration);
-  }
-  return info;
-}
-
-function getScoreMap(site: string, id: string): Record<string, string> {
-  const currentDict = storage.get(CURRENT_ID_DICT) || {};
-  if (currentDict[site] === id) {
-    return currentDict;
-  }
-  return storage.get('DICT_ID' + id) || {};
-}
-function setScoreMap(id: string, map: Record<string, string>) {
-  storage.set(CURRENT_ID_DICT, map);
-  storage.set('DICT_ID' + id, map, 7);
-}
-
-function isValidPage(curPage: PageConfig): boolean {
-  const $page = findElement(curPage.pageSelector);
-  if (!$page) return false;
-  const $title = findElement(curPage.controlSelector);
-  if (!$title) return false;
-  return true;
-}
+// 也许使用索引更快?
+type SaveTask = {
+  page: PageConfig;
+  info: SearchResult;
+};
 
 const animePages: PageConfig[] = [
   bangumiAnimePage,
@@ -67,35 +26,97 @@ const animePages: PageConfig[] = [
   anidbPage,
 ];
 
-async function initPage(pages: PageConfig[]) {
+if (GM_registerMenuCommand) {
+  GM_registerMenuCommand(
+    '清除缓存信息',
+    () => {
+      clearInfoStorage();
+      alert('已清除缓存');
+    },
+    'c'
+  );
+}
+
+function getPageIdxByHost(pages: PageConfig[], host: string) {
   const idx = pages.findIndex((obj) => {
     if (Array.isArray(obj.href)) {
-      return obj.href.some((href) => href.includes(location.host));
+      return obj.href.some((href) => href.includes(host));
     } else {
-      return obj.href.includes(location.host);
+      return obj.href.includes(host);
     }
   });
-  if (idx === -1) {
-    return;
-  }
-  const curPage = pages[idx];
-  if (!isValidPage(curPage)) return;
-  const curInfo = curPage.getScoreInfo();
-  const subjectId = curPage.getSubjectId(curInfo.url);
-  saveInfo(subjectId, curInfo, curPage.expiration);
-  let scoreMap = getScoreMap(curPage.name, subjectId);
-  const map = { ...scoreMap, [curPage.name]: subjectId };
+  return idx;
+}
+
+async function insertScoreRows(
+  curPage: PageConfig,
+  pages: PageConfig[],
+  curInfo: SearchResult,
+  map: ScoreMap,
+  tasks: SaveTask[]
+) {
   for (const page of pages) {
     const name = page.name;
     if (page.name === curPage.name) {
       continue;
     }
-    const searchResult = await getSearchResult(page, curInfo, scoreMap[name]);
+    let searchResult: SearchResult = getInfo(map[name]);
+    if (!searchResult) {
+      searchResult = await page.getSearchResult(curInfo);
+      tasks.push({
+        page,
+        info: searchResult,
+      });
+    }
     if (searchResult) {
       map[name] = page.getSubjectId(searchResult.url);
     }
     curPage.insertScoreInfo(page, searchResult);
   }
+}
+
+async function refreshScore(
+  curPage: PageConfig,
+  pages: PageConfig[],
+  force: boolean = false
+) {
+  const saveTask: SaveTask[] = [];
+  const curInfo = curPage.getScoreInfo();
+  saveTask.push({
+    page: curPage,
+    info: curInfo,
+  });
+  const subjectId = curPage.getSubjectId(curInfo.url);
+  let map = { [curPage.name]: subjectId };
+  if (!force) {
+    const scoreMap = getScoreMap(curPage.name, subjectId);
+    map = { ...scoreMap, [curPage.name]: subjectId };
+  }
+  insertScoreRows(curPage, pages, curInfo, map, saveTask);
+
+  saveTask.forEach((t) => {
+    const { page, info } = t;
+    if (info) {
+      saveInfo(page.getSubjectId(info.url), info, page.expiration);
+    }
+  });
   setScoreMap(subjectId, map);
+}
+
+async function initPage(pages: PageConfig[]) {
+  const idx = getPageIdxByHost(pages, location.host);
+  if (idx === -1) {
+    return;
+  }
+  const curPage = pages[idx];
+  const $page = findElement(curPage.pageSelector);
+  if (!$page) return;
+  const $title = findElement(curPage.controlSelector);
+  if (!$title) return;
+  curPage?.insertControlDOM($title, {
+    clear: clearInfoStorage,
+    refresh: () => refreshScore(curPage, pages, true),
+  });
+  refreshScore(curPage, pages, false);
 }
 initPage(animePages);

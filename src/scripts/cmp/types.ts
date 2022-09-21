@@ -1,6 +1,7 @@
 import { SearchResult, Subject } from '../../interface/subject';
 import { Selector } from '../../interface/wiki';
 
+export type ScoreMap = Record<string, string>;
 export type PageConfig = {
   name: string;
   href: string | string[];
@@ -16,4 +17,11 @@ export type PageConfig = {
   getScoreInfo: () => SearchResult;
   // 插入评分信息的 DOM
   insertScoreInfo: (page: PageConfig, info: SearchResult) => void;
+  insertControlDOM?: (
+    $el: Element,
+    callbacks: Record<string, EventListenerOrEventListenerObject> & {
+      clear: EventListenerOrEventListenerObject;
+      refresh: EventListenerOrEventListenerObject;
+    }
+  ) => void;
 };

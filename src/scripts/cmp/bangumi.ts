@@ -122,6 +122,32 @@ style="vertical-align:-3px;margin-right:10px;" title="点击搜索" href="${sear
       $panel.appendChild($div);
     }
   },
+  insertControlDOM($target, callbacks) {
+    if (!$target) return;
+    // 已存在控件时返回
+    if ($q('.e-userjs-score-ctrl')) return;
+    const rawHTML = `<a title="强制刷新豆瓣和MAL评分" class="e-userjs-score-ctrl e-userjs-score-fresh">O</a>
+      <a title="清除所有评分缓存" class="e-userjs-score-ctrl e-userjs-score-clear">X</a>
+`;
+    $target.innerHTML = $target.innerHTML + rawHTML;
+    GM_addStyle(`
+      .e-userjs-score-ctrl {color:#f09199;font-weight:800;float:right;}
+      .e-userjs-score-ctrl:hover {cursor: pointer;}
+      .e-userjs-score-clear {margin-right: 12px;}
+      .e-userjs-score-loading { width: 208px; height: 13px; background-image: url("/img/loadingAnimation.gif"); }
+      `);
+
+    $q('.e-userjs-score-clear').addEventListener(
+      'click',
+      callbacks.clear,
+      false
+    );
+    $q('.e-userjs-score-fresh').addEventListener(
+      'click',
+      callbacks.refresh,
+      false
+    );
+  },
 };
 
 export const bangumiGamePage: PageConfig = {

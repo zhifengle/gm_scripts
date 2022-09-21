@@ -1,7 +1,7 @@
 import { SearchResult } from '../../interface/subject';
 import { findElement } from '../../utils/domUtils';
 import { anidbPage } from './anidb';
-import { bangumiAnimePage } from './bangumi';
+import { bangumiAnimePage, bangumiGamePage } from './bangumi';
 import { doubanAnimePage } from './douban';
 import { myanimelistPage } from './myanimelist';
 import {
@@ -11,6 +11,7 @@ import {
   saveInfo,
   setScoreMap,
 } from './storage';
+import { twodfanPage } from './twodfan';
 import { PageConfig, ScoreMap } from './types';
 
 // 也许使用索引更快?
@@ -26,6 +27,7 @@ const animePages: PageConfig[] = [
   anidbPage,
 ];
 
+const gamePages: PageConfig[] = [bangumiGamePage, twodfanPage];
 if (GM_registerMenuCommand) {
   GM_registerMenuCommand(
     '清除缓存信息',
@@ -136,3 +138,4 @@ async function initPage(pages: PageConfig[]) {
   refreshScore(curPage, pages, false);
 }
 initPage(animePages);
+initPage(gamePages);

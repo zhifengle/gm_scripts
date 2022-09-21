@@ -156,9 +156,18 @@ export const bangumiGamePage: PageConfig = {
   name: 'bangumi-game',
   pageSelector: [
     {
-      selector: '.focus.chl.game',
+      selector: 'a.focus.chl[href="/game"]',
     },
   ],
-  getSearchResult: (subject: Subject) =>
-    checkSubjectExist(subject, bgm_origin, SubjectTypeId.game),
+  async getSearchResult(subject: Subject) {
+    const res = await checkSubjectExist(
+      subject,
+      bgm_origin,
+      SubjectTypeId.game
+    );
+    if (res) {
+      res.url = genBgmUrl(res.url);
+    }
+    return res;
+  },
 };

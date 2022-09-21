@@ -11,6 +11,7 @@
 // @include     https://myanimelist.net/anime/*
 // @include     https://anidb.net/anime/*
 // @include     https://anidb.net/a*
+// @include     https://galge.fun/subjects/*
 // @version     0.1.0
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand

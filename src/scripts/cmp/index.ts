@@ -1,6 +1,7 @@
 import { KvExpiration, GmEngine } from 'kv-expiration';
 import { SearchResult, Subject } from '../../interface/subject';
 import { findElement } from '../../utils/domUtils';
+import { anidbPage } from './anidb';
 import { bangumiAnimePage } from './bangumi';
 import { doubanAnimePage } from './douban';
 import { myanimelistPage } from './myanimelist';
@@ -63,6 +64,7 @@ const animePages: PageConfig[] = [
   bangumiAnimePage,
   doubanAnimePage,
   myanimelistPage,
+  anidbPage,
 ];
 
 async function initPage(pages: PageConfig[]) {

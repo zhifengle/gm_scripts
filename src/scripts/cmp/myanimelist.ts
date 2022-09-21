@@ -2,7 +2,12 @@ import { SearchResult } from '../../interface/subject';
 import { searchAnimeData } from '../../sites/myanimelist';
 import { $q, $qa } from '../../utils/domUtils';
 import { formatDate } from '../../utils/utils';
-import { genScoreRowStr, getFavicon, NO_MATCH_DATA } from './common';
+import {
+  genScoreRowStr,
+  getFavicon,
+  insertScoreCommon,
+  NO_MATCH_DATA,
+} from './common';
 import { PageConfig } from './types';
 
 export const myanimelistPage: PageConfig = {
@@ -53,31 +58,16 @@ export const myanimelistPage: PageConfig = {
     return info;
   },
   insertScoreInfo: function (page: PageConfig, info: SearchResult): void {
-    const favicon = getFavicon(page.name);
-    let score: any = '-';
-    let count = NO_MATCH_DATA;
-    const name = this.getScoreInfo().name;
-    const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(name));
-    let url = searchUrl;
-    if (info && info.url) {
-      score = Number(info.score || 0).toFixed(2);
-      count = (info.count || 0) + ' 人评分';
-      url = info.url;
-    }
-
-    let $div: HTMLElement = document.querySelector(
-      '.stats-block.e-userjs-score-compare'
+    const title = this.getScoreInfo().name;
+    insertScoreCommon(
+      page,
+      info,
+      title,
+      '.anime-detail-header-stats > .stats-block',
+      {
+        cls: 'stats-block',
+        style: 'height:auto;',
+      }
     );
-    if (!$div) {
-      $div = document.createElement('div');
-      $div.classList.add('stats-block');
-      $div.classList.add('e-userjs-score-compare');
-      $div.style.height = 'auto';
-      $div.style.marginTop = '10px';
-      document
-        .querySelector('.anime-detail-header-stats > .stats-block')
-        .insertAdjacentElement('afterend', $div);
-    }
-    $div.innerHTML += genScoreRowStr({ favicon, url, searchUrl, score, count });
   },
 };

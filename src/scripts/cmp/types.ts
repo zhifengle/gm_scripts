@@ -12,6 +12,7 @@ export type PageConfig = {
   controlSelector: Selector[];
   pageSelector: Selector[];
   getSearchResult: (subjectInfo: Subject) => Promise<SearchResult>;
+  // 可能会解析 html. 所以使用 $q $qa
   getScoreInfo: () => SearchResult;
   // 插入评分信息的 DOM
   insertScoreInfo: (page: PageConfig, info: SearchResult) => void;

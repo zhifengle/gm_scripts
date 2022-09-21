@@ -6,7 +6,8 @@ export const BLANK_LINK = 'target="_blank" rel="noopener noreferrer nofollow"';
 export const NO_MATCH_DATA = '点击搜索';
 export const SCORE_ROW_WRAP_CLS = 'e-userjs-score-compare';
 
-export function getFavicon(site: string) {
+export function getFavicon(page: PageConfig) {
+  let site = page.name;
   let favicon: any = '';
   site = site.split('-')[0];
   const dict: Record<string, string> = {
@@ -18,6 +19,9 @@ export function getFavicon(site: string) {
   try {
     favicon = GM_getResourceURL(`${site}_favicon`);
   } catch (error) {}
+  if (!favicon) {
+    favicon = page.favicon || '';
+  }
   return favicon;
 }
 
@@ -63,7 +67,7 @@ export function genScoreRowInfo(
   page: PageConfig,
   info: SearchResult
 ): ScoreRowInfo {
-  const favicon = getFavicon(page.name);
+  const favicon = getFavicon(page);
   const name = page.name.split('-')[0];
   let score: any = '-';
   let count = NO_MATCH_DATA;
@@ -76,31 +80,39 @@ export function genScoreRowInfo(
   }
   return { favicon, count, score, url, searchUrl, name };
 }
-
-export function insertScoreCommon(
-  page: PageConfig,
-  info: SearchResult,
-  title: string,
+export function getScoreWrapDom(
   adjacentSelector: string,
-  opts: {
-    cls: string;
-    style: string;
-  }
-) {
-  const rowInfo = genScoreRowInfo(title, page, info);
+  cls: string,
+  style: string
+): HTMLElement {
   let sel = '.' + SCORE_ROW_WRAP_CLS;
-  if (opts.cls) {
-    sel = `.${opts.cls}.${SCORE_ROW_WRAP_CLS}`;
+  if (cls) {
+    sel = `.${cls}.${SCORE_ROW_WRAP_CLS}`;
   }
   let $div: HTMLElement = document.querySelector(sel);
   if (!$div) {
     $div = document.createElement('div');
-    opts.cls && $div.classList.add(opts.cls);
+    cls && $div.classList.add(cls);
     $div.classList.add(SCORE_ROW_WRAP_CLS);
-    $div.setAttribute('style', `margin-top:10px;${opts.style}`);
+    $div.setAttribute('style', `margin-top:10px;${style}`);
     document
       .querySelector(adjacentSelector)
       .insertAdjacentElement('afterend', $div);
   }
-  $div.innerHTML += genScoreRowStr(rowInfo);
+  return $div;
+}
+
+export function insertScoreCommon(
+  page: PageConfig,
+  info: SearchResult,
+  opts: {
+    title: string;
+    adjacentSelector: string;
+    cls: string;
+    style: string;
+  }
+) {
+  const wrapDom = getScoreWrapDom(opts.adjacentSelector, opts.cls, opts.style);
+  const rowInfo = genScoreRowInfo(opts.title, page, info);
+  wrapDom.innerHTML += genScoreRowStr(rowInfo);
 }

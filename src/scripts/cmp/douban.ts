@@ -8,6 +8,7 @@ export const doubanAnimePage: PageConfig = {
   name: 'douban-anime',
   href: ['https://movie.douban.com/'],
   searchApi: 'https://www.douban.com/search?cat=1002&q={kw}',
+  favicon: 'https://img3.doubanio.com/favicon.ico',
   expiration: 21,
   controlSelector: [
     {
@@ -71,7 +72,7 @@ export const doubanAnimePage: PageConfig = {
     }
     const $div = document.createElement('div');
     $div.className = 'rating_content_wrap clearfix e-userjs-score-compare';
-    const favicon = getFavicon(page.name);
+    const favicon = getFavicon(page);
     let score: any = '-';
     let count = NO_MATCH_DATA;
     // 直接用 this.getScoreInfo() 似乎有点冗余。 也许改用 genSearchUrl

@@ -16,6 +16,8 @@ import {
   setSearchResultByGM,
 } from './common';
 
+export const favicon = 'https://img3.doubanio.com/favicon.ico';
+
 function genCollectionURL(
   userId: string,
   interestType: InterestType,

@@ -28,6 +28,7 @@ export const bangumiAnimePage: PageConfig = {
   name: 'bangumi-anime',
   href: ['https://bgm.tv/', 'https://bangumi.tv/', 'https://chii.in/'],
   searchApi: 'https://bgm.tv/subject_search/{kw}?cat=2',
+  favicon: 'https://bgm.tv/img/favicon.ico',
   controlSelector: [
     {
       selector: '#panelInterestWrapper h2',
@@ -92,7 +93,7 @@ export const bangumiAnimePage: PageConfig = {
       let $div = document.createElement('div');
       $div.classList.add('frdScore');
       $div.classList.add('e-userjs-score-compare');
-      const favicon = getFavicon(page.name);
+      const favicon = getFavicon(page);
       let score: any = '-';
       let count = NO_MATCH_DATA;
       const searchUrl = page.searchApi.replace(

@@ -1,13 +1,15 @@
 import { SearchResult } from '../../interface/subject';
 import { searchAnimeData } from '../../sites/anidb';
 import { $q } from '../../utils/domUtils';
-import { genScoreRowInfo, genScoreRowStr, insertScoreCommon } from './common';
+import { genScoreRowInfo, genScoreRowStr, getScoreWrapDom } from './common';
 import { PageConfig } from './types';
 
 export const anidbPage: PageConfig = {
   name: 'anidb',
   href: ['https://anidb.net'],
   searchApi: 'https://anidb.net/anime/?adb.search={kw}&do.search=1',
+  favicon: 'https://cdn-us.anidb.net/css/icons/touch/favicon.ico',
+  expiration: 21,
   controlSelector: [
     {
       selector: 'h1.anime',
@@ -71,9 +73,20 @@ export const anidbPage: PageConfig = {
   },
   insertScoreInfo: function (page: PageConfig, info: SearchResult): void {
     const title = this.getScoreInfo().name;
-    insertScoreCommon(page, info, title, '#tab_1_pane', {
+    const opts = {
+      title,
+      adjacentSelector: '#tab_1_pane',
       cls: '',
       style: '',
-    });
+    };
+    const wrapDom = getScoreWrapDom(
+      opts.adjacentSelector,
+      opts.cls,
+      opts.style
+    );
+    const rowInfo = genScoreRowInfo(opts.title, page, info);
+    // refuse blob:<URL>
+    rowInfo.favicon = page.favicon;
+    wrapDom.innerHTML += genScoreRowStr(rowInfo);
   },
 };

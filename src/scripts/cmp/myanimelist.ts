@@ -2,18 +2,14 @@ import { SearchResult } from '../../interface/subject';
 import { searchAnimeData } from '../../sites/myanimelist';
 import { $q, $qa } from '../../utils/domUtils';
 import { formatDate } from '../../utils/utils';
-import {
-  genScoreRowStr,
-  getFavicon,
-  insertScoreCommon,
-  NO_MATCH_DATA,
-} from './common';
+import { insertScoreCommon } from './common';
 import { PageConfig } from './types';
 
 export const myanimelistPage: PageConfig = {
   name: 'myanimelist',
   href: ['https://myanimelist.net/'],
   searchApi: 'https://myanimelist.net/anime.php?q={kw}&cat=anime',
+  favicon: 'https://cdn.myanimelist.net/images/favicon.ico',
   controlSelector: [
     {
       selector: '.h1.edit-info',
@@ -59,15 +55,11 @@ export const myanimelistPage: PageConfig = {
   },
   insertScoreInfo: function (page: PageConfig, info: SearchResult): void {
     const title = this.getScoreInfo().name;
-    insertScoreCommon(
-      page,
-      info,
+    insertScoreCommon(page, info, {
       title,
-      '.anime-detail-header-stats > .stats-block',
-      {
-        cls: 'stats-block',
-        style: 'height:auto;',
-      }
-    );
+      adjacentSelector: '.anime-detail-header-stats > .stats-block',
+      cls: 'stats-block',
+      style: 'height:auto;',
+    });
   },
 };

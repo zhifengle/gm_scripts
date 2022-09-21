@@ -18,6 +18,8 @@ import {
   updateInterest,
 } from './common';
 
+export const favicon = 'https://bgm.tv/img/favicon.ico';
+
 export enum BangumiDomain {
   chii = 'chii.in',
   bgm = 'bgm.tv',

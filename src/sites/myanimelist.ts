@@ -2,6 +2,8 @@ import { SearchResult, Subject } from '../interface/subject';
 import { randomSleep } from '../utils/async/sleep';
 import { fetchJson, fetchText } from '../utils/fetchData';
 
+export const favicon = 'https://cdn.myanimelist.net/images/favicon.ico';
+
 export async function searchAnimeData(
   subjectInfo: Subject
 ): Promise<SearchResult> {

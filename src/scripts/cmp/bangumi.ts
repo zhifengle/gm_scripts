@@ -154,6 +154,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${siteName}搜索
 export const bangumiGamePage: PageConfig = {
   ...bangumiAnimePage,
   name: 'bangumi-game',
+  expiration: 21,
   pageSelector: [
     {
       selector: 'a.focus.chl[href="/game"]',

@@ -94,7 +94,7 @@ export const bangumiAnimePage: PageConfig = {
       $div.classList.add('frdScore');
       $div.classList.add('e-userjs-score-compare');
       const favicon = getFavicon(page);
-      let score: any = '-';
+      let score: any = '0';
       let count = NO_MATCH_DATA;
       const searchUrl = page.searchApi.replace(
         '{kw}',
@@ -106,10 +106,11 @@ export const bangumiAnimePage: PageConfig = {
         count = (info.count || 0) + ' 人评分';
         url = info.url;
       }
+      const siteName = page.name.split('-')[0];
       $div.innerHTML = `
 <a class="avatar"
 target="_blank" rel="noopener noreferrer nofollow"
-style="vertical-align:-3px;margin-right:10px;" title="点击搜索" href="${searchUrl}">
+style="vertical-align:-3px;margin-right:10px;" title="点击在${siteName}搜索" href="${searchUrl}">
 <img style="width:16px;" src="${favicon}"/>
 </a>
 <span class="num">${score}</span>
@@ -126,7 +127,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击搜索" href="${sear
     if (!$target) return;
     // 已存在控件时返回
     if ($q('.e-userjs-score-ctrl')) return;
-    const rawHTML = `<a title="强制刷新豆瓣和MAL评分" class="e-userjs-score-ctrl e-userjs-score-fresh">O</a>
+    const rawHTML = `<a title="强制刷新评分" class="e-userjs-score-ctrl e-userjs-score-fresh">O</a>
       <a title="清除所有评分缓存" class="e-userjs-score-ctrl e-userjs-score-clear">X</a>
 `;
     $target.innerHTML = $target.innerHTML + rawHTML;

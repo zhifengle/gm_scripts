@@ -35,6 +35,19 @@ if (GM_registerMenuCommand) {
     },
     'c'
   );
+  GM_registerMenuCommand(
+    '强制刷新动画评分信息',
+    () => {
+      const pages = animePages;
+      const idx = getPageIdxByHost(pages, location.host);
+      if (idx === -1) {
+        return;
+      }
+      const curPage = pages[idx];
+      refreshScore(curPage, pages, true);
+    },
+    'r'
+  );
 }
 
 function getPageIdxByHost(pages: PageConfig[], host: string) {
@@ -91,8 +104,11 @@ async function refreshScore(
   if (!force) {
     const scoreMap = getScoreMap(curPage.name, subjectId);
     map = { ...scoreMap, [curPage.name]: subjectId };
+    document
+      .querySelectorAll('.e-userjs-score-compare')
+      .forEach((el) => el.remove());
   }
-  insertScoreRows(curPage, pages, curInfo, map, saveTask);
+  await insertScoreRows(curPage, pages, curInfo, map, saveTask);
 
   saveTask.forEach((t) => {
     const { page, info } = t;
@@ -113,7 +129,7 @@ async function initPage(pages: PageConfig[]) {
   if (!$page) return;
   const $title = findElement(curPage.controlSelector);
   if (!$title) return;
-  curPage?.insertControlDOM($title, {
+  curPage?.insertControlDOM?.($title, {
     clear: clearInfoStorage,
     refresh: () => refreshScore(curPage, pages, true),
   });

@@ -73,24 +73,26 @@ export const doubanAnimePage: PageConfig = {
     const $div = document.createElement('div');
     $div.className = 'rating_content_wrap clearfix e-userjs-score-compare';
     const favicon = getFavicon(page);
-    let score: any = '-';
+    let score: any = '0';
     let count = NO_MATCH_DATA;
     // 直接用 this.getScoreInfo() 似乎有点冗余。 也许改用 genSearchUrl
     const name = this.getScoreInfo().name;
     const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(name));
     let url = searchUrl;
     if (info && info.url) {
-      score = info.score || 0;
+      score = Number(info.score || 0).toFixed(2);
       count = (info.count || 0) + ' 人评价';
       url = info.url;
     }
+    const siteName = page.name.split('-')[0];
     $div.innerHTML = `
 <strong class="rating_avg">${score}</strong>
 <div class="friends">
   <a class="avatar"
   ${BLANK_LINK}
   href="${searchUrl}"
-  title="点击搜索">
+  style="cursor:pointer;"
+  title="点击在${siteName}搜索">
   <img src="${favicon}"/>
   </a>
 </div>

@@ -38,7 +38,7 @@ export function genScoreRowStr(info: ScoreRowInfo): string {
   return `
 <div class="e-userjs-score-compare-row" style="display:flex;align-items:center;margin-bottom:10px;">
 <a target="_blank" rel="noopener noreferrer nofollow"
-  style="margin-right:1em;"  title="点击搜索" href="${info.searchUrl}">
+  style="margin-right:1em;"  title="点击在${info.name}搜索" href="${info.searchUrl}">
 <img alt="${info.name}" style="width:16px;" src="${info.favicon}"/>
 </a>
 <strong style="margin-right:1em;">${info.score}</strong>
@@ -69,7 +69,7 @@ export function genScoreRowInfo(
 ): ScoreRowInfo {
   const favicon = getFavicon(page);
   const name = page.name.split('-')[0];
-  let score: any = '-';
+  let score: any = '0';
   let count = NO_MATCH_DATA;
   const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(title));
   let url = searchUrl;

@@ -5,6 +5,8 @@ import { PageConfig } from './types';
 export const BLANK_LINK = 'target="_blank" rel="noopener noreferrer nofollow"';
 export const NO_MATCH_DATA = '点击搜索';
 export const SCORE_ROW_WRAP_CLS = 'e-userjs-score-compare';
+const SCORE_ROW_CLS = 'e-userjs-score-compare-row';
+const SEARCH_ICON_CLS = 'e-userjs-score-search-icon';
 
 export function getFavicon(page: PageConfig) {
   let site = page.name;
@@ -33,6 +35,38 @@ type ScoreRowInfo = {
   count: string;
   name: string;
 };
+
+export const DOM_STYLE = `
+.${SCORE_ROW_WRAP_CLS} { margin-bottom:-10px; }
+.${SCORE_ROW_CLS} { display:flex;align-items:center;margin-bottom:10px; }
+.${SEARCH_ICON_CLS} { margin-right:1em;}
+.${SEARCH_ICON_CLS} > img { width:16px; }
+`;
+
+function genIconStr(name: string, favicon: string, searchUrl: string): string {
+  return `
+<a class="${SEARCH_ICON_CLS}" ${BLANK_LINK}
+  title="点击在${name}搜索" href="${searchUrl}">
+<img alt="${name}" src="${favicon}"/>
+</a>
+`;
+}
+
+export function insertIcons(title: string, pages: PageConfig[]) {
+  const $wrap: HTMLElement = document.querySelector(`.${SCORE_ROW_WRAP_CLS}`);
+  const $icons = document.createElement('div');
+  $icons.classList.add('icons');
+  $icons.classList.add(SCORE_ROW_CLS);
+  let str = '';
+  pages.forEach((page) => {
+    const favicon = getFavicon(page);
+    const name = page.name.split('-')[0];
+    const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(title));
+    str += genIconStr(name, favicon, searchUrl);
+  });
+  $icons.innerHTML = str;
+  $wrap.appendChild($icons);
+}
 
 export function genScoreRowStr(info: ScoreRowInfo): string {
   return `
@@ -82,8 +116,8 @@ export function genScoreRowInfo(
 }
 export function getScoreWrapDom(
   adjacentSelector: string,
-  cls: string,
-  style: string
+  cls: string = '',
+  style: string = ''
 ): HTMLElement {
   let sel = '.' + SCORE_ROW_WRAP_CLS;
   if (cls) {

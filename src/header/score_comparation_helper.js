@@ -13,6 +13,7 @@
 // @include     https://anidb.net/a*
 // @include     https://galge.fun/subjects/*
 // @include     https://vndb.org/v*
+// @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @version     0.1.0
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -28,4 +29,5 @@
 // @resource    douban_favicon https://img3.doubanio.com/favicon.ico
 // @resource    myanimelist_favicon https://cdn.myanimelist.net/images/favicon.ico
 // @resource    anidb_favicon https://cdn-us.anidb.net/css/icons/touch/favicon.ico
+// @resource    erogamescape_favicon https://erogamescape.dyndns.org/favicon.ico
 // ==/UserScript==

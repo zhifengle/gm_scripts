@@ -14,6 +14,7 @@ import {
 import { twodfanPage } from './pages/twodfan';
 import { PageConfig, ScoreMap } from './types';
 import { vndbPage } from './pages/vndb';
+import { erogamescapePage } from './pages/erogamescape';
 
 // 也许使用索引更快?
 type SaveTask = {
@@ -28,7 +29,12 @@ const animePages: PageConfig[] = [
   anidbPage,
 ];
 
-const gamePages: PageConfig[] = [bangumiGamePage, twodfanPage, vndbPage];
+const gamePages: PageConfig[] = [
+  bangumiGamePage,
+  twodfanPage,
+  vndbPage,
+  erogamescapePage,
+];
 if (GM_registerMenuCommand) {
   GM_registerMenuCommand(
     '清除缓存信息',

@@ -100,7 +100,7 @@ export function getSearchResult(): SearchResult {
   if ($count) {
     info.count = $count.textContent.trim().replace('人评价', '');
     if (info.count.includes('无评分')) {
-      info.count = 0;
+      info.count = '-';
     }
   }
   $table.querySelectorAll('p.tags').forEach((el) => {

@@ -2,7 +2,7 @@
 // @name        score comparation helper
 // @name:zh-CN  评分对比助手
 // @namespace   https://github.com/22earth
-// @description show subject score information in Bangumi or Douban
+// @description show subject score information from other site
 // @description:zh-cn 在Bangumi、豆瓣等上面显示其它网站的评分
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
@@ -14,7 +14,9 @@
 // @include     https://galge.fun/subjects/*
 // @include     https://vndb.org/v*
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
+// @include     https://moepedia.net/game/*
 // @version     0.1.0
+// @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
 // @grant       GM_xmlhttpRequest

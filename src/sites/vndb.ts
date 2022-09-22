@@ -42,6 +42,15 @@ export async function searchGameData(
     },
   });
   const $doc = new DOMParser().parseFromString(rawText, 'text/html');
+  const $title = $doc.querySelector('#maincontent > .mainbox > h1');
+  // 重定向
+  if ($title) {
+    window._parsedEl = $doc;
+    const res = getSearchResult();
+    res.url = $doc.querySelector('head > base').getAttribute('href');
+    window._parsedEl = undefined;
+    return res;
+  }
   const items = $doc.querySelectorAll(
     '#maincontent .mainbox table > tbody > tr'
   );

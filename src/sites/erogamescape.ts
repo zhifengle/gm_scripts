@@ -17,7 +17,7 @@ export const favicon = 'https://erogamescape.dyndns.org/favicon.ico';
 const site_origin = 'https://erogamescape.dyndns.org';
 
 function getSearchItem($item: HTMLElement): SearchResult {
-  const $title = $item.querySelector('td:nth-child(1)');
+  const $title = $item.querySelector('td:nth-child(1) > a');
   const href = $title.getAttribute('href');
   const info: SearchResult = {
     name: $title.textContent,

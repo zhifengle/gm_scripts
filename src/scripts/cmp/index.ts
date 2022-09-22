@@ -15,6 +15,7 @@ import { twodfanPage } from './pages/twodfan';
 import { PageConfig, ScoreMap } from './types';
 import { vndbPage } from './pages/vndb';
 import { erogamescapePage } from './pages/erogamescape';
+import { moepediaPage } from './pages/moepedia';
 
 // 也许使用索引更快?
 type SaveTask = {
@@ -34,6 +35,7 @@ const gamePages: PageConfig[] = [
   twodfanPage,
   vndbPage,
   erogamescapePage,
+  moepediaPage,
 ];
 if (GM_registerMenuCommand) {
   GM_registerMenuCommand(
@@ -57,6 +59,19 @@ if (GM_registerMenuCommand) {
     },
     'r'
   );
+  GM_registerMenuCommand(
+    '强制刷新游戏评分信息',
+    () => {
+      const pages = gamePages;
+      const idx = getPageIdxByHost(pages, location.host);
+      if (idx === -1) {
+        return;
+      }
+      const curPage = pages[idx];
+      refreshScore(curPage, pages, true);
+    },
+    'g'
+  );
 }
 
 function getPageIdxByHost(pages: PageConfig[], host: string) {
@@ -79,7 +94,7 @@ async function insertScoreRows(
 ) {
   for (const page of pages) {
     const name = page.name;
-    if (page.name === curPage.name) {
+    if (page.name === curPage.name || page.type === 'info') {
       continue;
     }
     let searchResult: SearchResult = getInfo(map[name]);

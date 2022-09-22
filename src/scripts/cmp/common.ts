@@ -142,8 +142,8 @@ export function insertScoreCommon(
   opts: {
     title: string;
     adjacentSelector: Selector[];
-    cls: string;
-    style: string;
+    cls?: string;
+    style?: string;
   }
 ) {
   const wrapDom = getScoreWrapDom(opts.adjacentSelector, opts.cls, opts.style);

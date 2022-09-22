@@ -1,8 +1,8 @@
-import { SearchResult } from '../../interface/subject';
-import { checkAnimeSubjectExist } from '../../sites/douban';
-import { $q } from '../../utils/domUtils';
-import { BLANK_LINK, getFavicon, NO_MATCH_DATA } from './common';
-import { PageConfig } from './types';
+import { SearchResult } from '../../../interface/subject';
+import { checkAnimeSubjectExist } from '../../../sites/douban';
+import { $q } from '../../../utils/domUtils';
+import { BLANK_LINK, getFavicon, NO_MATCH_DATA } from '../common';
+import { PageConfig } from '../types';
 
 export const doubanAnimePage: PageConfig = {
   name: 'douban-anime',

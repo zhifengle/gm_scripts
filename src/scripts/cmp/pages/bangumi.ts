@@ -1,10 +1,10 @@
-import { SearchResult, Subject } from '../../interface/subject';
-import { SubjectTypeId } from '../../interface/wiki';
-import { checkSubjectExist } from '../../sites/bangumi';
-import { $q, $qa } from '../../utils/domUtils';
-import { dealDate } from '../../utils/utils';
-import { getFavicon, NO_MATCH_DATA } from './common';
-import { PageConfig } from './types';
+import { SearchResult, Subject } from '../../../interface/subject';
+import { SubjectTypeId } from '../../../interface/wiki';
+import { checkSubjectExist } from '../../../sites/bangumi';
+import { $q, $qa } from '../../../utils/domUtils';
+import { dealDate } from '../../../utils/utils';
+import { getFavicon, NO_MATCH_DATA } from '../common';
+import { PageConfig } from '../types';
 
 // http://mirror.bgm.rincat.ch
 let bgm_origin = 'https://bgm.tv';

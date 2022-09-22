@@ -1,7 +1,7 @@
-import { SearchResult } from '../../interface/subject';
-import { favicon, getSearchResult, searchGameData } from '../../sites/vndb';
-import { genScoreRowInfo, genScoreRowStr, getScoreWrapDom } from './common';
-import { PageConfig } from './types';
+import { SearchResult } from '../../../interface/subject';
+import { favicon, getSearchResult, searchGameData } from '../../../sites/vndb';
+import { genScoreRowInfo, genScoreRowStr, getScoreWrapDom } from '../common';
+import { PageConfig } from '../types';
 
 export const vndbPage: PageConfig = {
   name: 'vndb',

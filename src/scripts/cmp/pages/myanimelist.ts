@@ -1,9 +1,9 @@
-import { SearchResult } from '../../interface/subject';
-import { searchAnimeData } from '../../sites/myanimelist';
-import { $q, $qa } from '../../utils/domUtils';
-import { formatDate } from '../../utils/utils';
-import { insertScoreCommon } from './common';
-import { PageConfig } from './types';
+import { SearchResult } from '../../../interface/subject';
+import { searchAnimeData } from '../../../sites/myanimelist';
+import { $q, $qa } from '../../../utils/domUtils';
+import { formatDate } from '../../../utils/utils';
+import { insertScoreCommon } from '../common';
+import { PageConfig } from '../types';
 
 export const myanimelistPage: PageConfig = {
   name: 'myanimelist',

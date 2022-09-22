@@ -1,8 +1,12 @@
-import { SearchResult } from '../../interface/subject';
-import { favicon, getSearchResult, searchGameData } from '../../sites/twodfan';
-import { $q } from '../../utils/domUtils';
-import { insertScoreCommon } from './common';
-import { PageConfig } from './types';
+import { SearchResult } from '../../../interface/subject';
+import {
+  favicon,
+  getSearchResult,
+  searchGameData,
+} from '../../../sites/twodfan';
+import { $q } from '../../../utils/domUtils';
+import { insertScoreCommon } from '../common';
+import { PageConfig } from '../types';
 
 let site_origin = 'https://galge.fun/';
 

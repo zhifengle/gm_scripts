@@ -1,9 +1,9 @@
 import { SearchResult } from '../../interface/subject';
 import { findElement } from '../../utils/domUtils';
-import { anidbPage } from './anidb';
-import { bangumiAnimePage, bangumiGamePage } from './bangumi';
-import { doubanAnimePage } from './douban';
-import { myanimelistPage } from './myanimelist';
+import { anidbPage } from './pages/anidb';
+import { bangumiAnimePage, bangumiGamePage } from './pages/bangumi';
+import { doubanAnimePage } from './pages/douban';
+import { myanimelistPage } from './pages/myanimelist';
 import {
   clearInfoStorage,
   getInfo,
@@ -11,9 +11,9 @@ import {
   saveInfo,
   setScoreMap,
 } from './storage';
-import { twodfanPage } from './twodfan';
+import { twodfanPage } from './pages/twodfan';
 import { PageConfig, ScoreMap } from './types';
-import { vndbPage } from './vndb';
+import { vndbPage } from './pages/vndb';
 
 // 也许使用索引更快?
 type SaveTask = {

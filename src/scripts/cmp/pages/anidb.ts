@@ -1,8 +1,8 @@
-import { SearchResult } from '../../interface/subject';
-import { searchAnimeData } from '../../sites/anidb';
-import { $q } from '../../utils/domUtils';
-import { genScoreRowInfo, genScoreRowStr, getScoreWrapDom } from './common';
-import { PageConfig } from './types';
+import { SearchResult } from '../../../interface/subject';
+import { searchAnimeData } from '../../../sites/anidb';
+import { $q } from '../../../utils/domUtils';
+import { genScoreRowInfo, genScoreRowStr, getScoreWrapDom } from '../common';
+import { PageConfig } from '../types';
 
 export const anidbPage: PageConfig = {
   name: 'anidb',

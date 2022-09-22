@@ -1,5 +1,7 @@
 import { SearchResult } from '../../interface/subject';
+import { Selector } from '../../interface/wiki';
 import { favicon as anidbFavicon } from '../../sites/anidb';
+import { findElement } from '../../utils/domUtils';
 import { PageConfig } from './types';
 
 export const BLANK_LINK = 'target="_blank" rel="noopener noreferrer nofollow"';
@@ -115,7 +117,7 @@ export function genScoreRowInfo(
   return { favicon, count, score, url, searchUrl, name };
 }
 export function getScoreWrapDom(
-  adjacentSelector: string,
+  adjacentSelector: Selector[],
   cls: string = '',
   style: string = ''
 ): HTMLElement {
@@ -129,9 +131,7 @@ export function getScoreWrapDom(
     cls && $div.classList.add(cls);
     $div.classList.add(SCORE_ROW_WRAP_CLS);
     $div.setAttribute('style', `margin-top:10px;${style}`);
-    document
-      .querySelector(adjacentSelector)
-      .insertAdjacentElement('afterend', $div);
+    findElement(adjacentSelector)?.insertAdjacentElement('afterend', $div);
   }
   return $div;
 }
@@ -141,7 +141,7 @@ export function insertScoreCommon(
   info: SearchResult,
   opts: {
     title: string;
-    adjacentSelector: string;
+    adjacentSelector: Selector[];
     cls: string;
     style: string;
   }

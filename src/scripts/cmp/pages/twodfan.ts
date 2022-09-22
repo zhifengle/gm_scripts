@@ -24,14 +24,14 @@ export const twodfanPage: PageConfig = {
   searchApi: 'https://galge.fun/subjects/search?keyword={kw}',
   favicon: favicon,
   expiration: 21,
-  controlSelector: [
+  infoSelector: [
     {
-      selector: '.navbar > h3',
+      selector: '.rank-info.control-group',
     },
   ],
   pageSelector: [
     {
-      selector: '.media-body.control-group > .control-group',
+      selector: '.navbar > h3',
     },
   ],
   getSubjectId(url: string) {
@@ -50,7 +50,7 @@ export const twodfanPage: PageConfig = {
     const title = $q('.navbar > h3').textContent.trim();
     insertScoreCommon(page, info, {
       title,
-      adjacentSelector: '.rank-info.control-group',
+      adjacentSelector: this.infoSelector,
       cls: '',
       style: '',
     });

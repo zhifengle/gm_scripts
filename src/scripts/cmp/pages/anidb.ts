@@ -10,9 +10,9 @@ export const anidbPage: PageConfig = {
   searchApi: 'https://anidb.net/anime/?adb.search={kw}&do.search=1',
   favicon: 'https://cdn-us.anidb.net/css/icons/touch/favicon.ico',
   expiration: 21,
-  controlSelector: [
+  infoSelector: [
     {
-      selector: 'h1.anime',
+      selector: '#tab_1_pane',
     },
   ],
   pageSelector: [
@@ -75,7 +75,7 @@ export const anidbPage: PageConfig = {
     const title = this.getScoreInfo().name;
     const opts = {
       title,
-      adjacentSelector: '#tab_1_pane',
+      adjacentSelector: this.infoSelector,
       cls: '',
       style: '',
     };

@@ -10,9 +10,9 @@ export const myanimelistPage: PageConfig = {
   href: ['https://myanimelist.net/'],
   searchApi: 'https://myanimelist.net/anime.php?q={kw}&cat=anime',
   favicon: 'https://cdn.myanimelist.net/images/favicon.ico',
-  controlSelector: [
+  infoSelector: [
     {
-      selector: '.h1.edit-info',
+      selector: '.anime-detail-header-stats > .stats-block',
     },
   ],
   pageSelector: [
@@ -57,7 +57,7 @@ export const myanimelistPage: PageConfig = {
     const title = this.getScoreInfo().name;
     insertScoreCommon(page, info, {
       title,
-      adjacentSelector: '.anime-detail-header-stats > .stats-block',
+      adjacentSelector: this.infoSelector,
       cls: 'stats-block',
       style: 'height:auto;',
     });

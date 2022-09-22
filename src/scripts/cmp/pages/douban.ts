@@ -10,7 +10,7 @@ export const doubanAnimePage: PageConfig = {
   searchApi: 'https://www.douban.com/search?cat=1002&q={kw}',
   favicon: 'https://img3.doubanio.com/favicon.ico',
   expiration: 21,
-  controlSelector: [
+  infoSelector: [
     {
       selector: '#interest_sectl',
     },

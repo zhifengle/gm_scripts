@@ -14,14 +14,17 @@ export const erogamescapePage: PageConfig = {
     'https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/kensaku.php?category=game&word_category=name&word={kw}&mode=normal',
   favicon: favicon,
   expiration: 21,
-  controlSelector: [
+  infoSelector: [
     {
-      selector: '#soft-title',
+      selector: '#basic_information_table',
+    },
+    {
+      selector: '#basic_infomation_table',
     },
   ],
   pageSelector: [
     {
-      selector: '#basic_information_table',
+      selector: '#soft-title',
     },
   ],
   getSubjectId(url: string) {
@@ -40,7 +43,7 @@ export const erogamescapePage: PageConfig = {
     const title = this.getScoreInfo().name;
     insertScoreCommon(page, info, {
       title,
-      adjacentSelector: '#basic_information_table',
+      adjacentSelector: this.infoSelector,
       cls: '',
       style: '',
     });

@@ -143,12 +143,15 @@ async function initPage(pages: PageConfig[]) {
   const curPage = pages[idx];
   const $page = findElement(curPage.pageSelector);
   if (!$page) return;
-  const $title = findElement(curPage.controlSelector);
-  if (!$title) return;
-  curPage?.insertControlDOM?.($title, {
-    clear: clearInfoStorage,
-    refresh: () => refreshScore(curPage, pages, true),
-  });
+  const $info = findElement(curPage.infoSelector);
+  if (!$info) return;
+  if (curPage.controlSelector) {
+    const $ctrl = findElement(curPage.controlSelector);
+    curPage?.insertControlDOM?.($ctrl, {
+      clear: clearInfoStorage,
+      refresh: () => refreshScore(curPage, pages, true),
+    });
+  }
   refreshScore(curPage, pages, false);
 }
 initPage(animePages);

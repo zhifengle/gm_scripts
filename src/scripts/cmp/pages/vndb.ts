@@ -9,9 +9,9 @@ export const vndbPage: PageConfig = {
   searchApi: 'https://vndb.org/v?sq={kw}',
   favicon: favicon,
   expiration: 21,
-  controlSelector: [
+  infoSelector: [
     {
-      selector: '.mainbox > h1',
+      selector: '.vnimg > label',
     },
   ],
   pageSelector: [
@@ -35,7 +35,7 @@ export const vndbPage: PageConfig = {
     const title = this.getScoreInfo().name;
     const opts = {
       title,
-      adjacentSelector: '.vnimg > label',
+      adjacentSelector: this.infoSelector,
       cls: '',
       style: '',
     };

@@ -34,6 +34,11 @@ export const bangumiAnimePage: PageConfig = {
       selector: '#panelInterestWrapper h2',
     },
   ],
+  infoSelector: [
+    {
+      selector: '#panelInterestWrapper h2',
+    },
+  ],
   pageSelector: [
     {
       selector: '.focus.chl.anime',

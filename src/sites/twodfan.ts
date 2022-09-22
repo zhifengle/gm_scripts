@@ -99,6 +99,9 @@ export function getSearchResult(): SearchResult {
   const $count = $q('.rank-info.control-group .muted');
   if ($count) {
     info.count = $count.textContent.trim().replace('人评价', '');
+    if (info.count.includes('无评分')) {
+      info.count = 0;
+    }
   }
   $table.querySelectorAll('p.tags').forEach((el) => {
     if (el.innerHTML.includes('发售日期')) {

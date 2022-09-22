@@ -2,6 +2,19 @@
 
 > 自用脚本和 userChromejs
 
+## [score_comparation_helper.user.js](scripts/score_comparation_helper.user.js?raw=true)
+
+评分对比助手
+
+修改了我之前写的 bangumi_anime_score_compare.user.js
+
+原脚本应该还会维护，但是不会增加新功能。
+
+新功能
+
+- 支持在 myanimelist, anidb 显示另外网站的评分
+- 支持 美少女ゲーム、エロゲー　的一些网站。 vndb、2dfan、批评空间等
+
 ## [bangumi_collection_export_tool.user.js](scripts/bangumi_collection_export_tool.user.js?raw=true)
 
 导出 bangumi.tv 或者 bgm.tv 用户的收藏为 Excel 文件

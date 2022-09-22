@@ -5,6 +5,7 @@
 // @description show subject score information from other site
 // @description:zh-cn 在Bangumi、豆瓣等上面显示其它网站的评分
 // @author      22earth
+// @license     MIT
 // @homepage    https://github.com/22earth/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/subject\/.*$/
 // @include     https://movie.douban.com/subject/*

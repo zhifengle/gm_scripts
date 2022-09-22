@@ -12,7 +12,6 @@ export async function searchAnimeData(
   )}&v=1`;
   console.info('myanimelist search URL: ', url);
   const info = await fetchJson(url);
-  await randomSleep(300, 100);
   let startDate = null;
   let items = info.categories[0].items;
   let pageUrl = '';
@@ -48,12 +47,16 @@ export async function searchAnimeData(
     name,
     url: pageUrl,
   };
+  await randomSleep(200, 100);
   const content = await fetchText(pageUrl);
   const $doc = new DOMParser().parseFromString(content, 'text/html');
   let $score = $doc.querySelector('.fl-l.score') as HTMLElement;
   if ($score) {
     //siteScoreInfo.averageScore = parseFloat($score.textContent.trim()).toFixed(1)
     result.score = $score.textContent.trim();
+    if (result.score === 'N/A') {
+      result.score = 0;
+    }
     if ($score.dataset.user) {
       result.count = $score.dataset.user.replace(/users|,/g, '').trim();
     } else {

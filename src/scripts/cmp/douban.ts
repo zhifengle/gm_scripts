@@ -73,7 +73,7 @@ export const doubanAnimePage: PageConfig = {
     const $div = document.createElement('div');
     $div.className = 'rating_content_wrap clearfix e-userjs-score-compare';
     const favicon = getFavicon(page);
-    let score: any = '0';
+    let score: any = '0.00';
     let count = NO_MATCH_DATA;
     // 直接用 this.getScoreInfo() 似乎有点冗余。 也许改用 genSearchUrl
     const name = this.getScoreInfo().name;

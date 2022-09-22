@@ -78,14 +78,15 @@ async function insertScoreRows(
     }
     let searchResult: SearchResult = getInfo(map[name]);
     if (!searchResult) {
-      searchResult = await page.getSearchResult(curInfo);
+      try {
+        searchResult = await page.getSearchResult(curInfo);
+      } catch (error) {
+        console.error(error);
+      }
       tasks.push({
         page,
-        info: searchResult,
+        info: searchResult || { name: curInfo.name, url: '' },
       });
-    }
-    if (searchResult) {
-      map[name] = page.getSubjectId(searchResult.url);
     }
     curPage.insertScoreInfo(page, searchResult);
   }
@@ -115,8 +116,14 @@ async function refreshScore(
 
   saveTask.forEach((t) => {
     const { page, info } = t;
-    if (info) {
-      saveInfo(page.getSubjectId(info.url), info, page.expiration);
+    if (info && info.url) {
+      const key = page.getSubjectId(info.url);
+      saveInfo(key, info, page.expiration);
+      map[page.name] = key;
+    } else {
+      const key = `${page.name}_${info.name}`;
+      saveInfo(key, { url: '', name: '' }, page.expiration);
+      map[page.name] = key;
     }
   });
   setScoreMap(subjectId, map);

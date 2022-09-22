@@ -69,7 +69,7 @@ export function genScoreRowInfo(
 ): ScoreRowInfo {
   const favicon = getFavicon(page);
   const name = page.name.split('-')[0];
-  let score: any = '0';
+  let score: any = '0.00';
   let count = NO_MATCH_DATA;
   const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(title));
   let url = searchUrl;

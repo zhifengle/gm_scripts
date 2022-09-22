@@ -94,7 +94,7 @@ export const bangumiAnimePage: PageConfig = {
       $div.classList.add('frdScore');
       $div.classList.add('e-userjs-score-compare');
       const favicon = getFavicon(page);
-      let score: any = '0';
+      let score: any = '0.00';
       let count = NO_MATCH_DATA;
       const searchUrl = page.searchApi.replace(
         '{kw}',

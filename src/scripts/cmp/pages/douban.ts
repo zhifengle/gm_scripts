@@ -1,7 +1,7 @@
 import { SearchResult } from '../../../interface/subject';
 import { checkAnimeSubjectExist } from '../../../sites/douban';
-import { $q } from '../../../utils/domUtils';
-import { BLANK_LINK, getFavicon, NO_MATCH_DATA } from '../common';
+import { $q, htmlToElement } from '../../../utils/domUtils';
+import { BLANK_LINK, genScoreRowInfo, getScoreWrapDom } from '../common';
 import { PageConfig } from '../types';
 
 export const doubanAnimePage: PageConfig = {
@@ -12,7 +12,7 @@ export const doubanAnimePage: PageConfig = {
   expiration: 21,
   infoSelector: [
     {
-      selector: '#interest_sectl',
+      selector: '#interest_sectl > .rating_wrap',
     },
   ],
   pageSelector: [
@@ -63,44 +63,32 @@ export const doubanAnimePage: PageConfig = {
     return subjectInfo;
   },
   insertScoreInfo(page: PageConfig, info: SearchResult) {
-    let $panel = $q('#interest_sectl');
-    let $friendsRatingWrap = $q('.friends_rating_wrap');
-    if (!$friendsRatingWrap) {
-      $friendsRatingWrap = document.createElement('div');
-      $friendsRatingWrap.className = 'friends_rating_wrap clearbox';
-      $panel.appendChild($friendsRatingWrap);
-    }
-    const $div = document.createElement('div');
-    $div.className = 'rating_content_wrap clearfix e-userjs-score-compare';
-    const favicon = getFavicon(page);
-    let score: any = '0.00';
-    let count = NO_MATCH_DATA;
-    // 直接用 this.getScoreInfo() 似乎有点冗余。 也许改用 genSearchUrl
-    const name = this.getScoreInfo().name;
-    const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(name));
-    let url = searchUrl;
-    if (info && info.url) {
-      score = Number(info.score || 0).toFixed(2);
-      count = (info.count || 0) + ' 人评价';
-      url = info.url;
-    }
-    const siteName = page.name.split('-')[0];
-    $div.innerHTML = `
-<strong class="rating_avg">${score}</strong>
+    const title = this.getScoreInfo().name;
+    const opts = {
+      title,
+      adjacentSelector: this.infoSelector,
+      cls: 'friends_rating_wrap clearbox',
+    };
+    const wrapDom = getScoreWrapDom(opts.adjacentSelector, opts.cls);
+    const rowInfo = genScoreRowInfo(opts.title, page, info);
+    const rowStr = `
+<div class="e-userjs-score-compare-row rating_content_wrap clearfix">
+<strong class="rating_avg">${rowInfo.score}</strong>
 <div class="friends">
   <a class="avatar"
   ${BLANK_LINK}
-  href="${searchUrl}"
+  href="${rowInfo.searchUrl}"
   style="cursor:pointer;"
-  title="点击在${siteName}搜索">
-  <img src="${favicon}"/>
+  title="点击在${rowInfo.name}搜索">
+  <img src="${rowInfo.favicon}"/>
   </a>
 </div>
-<a href="${url}"
+<a href="${rowInfo.url}"
   rel="noopener noreferrer nofollow" class="friends_count" target="_blank">
-    ${count}
+    ${rowInfo.count}
 </a>
+</div>
 `;
-    $friendsRatingWrap.appendChild($div);
+    wrapDom.appendChild(htmlToElement(rowStr));
   },
 };

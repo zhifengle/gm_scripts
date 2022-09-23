@@ -1,9 +1,15 @@
 import { SearchResult, Subject } from '../../../interface/subject';
 import { SubjectTypeId } from '../../../interface/wiki';
 import { checkSubjectExist } from '../../../sites/bangumi';
-import { $q, $qa } from '../../../utils/domUtils';
+import { $q, $qa, htmlToElement } from '../../../utils/domUtils';
 import { dealDate } from '../../../utils/utils';
-import { getFavicon, NO_MATCH_DATA } from '../common';
+import {
+  genScoreRowInfo,
+  getFavicon,
+  getScoreWrapDom,
+  insertScoreRow,
+  NO_MATCH_DATA,
+} from '../common';
 import { PageConfig } from '../types';
 
 // http://mirror.bgm.rincat.ch
@@ -36,7 +42,7 @@ export const bangumiAnimePage: PageConfig = {
   ],
   infoSelector: [
     {
-      selector: '#panelInterestWrapper h2',
+      selector: '#panelInterestWrapper .SidePanel > :last-child',
     },
   ],
   pageSelector: [
@@ -93,40 +99,29 @@ export const bangumiAnimePage: PageConfig = {
   },
   // 插入评分信息的 DOM
   insertScoreInfo(page: PageConfig, info: SearchResult) {
-    let $panel = $q('.SidePanel.png_bg');
-    if ($panel) {
-      let $div = document.createElement('div');
-      $div.classList.add('frdScore');
-      $div.classList.add('e-userjs-score-compare');
-      const favicon = getFavicon(page);
-      let score: any = '0.00';
-      let count = NO_MATCH_DATA;
-      const searchUrl = page.searchApi.replace(
-        '{kw}',
-        encodeURIComponent($q('h1>a').textContent.trim())
-      );
-      let url = searchUrl;
-      if (info && info.url) {
-        score = Number(info.score || 0).toFixed(2);
-        count = (info.count || 0) + ' 人评分';
-        url = info.url;
-      }
-      const siteName = page.name.split('-')[0];
-      $div.innerHTML = `
+    const title = $q('h1>a').textContent.trim();
+    const opts = {
+      title,
+      adjacentSelector: this.infoSelector,
+    };
+    const wrapDom = getScoreWrapDom(opts.adjacentSelector);
+    const rowInfo = genScoreRowInfo(opts.title, page, info);
+    const rowStr = `
+<div class="e-userjs-score-compare-row frdScore">
 <a class="avatar"
 target="_blank" rel="noopener noreferrer nofollow"
-style="vertical-align:-3px;margin-right:10px;" title="点击在${siteName}搜索" href="${searchUrl}">
-<img style="width:16px;" src="${favicon}"/>
+style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}搜索" href="${rowInfo.searchUrl}">
+<img style="width:16px;" src="${rowInfo.favicon}"/>
 </a>
-<span class="num">${score}</span>
+<span class="num">${rowInfo.score}</span>
 <span class="desc" style="visibility:hidden">还行</span>
-<a href="${url}"
+<a href="${rowInfo.url}"
       target="_blank" rel="noopener noreferrer nofollow" class="l">
-      ${count}
+      ${rowInfo.count}
 </a>
+</div>
 `;
-      $panel.appendChild($div);
-    }
+    wrapDom.appendChild(htmlToElement(rowStr));
   },
   insertControlDOM($target, callbacks) {
     if (!$target) return;

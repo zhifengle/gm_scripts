@@ -1,7 +1,12 @@
 import { SearchResult } from '../../../interface/subject';
 import { searchAnimeData } from '../../../sites/anidb';
 import { $q } from '../../../utils/domUtils';
-import { genScoreRowInfo, genScoreRowStr, getScoreWrapDom } from '../common';
+import {
+  genScoreRowInfo,
+  genScoreRowStr,
+  getScoreWrapDom,
+  insertScoreRow,
+} from '../common';
 import { PageConfig } from '../types';
 
 export const anidbPage: PageConfig = {
@@ -87,6 +92,6 @@ export const anidbPage: PageConfig = {
     const rowInfo = genScoreRowInfo(opts.title, page, info);
     // refuse blob:<URL>
     rowInfo.favicon = page.favicon;
-    wrapDom.innerHTML += genScoreRowStr(rowInfo);
+    insertScoreRow(wrapDom, rowInfo);
   },
 };

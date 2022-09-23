@@ -1,7 +1,7 @@
 import { SearchResult } from '../../interface/subject';
 import { Selector } from '../../interface/wiki';
 import { favicon as anidbFavicon } from '../../sites/anidb';
-import { findElement } from '../../utils/domUtils';
+import { findElement, htmlToElement } from '../../utils/domUtils';
 import { PageConfig } from './types';
 
 export const BLANK_LINK = 'target="_blank" rel="noopener noreferrer nofollow"';
@@ -121,19 +121,18 @@ export function getScoreWrapDom(
   cls: string = '',
   style: string = ''
 ): HTMLElement {
-  let sel = '.' + SCORE_ROW_WRAP_CLS;
-  if (cls) {
-    sel = `.${cls}.${SCORE_ROW_WRAP_CLS}`;
-  }
-  let $div: HTMLElement = document.querySelector(sel);
+  let $div: HTMLElement = document.querySelector('.' + SCORE_ROW_WRAP_CLS);
   if (!$div) {
     $div = document.createElement('div');
-    cls && $div.classList.add(cls);
-    $div.classList.add(SCORE_ROW_WRAP_CLS);
+    $div.className = `${SCORE_ROW_WRAP_CLS} ${cls}`;
     $div.setAttribute('style', `margin-top:10px;${style}`);
     findElement(adjacentSelector)?.insertAdjacentElement('afterend', $div);
   }
   return $div;
+}
+
+export function insertScoreRow(wrapDom: HTMLElement, rowInfo: ScoreRowInfo) {
+  wrapDom.appendChild(htmlToElement(genScoreRowStr(rowInfo)));
 }
 
 export function insertScoreCommon(
@@ -148,5 +147,5 @@ export function insertScoreCommon(
 ) {
   const wrapDom = getScoreWrapDom(opts.adjacentSelector, opts.cls, opts.style);
   const rowInfo = genScoreRowInfo(opts.title, page, info);
-  wrapDom.innerHTML += genScoreRowStr(rowInfo);
+  insertScoreRow(wrapDom, rowInfo);
 }

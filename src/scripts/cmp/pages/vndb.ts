@@ -1,6 +1,11 @@
 import { SearchResult } from '../../../interface/subject';
 import { favicon, getSearchResult, searchGameData } from '../../../sites/vndb';
-import { genScoreRowInfo, genScoreRowStr, getScoreWrapDom } from '../common';
+import {
+  genScoreRowInfo,
+  genScoreRowStr,
+  getScoreWrapDom,
+  insertScoreRow,
+} from '../common';
 import { PageConfig } from '../types';
 
 export const vndbPage: PageConfig = {
@@ -36,17 +41,11 @@ export const vndbPage: PageConfig = {
     const opts = {
       title,
       adjacentSelector: this.infoSelector,
-      cls: '',
-      style: '',
     };
-    const wrapDom = getScoreWrapDom(
-      opts.adjacentSelector,
-      opts.cls,
-      opts.style
-    );
+    const wrapDom = getScoreWrapDom(opts.adjacentSelector);
     const rowInfo = genScoreRowInfo(opts.title, page, info);
     // refuse blob:<URL>
     rowInfo.favicon = page.favicon;
-    wrapDom.innerHTML += genScoreRowStr(rowInfo);
+    insertScoreRow(wrapDom, rowInfo);
   },
 };

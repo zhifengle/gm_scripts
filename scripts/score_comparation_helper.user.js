@@ -3,7 +3,7 @@
 // @name:zh-CN  评分对比助手
 // @namespace   https://github.com/22earth
 // @description show subject score information from other site
-// @description:zh-cn 在Bangumi、豆瓣等上面显示其它网站的评分
+// @description:zh-CN 在Bangumi、豆瓣等上面显示其它网站的评分
 // @author      22earth
 // @license     MIT
 // @homepage    https://github.com/22earth/gm_scripts
@@ -16,7 +16,7 @@
 // @include     https://vndb.org/v*
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
-// @version     0.1.1
+// @version     0.1.2
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -158,6 +158,17 @@
           }
       }
       return r;
+  }
+  /**
+   * @param {String} HTML 字符串
+   * @return {Element}
+   */
+  function htmlToElement(html) {
+      var template = document.createElement('template');
+      html = html.trim();
+      template.innerHTML = html;
+      // template.content.childNodes;
+      return template.content.firstChild;
   }
   /**
    * 载入 iframe
@@ -485,24 +496,22 @@
   }
   function getScoreWrapDom(adjacentSelector, cls = '', style = '') {
       var _a;
-      let sel = '.' + SCORE_ROW_WRAP_CLS;
-      if (cls) {
-          sel = `.${cls}.${SCORE_ROW_WRAP_CLS}`;
-      }
-      let $div = document.querySelector(sel);
+      let $div = document.querySelector('.' + SCORE_ROW_WRAP_CLS);
       if (!$div) {
           $div = document.createElement('div');
-          cls && $div.classList.add(cls);
-          $div.classList.add(SCORE_ROW_WRAP_CLS);
+          $div.className = `${SCORE_ROW_WRAP_CLS} ${cls}`;
           $div.setAttribute('style', `margin-top:10px;${style}`);
           (_a = findElement(adjacentSelector)) === null || _a === void 0 ? void 0 : _a.insertAdjacentElement('afterend', $div);
       }
       return $div;
   }
+  function insertScoreRow(wrapDom, rowInfo) {
+      wrapDom.appendChild(htmlToElement(genScoreRowStr(rowInfo)));
+  }
   function insertScoreCommon(page, info, opts) {
       const wrapDom = getScoreWrapDom(opts.adjacentSelector, opts.cls, opts.style);
       const rowInfo = genScoreRowInfo(opts.title, page, info);
-      wrapDom.innerHTML += genScoreRowStr(rowInfo);
+      insertScoreRow(wrapDom, rowInfo);
   }
 
   const anidbPage = {
@@ -581,7 +590,7 @@
           const rowInfo = genScoreRowInfo(opts.title, page, info);
           // refuse blob:<URL>
           rowInfo.favicon = page.favicon;
-          wrapDom.innerHTML += genScoreRowStr(rowInfo);
+          insertScoreRow(wrapDom, rowInfo);
       },
   };
 
@@ -828,7 +837,7 @@
       ],
       infoSelector: [
           {
-              selector: '#panelInterestWrapper h2',
+              selector: '#panelInterestWrapper .SidePanel > :last-child',
           },
       ],
       pageSelector: [
@@ -881,37 +890,29 @@
       },
       // 插入评分信息的 DOM
       insertScoreInfo(page, info) {
-          let $panel = $q('.SidePanel.png_bg');
-          if ($panel) {
-              let $div = document.createElement('div');
-              $div.classList.add('frdScore');
-              $div.classList.add('e-userjs-score-compare');
-              const favicon = getFavicon(page);
-              let score = '0.00';
-              let count = NO_MATCH_DATA;
-              const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent($q('h1>a').textContent.trim()));
-              let url = searchUrl;
-              if (info && info.url) {
-                  score = Number(info.score || 0).toFixed(2);
-                  count = (info.count || 0) + ' 人评分';
-                  url = info.url;
-              }
-              const siteName = page.name.split('-')[0];
-              $div.innerHTML = `
+          const title = $q('h1>a').textContent.trim();
+          const opts = {
+              title,
+              adjacentSelector: this.infoSelector,
+          };
+          const wrapDom = getScoreWrapDom(opts.adjacentSelector);
+          const rowInfo = genScoreRowInfo(opts.title, page, info);
+          const rowStr = `
+<div class="e-userjs-score-compare-row frdScore">
 <a class="avatar"
 target="_blank" rel="noopener noreferrer nofollow"
-style="vertical-align:-3px;margin-right:10px;" title="点击在${siteName}搜索" href="${searchUrl}">
-<img style="width:16px;" src="${favicon}"/>
+style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}搜索" href="${rowInfo.searchUrl}">
+<img style="width:16px;" src="${rowInfo.favicon}"/>
 </a>
-<span class="num">${score}</span>
+<span class="num">${rowInfo.score}</span>
 <span class="desc" style="visibility:hidden">还行</span>
-<a href="${url}"
+<a href="${rowInfo.url}"
       target="_blank" rel="noopener noreferrer nofollow" class="l">
-      ${count}
+      ${rowInfo.count}
 </a>
+</div>
 `;
-              $panel.appendChild($div);
-          }
+          wrapDom.appendChild(htmlToElement(rowStr));
       },
       insertControlDOM($target, callbacks) {
           if (!$target)
@@ -1059,7 +1060,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${siteName}搜索
       expiration: 21,
       infoSelector: [
           {
-              selector: '#interest_sectl',
+              selector: '#interest_sectl > .rating_wrap',
           },
       ],
       pageSelector: [
@@ -1111,45 +1112,33 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${siteName}搜索
           return subjectInfo;
       },
       insertScoreInfo(page, info) {
-          let $panel = $q('#interest_sectl');
-          let $friendsRatingWrap = $q('.friends_rating_wrap');
-          if (!$friendsRatingWrap) {
-              $friendsRatingWrap = document.createElement('div');
-              $friendsRatingWrap.className = 'friends_rating_wrap clearbox';
-              $panel.appendChild($friendsRatingWrap);
-          }
-          const $div = document.createElement('div');
-          $div.className = 'rating_content_wrap clearfix e-userjs-score-compare';
-          const favicon = getFavicon(page);
-          let score = '0.00';
-          let count = NO_MATCH_DATA;
-          // 直接用 this.getScoreInfo() 似乎有点冗余。 也许改用 genSearchUrl
-          const name = this.getScoreInfo().name;
-          const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(name));
-          let url = searchUrl;
-          if (info && info.url) {
-              score = Number(info.score || 0).toFixed(2);
-              count = (info.count || 0) + ' 人评价';
-              url = info.url;
-          }
-          const siteName = page.name.split('-')[0];
-          $div.innerHTML = `
-<strong class="rating_avg">${score}</strong>
+          const title = this.getScoreInfo().name;
+          const opts = {
+              title,
+              adjacentSelector: this.infoSelector,
+              cls: 'friends_rating_wrap clearbox',
+          };
+          const wrapDom = getScoreWrapDom(opts.adjacentSelector, opts.cls);
+          const rowInfo = genScoreRowInfo(opts.title, page, info);
+          const rowStr = `
+<div class="e-userjs-score-compare-row rating_content_wrap clearfix">
+<strong class="rating_avg">${rowInfo.score}</strong>
 <div class="friends">
   <a class="avatar"
   ${BLANK_LINK}
-  href="${searchUrl}"
+  href="${rowInfo.searchUrl}"
   style="cursor:pointer;"
-  title="点击在${siteName}搜索">
-  <img src="${favicon}"/>
+  title="点击在${rowInfo.name}搜索">
+  <img src="${rowInfo.favicon}"/>
   </a>
 </div>
-<a href="${url}"
+<a href="${rowInfo.url}"
   rel="noopener noreferrer nofollow" class="friends_count" target="_blank">
-    ${count}
+    ${rowInfo.count}
 </a>
+</div>
 `;
-          $friendsRatingWrap.appendChild($div);
+          wrapDom.appendChild(htmlToElement(rowStr));
       },
   };
 
@@ -1654,14 +1643,12 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${siteName}搜索
           const opts = {
               title,
               adjacentSelector: this.infoSelector,
-              cls: '',
-              style: '',
           };
-          const wrapDom = getScoreWrapDom(opts.adjacentSelector, opts.cls, opts.style);
+          const wrapDom = getScoreWrapDom(opts.adjacentSelector);
           const rowInfo = genScoreRowInfo(opts.title, page, info);
           // refuse blob:<URL>
           rowInfo.favicon = page.favicon;
-          wrapDom.innerHTML += genScoreRowStr(rowInfo);
+          insertScoreRow(wrapDom, rowInfo);
       },
   };
 
@@ -1909,7 +1896,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${siteName}搜索
       return idx;
   }
   async function insertScoreRows(curPage, pages, curInfo, map, tasks) {
-      const results = await Promise.all(pages
+      await Promise.all(pages
           .filter((page) => {
           if (page.name === curPage.name || page.type === 'info') {
               return false;
@@ -1930,14 +1917,8 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${siteName}搜索
                   info: searchResult || { name: curInfo.name, url: '' },
               });
           }
-          return {
-              page,
-              searchResult,
-          };
-      }));
-      results.forEach(({ page, searchResult }) => {
           curPage.insertScoreInfo(page, searchResult);
-      });
+      }));
   }
   async function refreshScore(curPage, pages, force = false) {
       const saveTask = [];

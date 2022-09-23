@@ -16,7 +16,7 @@
 // @include     https://vndb.org/v*
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
-// @version     0.1.0
+// @version     0.1.1
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand

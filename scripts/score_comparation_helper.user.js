@@ -16,7 +16,7 @@
 // @include     https://vndb.org/v*
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
-// @version     0.1.0
+// @version     0.1.1
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -1909,12 +1909,15 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${siteName}搜索
       return idx;
   }
   async function insertScoreRows(curPage, pages, curInfo, map, tasks) {
-      for (const page of pages) {
-          const name = page.name;
+      const results = await Promise.all(pages
+          .filter((page) => {
           if (page.name === curPage.name || page.type === 'info') {
-              continue;
+              return false;
           }
-          let searchResult = getInfo(map[name]);
+          return true;
+      })
+          .map(async (page) => {
+          let searchResult = getInfo(map[page.name]);
           if (!searchResult) {
               try {
                   searchResult = await page.getSearchResult(curInfo);
@@ -1927,8 +1930,14 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${siteName}搜索
                   info: searchResult || { name: curInfo.name, url: '' },
               });
           }
+          return {
+              page,
+              searchResult,
+          };
+      }));
+      results.forEach(({ page, searchResult }) => {
           curPage.insertScoreInfo(page, searchResult);
-      }
+      });
   }
   async function refreshScore(curPage, pages, force = false) {
       const saveTask = [];

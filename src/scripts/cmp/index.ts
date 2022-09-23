@@ -92,25 +92,36 @@ async function insertScoreRows(
   map: ScoreMap,
   tasks: SaveTask[]
 ) {
-  for (const page of pages) {
-    const name = page.name;
-    if (page.name === curPage.name || page.type === 'info') {
-      continue;
-    }
-    let searchResult: SearchResult = getInfo(map[name]);
-    if (!searchResult) {
-      try {
-        searchResult = await page.getSearchResult(curInfo);
-      } catch (error) {
-        console.error(error);
-      }
-      tasks.push({
-        page,
-        info: searchResult || { name: curInfo.name, url: '' },
-      });
-    }
+  const results = await Promise.all(
+    pages
+      .filter((page) => {
+        if (page.name === curPage.name || page.type === 'info') {
+          return false;
+        }
+        return true;
+      })
+      .map(async (page) => {
+        let searchResult: SearchResult = getInfo(map[page.name]);
+        if (!searchResult) {
+          try {
+            searchResult = await page.getSearchResult(curInfo);
+          } catch (error) {
+            console.error(error);
+          }
+          tasks.push({
+            page,
+            info: searchResult || { name: curInfo.name, url: '' },
+          });
+        }
+        return {
+          page,
+          searchResult,
+        };
+      })
+  );
+  results.forEach(({ page, searchResult }) => {
     curPage.insertScoreInfo(page, searchResult);
-  }
+  });
 }
 
 async function refreshScore(

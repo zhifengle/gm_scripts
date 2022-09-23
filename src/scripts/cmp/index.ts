@@ -92,7 +92,7 @@ async function insertScoreRows(
   map: ScoreMap,
   tasks: SaveTask[]
 ) {
-  const results = await Promise.all(
+  await Promise.all(
     pages
       .filter((page) => {
         if (page.name === curPage.name || page.type === 'info') {
@@ -113,15 +113,9 @@ async function insertScoreRows(
             info: searchResult || { name: curInfo.name, url: '' },
           });
         }
-        return {
-          page,
-          searchResult,
-        };
+        curPage.insertScoreInfo(page, searchResult);
       })
   );
-  results.forEach(({ page, searchResult }) => {
-    curPage.insertScoreInfo(page, searchResult);
-  });
 }
 
 async function refreshScore(

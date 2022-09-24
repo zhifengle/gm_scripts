@@ -29,7 +29,7 @@ export async function searchAnimeData(
       'x-lcontrol': 'x-no-cache',
     },
   });
-  await randomSleep(300, 100);
+  await randomSleep(200, 100);
 
   const rawInfoList: SearchResult[] = info.map((obj: any) => {
     return {

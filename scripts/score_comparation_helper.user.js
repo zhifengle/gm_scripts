@@ -16,7 +16,7 @@
 // @include     https://vndb.org/v*
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
-// @version     0.1.2
+// @version     0.1.3
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -411,7 +411,7 @@
               'x-lcontrol': 'x-no-cache',
           },
       });
-      await randomSleep(300, 100);
+      await randomSleep(200, 100);
       const rawInfoList = info.map((obj) => {
           return Object.assign(Object.assign({}, obj), { url: obj.link, greyName: obj.hit });
       });
@@ -1896,7 +1896,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       return idx;
   }
   async function insertScoreRows(curPage, pages, curInfo, map, tasks) {
-      await Promise.all(pages
+      pages
           .filter((page) => {
           if (page.name === curPage.name || page.type === 'info') {
               return false;
@@ -1918,7 +1918,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
               });
           }
           curPage.insertScoreInfo(page, searchResult);
-      }));
+      });
   }
   async function refreshScore(curPage, pages, force = false) {
       const saveTask = [];

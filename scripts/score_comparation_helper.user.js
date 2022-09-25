@@ -16,7 +16,7 @@
 // @include     https://vndb.org/v*
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
-// @version     0.1.3
+// @version     0.1.4
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -1896,14 +1896,10 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       return idx;
   }
   async function insertScoreRows(curPage, pages, curInfo, map, tasks) {
-      pages
-          .filter((page) => {
+      for (const page of pages) {
           if (page.name === curPage.name || page.type === 'info') {
-              return false;
+              continue;
           }
-          return true;
-      })
-          .map(async (page) => {
           let searchResult = getInfo(map[page.name]);
           if (!searchResult) {
               try {
@@ -1918,7 +1914,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
               });
           }
           curPage.insertScoreInfo(page, searchResult);
-      });
+      }
   }
   async function refreshScore(curPage, pages, force = false) {
       const saveTask = [];

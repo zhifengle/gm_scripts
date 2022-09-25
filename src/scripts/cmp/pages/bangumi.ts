@@ -154,6 +154,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
 export const bangumiGamePage: PageConfig = {
   ...bangumiAnimePage,
   name: 'bangumi-game',
+  searchApi: 'https://bgm.tv/subject_search/{kw}?cat=4',
   expiration: 21,
   pageSelector: [
     {

@@ -16,7 +16,8 @@
 // @include     https://vndb.org/v*
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
-// @version     0.1.4
+// @include     http://www.getchu.com/soft.phtml?id=*
+// @version     0.1.5
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -934,7 +935,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           $q('.e-userjs-score-fresh').addEventListener('click', callbacks.refresh, false);
       },
   };
-  const bangumiGamePage = Object.assign(Object.assign({}, bangumiAnimePage), { name: 'bangumi-game', expiration: 21, pageSelector: [
+  const bangumiGamePage = Object.assign(Object.assign({}, bangumiAnimePage), { name: 'bangumi-game', searchApi: 'https://bgm.tv/subject_search/{kw}?cat=4', expiration: 21, pageSelector: [
           {
               selector: 'a.focus.chl[href="/game"]',
           },

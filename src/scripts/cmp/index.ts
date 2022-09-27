@@ -46,32 +46,6 @@ if (GM_registerMenuCommand) {
     },
     'c'
   );
-  GM_registerMenuCommand(
-    '强制刷新动画评分信息',
-    () => {
-      const pages = animePages;
-      const idx = getPageIdxByHost(pages, location.host);
-      if (idx === -1) {
-        return;
-      }
-      const curPage = pages[idx];
-      refreshScore(curPage, pages, true);
-    },
-    'r'
-  );
-  GM_registerMenuCommand(
-    '强制刷新游戏评分信息',
-    () => {
-      const pages = gamePages;
-      const idx = getPageIdxByHost(pages, location.host);
-      if (idx === -1) {
-        return;
-      }
-      const curPage = pages[idx];
-      refreshScore(curPage, pages, true);
-    },
-    'g'
-  );
 }
 
 function getPageIdxByHost(pages: PageConfig[], host: string) {

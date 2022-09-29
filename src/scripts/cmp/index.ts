@@ -123,16 +123,15 @@ async function refreshScore(
   setScoreMap(subjectId, map);
 }
 
-async function initPage(pages: PageConfig[]) {
-  const idx = getPageIdxByHost(pages, location.host);
-  if (idx === -1) {
-    return;
-  }
-  const curPage = pages[idx];
+function isValidPage(curPage: PageConfig): boolean {
   const $page = findElement(curPage.pageSelector);
-  if (!$page) return;
+  if (!$page) return false;
   const $info = findElement(curPage.infoSelector);
-  if (!$info) return;
+  if (!$info) return false;
+  return true;
+}
+
+function insertControlDOM(curPage: PageConfig, pages: PageConfig[]) {
   if (curPage.controlSelector) {
     const $ctrl = findElement(curPage.controlSelector);
     curPage?.insertControlDOM?.($ctrl, {
@@ -140,6 +139,14 @@ async function initPage(pages: PageConfig[]) {
       refresh: () => refreshScore(curPage, pages, true),
     });
   }
+}
+
+async function initPage(pages: PageConfig[]) {
+  const idx = getPageIdxByHost(pages, location.host);
+  if (idx === -1) return;
+  const curPage = pages[idx];
+  if (!isValidPage(curPage)) return;
+  insertControlDOM(curPage, pages);
   refreshScore(curPage, pages, false);
 }
 initPage(animePages);

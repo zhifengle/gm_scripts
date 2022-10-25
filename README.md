@@ -8,12 +8,11 @@
 
 修改了我之前写的 bangumi_anime_score_compare.user.js
 
-原脚本应该还会维护，但是不会增加新功能。
-
 新功能
 
 - 支持在 myanimelist, anidb 显示另外网站的评分
-- 支持 美少女ゲーム、エロゲー　的一些网站。 vndb、2dfan、批评空间等
+- 支持 美少女ゲーム、エロゲー　的一些网站。 vndb、2dfan、批评空间、moepedia
+- 点击图标直接打开搜索。有匹配结果时，评分文字是对应的地址，没有匹配结果时和点击图标搜索一个效果
 
 ## [bangumi_collection_export_tool.user.js](scripts/bangumi_collection_export_tool.user.js?raw=true)
 

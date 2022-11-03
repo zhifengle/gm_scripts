@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name        score comparation helper
-// @name:zh-CN  评分对比助手
+// @name        评分对比助手
+// @name:en     score comparation helper
 // @namespace   https://github.com/22earth
-// @description show subject score information from other site
-// @description:zh-CN 在Bangumi、豆瓣等上面显示其它网站的评分
+// @description 在Bangumi、豆瓣等上面显示其它网站的评分
+// @description:en show subject score information from other site
 // @author      22earth
 // @license     MIT
 // @homepage    https://github.com/22earth/gm_scripts
@@ -17,7 +17,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.5
+// @version     0.1.6
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -1866,24 +1866,6 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           clearInfoStorage();
           alert('已清除缓存');
       }, 'c');
-      GM_registerMenuCommand('强制刷新动画评分信息', () => {
-          const pages = animePages;
-          const idx = getPageIdxByHost(pages, location.host);
-          if (idx === -1) {
-              return;
-          }
-          const curPage = pages[idx];
-          refreshScore(curPage, pages, true);
-      }, 'r');
-      GM_registerMenuCommand('强制刷新游戏评分信息', () => {
-          const pages = gamePages;
-          const idx = getPageIdxByHost(pages, location.host);
-          if (idx === -1) {
-              return;
-          }
-          const curPage = pages[idx];
-          refreshScore(curPage, pages, true);
-      }, 'g');
   }
   function getPageIdxByHost(pages, host) {
       const idx = pages.findIndex((obj) => {
@@ -1949,19 +1931,17 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       });
       setScoreMap(subjectId, map);
   }
-  async function initPage(pages) {
-      var _a;
-      const idx = getPageIdxByHost(pages, location.host);
-      if (idx === -1) {
-          return;
-      }
-      const curPage = pages[idx];
+  function isValidPage(curPage) {
       const $page = findElement(curPage.pageSelector);
       if (!$page)
-          return;
+          return false;
       const $info = findElement(curPage.infoSelector);
       if (!$info)
-          return;
+          return false;
+      return true;
+  }
+  function insertControlDOM(curPage, pages) {
+      var _a;
       if (curPage.controlSelector) {
           const $ctrl = findElement(curPage.controlSelector);
           (_a = curPage === null || curPage === void 0 ? void 0 : curPage.insertControlDOM) === null || _a === void 0 ? void 0 : _a.call(curPage, $ctrl, {
@@ -1969,6 +1949,15 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
               refresh: () => refreshScore(curPage, pages, true),
           });
       }
+  }
+  async function initPage(pages) {
+      const idx = getPageIdxByHost(pages, location.host);
+      if (idx === -1)
+          return;
+      const curPage = pages[idx];
+      if (!isValidPage(curPage))
+          return;
+      insertControlDOM(curPage, pages);
       refreshScore(curPage, pages, false);
   }
   initPage(animePages);

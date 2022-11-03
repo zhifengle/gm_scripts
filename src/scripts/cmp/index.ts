@@ -16,6 +16,7 @@ import { PageConfig, ScoreMap } from './types';
 import { vndbPage } from './pages/vndb';
 import { erogamescapePage } from './pages/erogamescape';
 import { moepediaPage } from './pages/moepedia';
+import { addSiteOption } from '../../utils/fetchData';
 
 // 也许使用索引更快?
 type SaveTask = {
@@ -46,6 +47,13 @@ if (GM_registerMenuCommand) {
     },
     'c'
   );
+}
+const BGM_UA = 'e_user_bgm_ua';
+if (GM_registerMenuCommand) {
+  GM_registerMenuCommand('设置Bangumi UA', () => {
+    var p = prompt('设置 Bangumi UA', '');
+    GM_setValue(BGM_UA, p);
+  });
 }
 
 function getPageIdxByHost(pages: PageConfig[], host: string) {
@@ -141,12 +149,34 @@ function insertControlDOM(curPage: PageConfig, pages: PageConfig[]) {
   }
 }
 
+function initSiteConfig() {
+  const ua = GM_getValue(BGM_UA);
+  if (ua) {
+    addSiteOption('bgm.tv', {
+      headers: {
+        'user-agent': ua,
+      },
+    });
+    addSiteOption('bangumi.tv', {
+      headers: {
+        'user-agent': ua,
+      },
+    });
+    addSiteOption('chii.in', {
+      headers: {
+        'user-agent': ua,
+      },
+    });
+  }
+}
+
 async function initPage(pages: PageConfig[]) {
   const idx = getPageIdxByHost(pages, location.host);
   if (idx === -1) return;
   const curPage = pages[idx];
   if (!isValidPage(curPage)) return;
   insertControlDOM(curPage, pages);
+  initSiteConfig();
   refreshScore(curPage, pages, false);
 }
 initPage(animePages);

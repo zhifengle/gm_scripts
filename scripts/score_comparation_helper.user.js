@@ -17,7 +17,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.6
+// @version     0.1.7
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -207,9 +207,26 @@
 
   // support GM_XMLHttpRequest
   let retryCounter = 0;
+  let USER_SITE_CONFIG = {};
+  function addSiteOption(host, config) {
+      USER_SITE_CONFIG[host] = config;
+  }
+  function getSiteConfg(url, host) {
+      var _a;
+      let hostname = host;
+      if (!host) {
+          hostname = (_a = new URL(url)) === null || _a === void 0 ? void 0 : _a.hostname;
+      }
+      const config = USER_SITE_CONFIG[hostname] || {};
+      return config;
+  }
+  function mergeOpts(opts, config) {
+      return Object.assign(Object.assign(Object.assign({}, opts), config), { headers: Object.assign(Object.assign({}, opts === null || opts === void 0 ? void 0 : opts.headers), config === null || config === void 0 ? void 0 : config.headers) });
+  }
   function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
       var _a;
       const method = ((_a = opts === null || opts === void 0 ? void 0 : opts.method) === null || _a === void 0 ? void 0 : _a.toUpperCase()) || 'GET';
+      opts = mergeOpts(opts, getSiteConfg(url));
       // @ts-ignore
       {
           const gmXhrOpts = Object.assign({}, opts);
@@ -252,8 +269,6 @@
   function fetchJson(url, opts = {}) {
       return fetchInfo(url, 'json', opts);
   }
-
-  const SEARCH_RESULT = 'search_result';
 
   function formatDate(time, fmt = 'yyyy-MM-dd') {
       const date = new Date(time);
@@ -313,6 +328,12 @@
       }
       return false;
   }
+  function normalizeQuery(query) {
+      let newQuery = query.replace(/~|～/g, ' ').replace(/\s{2,}/g, ' ').trim();
+      return newQuery;
+  }
+
+  const SEARCH_RESULT = 'search_result';
 
   /**
    * 过滤搜索结果： 通过名称以及日期
@@ -391,7 +412,7 @@
   }
 
   async function searchAnimeData$1(subjectInfo) {
-      let query = (subjectInfo.name || '').trim();
+      let query = normalizeQuery((subjectInfo.name || '').trim());
       if (!query) {
           console.info('Query string is empty');
           return Promise.reject('empty query');
@@ -486,7 +507,7 @@
       const name = page.name.split('-')[0];
       let score = '0.00';
       let count = NO_MATCH_DATA;
-      const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(title));
+      const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(normalizeQuery(title)));
       let url = searchUrl;
       if (info && info.url) {
           score = Number(info.score || 0).toFixed(2);
@@ -684,7 +705,7 @@
       if (subjectInfo && subjectInfo.releaseDate) {
           subjectInfo.releaseDate;
       }
-      let query = (subjectInfo.name || '').trim();
+      let query = normalizeQuery((subjectInfo.name || '').trim());
       if (type === SubjectTypeId.book) {
           // 去掉末尾的括号并加上引号
           query = query.replace(/（[^0-9]+?）|\([^0-9]+?\)$/, '');
@@ -1144,7 +1165,8 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   };
 
   async function searchAnimeData(subjectInfo) {
-      const url = `https://myanimelist.net/search/prefix.json?type=anime&keyword=${encodeURIComponent(subjectInfo.name)}&v=1`;
+      let query = normalizeQuery((subjectInfo.name || '').trim());
+      const url = `https://myanimelist.net/search/prefix.json?type=anime&keyword=${encodeURIComponent(query)}&v=1`;
       console.info('myanimelist search URL: ', url);
       const info = await fetchJson(url);
       let startDate = null;
@@ -1415,7 +1437,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       };
   }
   async function searchGameData$1(subjectInfo) {
-      let query = (subjectInfo.name || '').trim();
+      let query = normalizeQuery((subjectInfo.name || '').trim());
       if (!query) {
           console.info('Query string is empty');
           return Promise.reject();
@@ -1549,7 +1571,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       return info;
   }
   async function searchGameData(subjectInfo) {
-      let query = (subjectInfo.name || '').trim();
+      let query = normalizeQuery((subjectInfo.name || '').trim());
       if (!query) {
           console.info('Query string is empty');
           return Promise.reject();
@@ -1679,7 +1701,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       return info;
   }
   async function searchSubject(subjectInfo, type = ErogamescapeCategory.game, uniqueQueryStr = '') {
-      let query = (subjectInfo.name || '').trim();
+      let query = normalizeQuery((subjectInfo.name || '').trim());
       if (uniqueQueryStr) {
           query = uniqueQueryStr;
       }
@@ -1867,6 +1889,13 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           alert('已清除缓存');
       }, 'c');
   }
+  const BGM_UA = 'e_user_bgm_ua';
+  if (GM_registerMenuCommand) {
+      GM_registerMenuCommand('设置Bangumi UA', () => {
+          var p = prompt('设置 Bangumi UA', '');
+          GM_setValue(BGM_UA, p);
+      });
+  }
   function getPageIdxByHost(pages, host) {
       const idx = pages.findIndex((obj) => {
           if (Array.isArray(obj.href)) {
@@ -1950,6 +1979,26 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           });
       }
   }
+  function initSiteConfig() {
+      const ua = GM_getValue(BGM_UA);
+      if (ua) {
+          addSiteOption('bgm.tv', {
+              headers: {
+                  'user-agent': ua,
+              },
+          });
+          addSiteOption('bangumi.tv', {
+              headers: {
+                  'user-agent': ua,
+              },
+          });
+          addSiteOption('chii.in', {
+              headers: {
+                  'user-agent': ua,
+              },
+          });
+      }
+  }
   async function initPage(pages) {
       const idx = getPageIdxByHost(pages, location.host);
       if (idx === -1)
@@ -1958,6 +2007,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       if (!isValidPage(curPage))
           return;
       insertControlDOM(curPage, pages);
+      initSiteConfig();
       refreshScore(curPage, pages, false);
   }
   initPage(animePages);

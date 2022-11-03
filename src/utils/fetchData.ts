@@ -6,6 +6,37 @@ const ENV_FLAG = '__ENV_EXT__';
 type IAjaxType = 'text' | 'json' | 'blob' | 'arraybuffer';
 
 let retryCounter = 0;
+
+let USER_SITE_CONFIG: Record<string, IFetchOpts> = {};
+
+export function addSiteOption(host: string, config: IFetchOpts) {
+  USER_SITE_CONFIG[host] = config;
+}
+
+export function setOption(config: IFetchOpts) {
+  USER_SITE_CONFIG = config;
+}
+
+function getSiteConfg(url: string, host?: string): IFetchOpts {
+  let hostname = host;
+  if (!host) {
+    hostname = new URL(url)?.hostname;
+  }
+  const config = USER_SITE_CONFIG[hostname] || {};
+  return config;
+}
+
+function mergeOpts(opts: IFetchOpts, config: IFetchOpts): IFetchOpts {
+  return {
+    ...opts,
+    ...config,
+    headers: {
+      ...opts?.headers,
+      ...config?.headers,
+    },
+  };
+}
+
 export function fetchInfo(
   url: string,
   type: IAjaxType,
@@ -13,6 +44,7 @@ export function fetchInfo(
   TIMEOUT = 10 * 1000
 ): Promise<any> {
   const method = opts?.method?.toUpperCase() || 'GET';
+  opts = mergeOpts(opts, getSiteConfg(url));
   // @ts-ignore
   if (ENV_FLAG === '__ENV_GM__') {
     const gmXhrOpts = { ...opts };

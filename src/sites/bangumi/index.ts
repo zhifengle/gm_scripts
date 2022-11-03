@@ -7,7 +7,7 @@ import {
 import { sleep } from '../../utils/async/sleep';
 import { fetchText } from '../../utils/fetchData';
 import { SubjectTypeId } from '../../interface/wiki';
-import { dealDate } from '../../utils/utils';
+import { dealDate, normalizeQuery } from '../../utils/utils';
 import { filterResults } from '../common';
 import { SiteUtils } from '../../interface/types';
 import {
@@ -107,7 +107,7 @@ export async function searchSubject(
   if (subjectInfo && subjectInfo.releaseDate) {
     releaseDate = subjectInfo.releaseDate;
   }
-  let query = (subjectInfo.name || '').trim();
+  let query = normalizeQuery((subjectInfo.name || '').trim());
   if (type === SubjectTypeId.book) {
     // 去掉末尾的括号并加上引号
     query = query.replace(/（[^0-9]+?）|\([^0-9]+?\)$/, '');

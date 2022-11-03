@@ -1,6 +1,7 @@
 import { SearchResult, Subject } from '../interface/subject';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
+import { normalizeQuery } from '../utils/utils';
 import { filterResults } from './common';
 
 enum ErogamescapeCategory {
@@ -34,7 +35,7 @@ export async function searchSubject(
   type: ErogamescapeCategory = ErogamescapeCategory.game,
   uniqueQueryStr: string = ''
 ): Promise<SearchResult> {
-  let query = (subjectInfo.name || '').trim();
+  let query = normalizeQuery((subjectInfo.name || '').trim());
   if (uniqueQueryStr) {
     query = uniqueQueryStr;
   }

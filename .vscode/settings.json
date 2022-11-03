@@ -6,7 +6,7 @@
   "search.exclude": {
     "**/node_modules": true,
     "**/bower_components": true,
-    "**/scripts": true,
+    "/scripts": true,
     "**/*.code-search": true
   }
 }

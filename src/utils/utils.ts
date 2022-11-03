@@ -100,3 +100,8 @@ export function roundNum(num: number, len: number = 2) {
   //@ts-ignore
   return +(Math.round(num + `e+${len}`) + `e-${len}`);
 }
+
+export function normalizeQuery(query: string): string {
+  let newQuery = query.replace(/~|～/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  return newQuery;
+}

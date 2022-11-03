@@ -1,6 +1,7 @@
 import { SearchResult, Subject } from '../interface/subject';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
+import { normalizeQuery } from '../utils/utils';
 import { filterResults } from './common';
 
 export const favicon = 'https://vndb.org/favicon.ico';
@@ -25,7 +26,7 @@ function getSearchItem($item: HTMLElement): SearchResult {
 export async function searchGameData(
   subjectInfo: Subject
 ): Promise<SearchResult> {
-  let query = (subjectInfo.name || '').trim();
+  let query = normalizeQuery((subjectInfo.name || '').trim());
   if (!query) {
     console.info('Query string is empty');
     return Promise.reject();

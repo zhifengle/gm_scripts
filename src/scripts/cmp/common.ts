@@ -2,6 +2,7 @@ import { SearchResult } from '../../interface/subject';
 import { Selector } from '../../interface/wiki';
 import { favicon as anidbFavicon } from '../../sites/anidb';
 import { findElement, htmlToElement } from '../../utils/domUtils';
+import { normalizeQuery } from '../../utils/utils';
 import { PageConfig } from './types';
 
 export const BLANK_LINK = 'target="_blank" rel="noopener noreferrer nofollow"';
@@ -63,7 +64,7 @@ export function insertIcons(title: string, pages: PageConfig[]) {
   pages.forEach((page) => {
     const favicon = getFavicon(page);
     const name = page.name.split('-')[0];
-    const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(title));
+    const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(normalizeQuery(title)));
     str += genIconStr(name, favicon, searchUrl);
   });
   $icons.innerHTML = str;
@@ -95,7 +96,7 @@ export function genSearchUrl(
   if ($title) {
     name = $title.textContent.trim();
   }
-  return page.searchApi.replace('{kw}', encodeURIComponent(name));
+  return page.searchApi.replace('{kw}', encodeURIComponent(normalizeQuery(name)));
 }
 
 export function genScoreRowInfo(
@@ -107,7 +108,7 @@ export function genScoreRowInfo(
   const name = page.name.split('-')[0];
   let score: any = '0.00';
   let count = NO_MATCH_DATA;
-  const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(title));
+  const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(normalizeQuery(title)));
   let url = searchUrl;
   if (info && info.url) {
     score = Number(info.score || 0).toFixed(2);

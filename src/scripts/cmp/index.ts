@@ -38,6 +38,8 @@ const gamePages: PageConfig[] = [
   erogamescapePage,
   moepediaPage,
 ];
+const BGM_UA = 'e_user_bgm_ua';
+var g_hide_game_score_flag = GM_getValue('e_user_hide_game_score') || '';
 if (GM_registerMenuCommand) {
   GM_registerMenuCommand(
     '清除缓存信息',
@@ -47,12 +49,13 @@ if (GM_registerMenuCommand) {
     },
     'c'
   );
-}
-const BGM_UA = 'e_user_bgm_ua';
-if (GM_registerMenuCommand) {
   GM_registerMenuCommand('设置Bangumi UA', () => {
     var p = prompt('设置 Bangumi UA', '');
     GM_setValue(BGM_UA, p);
+  });
+  GM_registerMenuCommand('显示游戏评分开关', () => {
+    g_hide_game_score_flag = prompt('设置不为空时隐藏游戏评分', g_hide_game_score_flag);
+    GM_setValue('e_user_hide_game_score', g_hide_game_score_flag);
   });
 }
 
@@ -180,4 +183,4 @@ async function initPage(pages: PageConfig[]) {
   refreshScore(curPage, pages, false);
 }
 initPage(animePages);
-initPage(gamePages);
+!g_hide_game_score_flag && initPage(gamePages);

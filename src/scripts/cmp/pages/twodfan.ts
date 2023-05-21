@@ -8,7 +8,7 @@ import { $q } from '../../../utils/domUtils';
 import { insertScoreCommon } from '../common';
 import { PageConfig } from '../types';
 
-let site_origin = 'https://galge.fun/';
+let site_origin = 'https://2dfan.org/';
 
 export function setOrigin(url: string) {
   site_origin = url;
@@ -20,8 +20,8 @@ export function getOrigin(): string {
 
 export const twodfanPage: PageConfig = {
   name: '2dfan',
-  href: ['https://galge.fun/'],
-  searchApi: 'https://galge.fun/subjects/search?keyword={kw}',
+  href: [site_origin],
+  searchApi: 'https://2dfan.org/subjects/search?keyword={kw}',
   favicon: favicon,
   expiration: 21,
   infoSelector: [

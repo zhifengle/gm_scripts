@@ -5,14 +5,14 @@ import { fetchText } from '../utils/fetchData';
 import { normalizeQuery } from '../utils/utils';
 import { filterResults } from './common';
 
-const site_origin = 'https://galge.fun/';
+const site_origin = 'https://2dfan.org/';
 const HEADERS = {
   accept:
     'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-  referer: 'https://galge.fun/',
+  referer: 'https://2dfan.org/',
 };
 
-export const favicon = 'https://galge.fun/favicon.ico';
+export const favicon = 'https://2dfan.org/favicon.ico';
 
 function getSearchItem($item: HTMLElement): SearchResult {
   const $title = $item.querySelector('h4.media-heading > a');
@@ -49,7 +49,7 @@ export async function searchGameData(
   const options = {
     keys: ['name'],
   };
-  const url = `https://galge.fun/subjects/search?keyword=${encodeURIComponent(
+  const url = `https://2dfan.org/subjects/search?keyword=${encodeURIComponent(
     query
   )}`;
   console.info('2dfan search URL: ', url);

@@ -12,12 +12,12 @@
 // @include     https://myanimelist.net/anime/*
 // @include     https://anidb.net/anime/*
 // @include     https://anidb.net/a*
-// @include     https://galge.fun/subjects/*
+// @include     https://2dfan.org/subjects/*
 // @include     https://vndb.org/v*
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.7
+// @version     0.1.8
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand

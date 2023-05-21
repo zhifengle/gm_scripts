@@ -12,12 +12,12 @@
 // @include     https://myanimelist.net/anime/*
 // @include     https://anidb.net/anime/*
 // @include     https://anidb.net/a*
-// @include     https://galge.fun/subjects/*
+// @include     https://2dfan.org/subjects/*
 // @include     https://vndb.org/v*
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.7
+// @version     0.1.8
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -1408,12 +1408,12 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       storage.set('DICT_ID' + id, map, 7);
   }
 
-  const site_origin$2 = 'https://galge.fun/';
+  const site_origin$2 = 'https://2dfan.org/';
   const HEADERS = {
       accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-      referer: 'https://galge.fun/',
+      referer: 'https://2dfan.org/',
   };
-  const favicon$2 = 'https://galge.fun/favicon.ico';
+  const favicon$2 = 'https://2dfan.org/favicon.ico';
   function getSearchItem$3($item) {
       const $title = $item.querySelector('h4.media-heading > a');
       const href = new URL($title.getAttribute('href'), site_origin$2).href;
@@ -1446,7 +1446,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       const options = {
           keys: ['name'],
       };
-      const url = `https://galge.fun/subjects/search?keyword=${encodeURIComponent(query)}`;
+      const url = `https://2dfan.org/subjects/search?keyword=${encodeURIComponent(query)}`;
       console.info('2dfan search URL: ', url);
       const rawText = await fetchText(url, {
           headers: HEADERS,
@@ -1512,11 +1512,11 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       return info;
   }
 
-  let site_origin$1 = 'https://galge.fun/';
+  let site_origin$1 = 'https://2dfan.org/';
   const twodfanPage = {
       name: '2dfan',
-      href: ['https://galge.fun/'],
-      searchApi: 'https://galge.fun/subjects/search?keyword={kw}',
+      href: [site_origin$1],
+      searchApi: 'https://2dfan.org/subjects/search?keyword={kw}',
       favicon: favicon$2,
       expiration: 21,
       infoSelector: [

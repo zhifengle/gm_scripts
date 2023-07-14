@@ -8,7 +8,7 @@ export const doubanAnimePage: PageConfig = {
   name: 'douban-anime',
   href: ['https://movie.douban.com/'],
   searchApi: 'https://www.douban.com/search?cat=1002&q={kw}',
-  favicon: 'https://img3.doubanio.com/favicon.ico',
+  favicon: 'https://www.douban.com/favicon.ico',
   expiration: 21,
   infoSelector: [
     {

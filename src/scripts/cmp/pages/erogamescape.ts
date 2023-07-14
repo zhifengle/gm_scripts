@@ -9,9 +9,9 @@ import { PageConfig } from '../types';
 
 export const erogamescapePage: PageConfig = {
   name: 'erogamescape',
-  href: ['https://erogamescape.dyndns.org/'],
+  href: ['https://erogamescape.org/', 'https://erogamescape.dyndns.org/'],
   searchApi:
-    'https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/kensaku.php?category=game&word_category=name&word={kw}&mode=normal',
+    'https://erogamescape.org/~ap2/ero/toukei_kaiseki/kensaku.php?category=game&word_category=name&word={kw}&mode=normal',
   favicon: favicon,
   expiration: 21,
   infoSelector: [
@@ -35,7 +35,7 @@ export const erogamescapePage: PageConfig = {
     return '';
   },
   genSubjectUrl(id) {
-    return `https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/game.php?game=${id}`;
+    return `https://erogamescape.org/~ap2/ero/toukei_kaiseki/game.php?game=${id}`;
   },
   getSearchResult: searchGameSubject,
   getScoreInfo: getSearchResult,

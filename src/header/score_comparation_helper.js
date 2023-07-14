@@ -14,10 +14,11 @@
 // @include     https://anidb.net/a*
 // @include     https://2dfan.org/subjects/*
 // @include     https://vndb.org/v*
+// @include     https://erogamescape.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.8
+// @version     0.1.9
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -29,9 +30,4 @@
 // @grant       GM_deleteValue
 // @grant       GM_addValueChangeListener
 // @require     https://cdn.staticfile.org/fuse.js/6.4.0/fuse.min.js
-// @resource    bangumi_favicon https://bgm.tv/img/favicon.ico
-// @resource    douban_favicon https://img3.doubanio.com/favicon.ico
-// @resource    myanimelist_favicon https://cdn.myanimelist.net/images/favicon.ico
-// @resource    anidb_favicon https://cdn-us.anidb.net/css/icons/touch/favicon.ico
-// @resource    erogamescape_favicon https://erogamescape.dyndns.org/favicon.ico
 // ==/UserScript==

@@ -5,6 +5,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import replace from '@rollup/plugin-replace';
 // import { terser } from 'rollup-plugin-terser';
 import base from './rollup.config.base';
+import { getSrcPath } from './common';
 
 // const outputName = name.replace(/-|\d+/g, '_');
 const outputName = process.env.SCRIPT_NAME;
@@ -31,7 +32,8 @@ if (process.env.XHR_MODE === 'fetch') {
 }
 
 export default {
-  input: pathResolve(__dirname, `../src/${outputName}.ts`),
+  // input: pathResolve(__dirname, `../src/${outputName}.ts`),
+  input: getSrcPath(outputName),
   output: {
     name: outputName,
     file: pathResolve(__dirname, `../scripts/${outputName}.user.js`),

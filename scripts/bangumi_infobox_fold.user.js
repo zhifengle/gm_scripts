@@ -7,7 +7,7 @@
 // @author      zhifengle
 // @homepage    https://github.com/zhifengle/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/subject\/.*$/
-// @version     0.0.2
+// @version     0.0.3
 // @run-at      document-end
 // ==/UserScript==
 
@@ -41,7 +41,7 @@
   };
   function insertSettingDom() {
       const $infobox = document.querySelector("#infobox");
-      const $btn = htmlToElement(`<div class="infobox_expand"><a href="javascript:void(0);">设置显示标签 +</a></div>`);
+      const $btn = htmlToElement(`<div class="infobox_expand" style="position: static;"><a href="javascript:void(0);">设置显示标签 +</a></div>`);
       $btn.onclick = () => {
           const type = getSubjectType();
           const whiteList = TYPE_LABLE_WHITE_LIST[type] || [];

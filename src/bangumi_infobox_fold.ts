@@ -21,7 +21,7 @@ const TYPE_LABLE_WHITE_LIST: { [key in SubjectType]?: string[] } = {
 function insertSettingDom() {
   const $infobox = document.querySelector("#infobox");
   const $btn = htmlToElement(
-    `<div class="infobox_expand"><a href="javascript:void(0);">设置显示标签 +</a></div>`
+    `<div class="infobox_expand" style="position: static;"><a href="javascript:void(0);">设置显示标签 +</a></div>`
   ) as HTMLDivElement;
   $btn.onclick = () => {
     const type = getSubjectType();

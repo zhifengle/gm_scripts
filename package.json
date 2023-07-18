@@ -10,6 +10,7 @@
     "build:score_helper": "cross-env SCRIPT_NAME=score_comparation_helper rollup -c build/rollup.config.us.js",
     "build:qiandao": "cross-env SCRIPT_NAME=qiandao XHR_MODE=fetch rollup -c build/rollup.config.us.js",
     "build:skip_intro": "cross-env SCRIPT_NAME=skip_intro rollup -c build/rollup.config.us.js",
+    "build:infobox_fold": "cross-env SCRIPT_NAME=bangumi_infobox_fold rollup -c build/rollup.config.us.js",
     "dev:douban": "cross-env SCRIPT_NAME=migrate_douban_collection_to_bangumi rollup -w -c build/rollup.config.us.js",
     "dev:anime_score": "cross-env SCRIPT_NAME=bangumi_anime_score_compare rollup -w -c build/rollup.config.us.js",
     "dev:score_helper": "cross-env SCRIPT_NAME=score_comparation_helper rollup -w -c build/rollup.config.us.js",

@@ -7,13 +7,28 @@
 // @author      zhifengle
 // @homepage    https://github.com/zhifengle/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/subject\/.*$/
-// @version     0.0.1
-// @grant       GM_registerMenuCommand
+// @version     0.0.2
 // @run-at      document-end
 // ==/UserScript==
 
 (function () {
   'use strict';
+
+  /**
+   * 为页面添加样式
+   * @param style
+   */
+  /**
+   * @param {String} HTML 字符串
+   * @return {Element}
+   */
+  function htmlToElement(html) {
+      var template = document.createElement('template');
+      html = html.trim();
+      template.innerHTML = html;
+      // template.content.childNodes;
+      return template.content.firstChild;
+  }
 
   function addClass(el, className) {
       if (!el.classList.contains(className)) {
@@ -24,23 +39,27 @@
   const TYPE_LABLE_WHITE_LIST = {
       anime: ["中文名", "话数", "放送开始", "放送星期", "原作"],
   };
-  if (GM_registerMenuCommand) {
-      GM_registerMenuCommand("设置动画显示标签(半角逗号分隔)", () => {
-          const whiteList = TYPE_LABLE_WHITE_LIST["anime"];
-          const str = prompt("设置动画显示标签", whiteList.join(","));
-          localStorage.setItem("e_user_show_labels_anime", str);
-      });
-      GM_registerMenuCommand("设置游戏显示标签", () => {
-          const whiteList = TYPE_LABLE_WHITE_LIST["game"];
+  function insertSettingDom() {
+      const $infobox = document.querySelector("#infobox");
+      const $btn = htmlToElement(`<div class="infobox_expand"><a href="javascript:void(0);">设置显示标签 +</a></div>`);
+      $btn.onclick = () => {
+          const type = getSubjectType();
+          const whiteList = TYPE_LABLE_WHITE_LIST[type] || [];
           const str = prompt("设置显示标签", whiteList.join(","));
-          localStorage.setItem("e_user_show_labels_game", str);
-      });
+          if (str) {
+              localStorage.setItem(`e_user_show_labels_${type}`, str);
+          }
+          else {
+              localStorage.removeItem(`e_user_show_labels_${type}`);
+          }
+      };
+      $infobox.insertAdjacentElement("afterend", $btn);
   }
   function initWhiteList() {
       subjectTypes.forEach((type) => {
           const key = `e_user_show_labels_${type}`;
           const whiteList = localStorage.getItem(key);
-          if (whiteList) {
+          if (whiteList && whiteList !== 'null') {
               TYPE_LABLE_WHITE_LIST[type] = whiteList.split(",");
           }
       });
@@ -69,6 +88,7 @@
   }
   function main() {
       initWhiteList();
+      insertSettingDom();
       const type = getSubjectType();
       if (!TYPE_LABLE_WHITE_LIST[type]) {
           return;

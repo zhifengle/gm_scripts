@@ -7,7 +7,6 @@
 // @author      zhifengle
 // @homepage    https://github.com/zhifengle/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/subject\/.*$/
-// @version     0.0.1
-// @grant       GM_registerMenuCommand
+// @version     0.0.2
 // @run-at      document-end
 // ==/UserScript==

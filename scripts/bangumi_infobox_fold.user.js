@@ -7,7 +7,7 @@
 // @author      zhifengle
 // @homepage    https://github.com/zhifengle/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/subject\/.*$/
-// @version     0.0.3
+// @version     0.0.4
 // @run-at      document-end
 // ==/UserScript==
 
@@ -35,6 +35,11 @@
           el.classList.add(className);
       }
   }
+  function removeClass(el, className) {
+      if (el.classList.contains(className)) {
+          el.classList.remove(className);
+      }
+  }
   const subjectTypes = ["anime", "game", "music", "book", "real"];
   const TYPE_LABLE_WHITE_LIST = {
       anime: ["中文名", "话数", "放送开始", "放送星期", "原作"],
@@ -53,13 +58,26 @@
               localStorage.removeItem(`e_user_show_labels_${type}`);
           }
       };
+      const type = getSubjectType();
+      const whiteList = TYPE_LABLE_WHITE_LIST[type];
+      // 没有更多制作人员按钮并且没用设置白名单时，添加按钮
+      if (!document.querySelector(".infobox_container > .infobox_expand") &&
+          whiteList &&
+          Array.isArray(whiteList)) {
+          const $showMoreBtn = htmlToElement(`<div class="infobox_expand" style="position: static;"><a href="javascript:void(0);">更多制作人员 +</a></div>`);
+          $showMoreBtn.onclick = () => {
+              removeFoldedClass();
+              $showMoreBtn.remove();
+          };
+          $infobox.insertAdjacentElement("afterend", $showMoreBtn);
+      }
       $infobox.insertAdjacentElement("afterend", $btn);
   }
   function initWhiteList() {
       subjectTypes.forEach((type) => {
           const key = `e_user_show_labels_${type}`;
           const whiteList = localStorage.getItem(key);
-          if (whiteList && whiteList !== 'null') {
+          if (whiteList && whiteList !== "null") {
               TYPE_LABLE_WHITE_LIST[type] = whiteList.split(",");
           }
       });
@@ -78,6 +96,11 @@
           if (!isShowLabel(label)) {
               addClass(node, "folded");
           }
+      });
+  }
+  function removeFoldedClass() {
+      document.querySelectorAll("ul#infobox li").forEach((node) => {
+          removeClass(node, "folded");
       });
   }
   function getSubjectType() {

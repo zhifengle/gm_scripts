@@ -30,9 +30,26 @@ function insertSettingDom() {
     if (str) {
       localStorage.setItem(`e_user_show_labels_${type}`, str);
     } else {
-      localStorage.removeItem(`e_user_show_labels_${type}`)
+      localStorage.removeItem(`e_user_show_labels_${type}`);
     }
   };
+  const type = getSubjectType();
+  const whiteList = TYPE_LABLE_WHITE_LIST[type];
+  // 没有更多制作人员按钮并且没用设置白名单时，添加按钮
+  if (
+    !document.querySelector(".infobox_container > .infobox_expand") &&
+    whiteList &&
+    Array.isArray(whiteList)
+  ) {
+    const $showMoreBtn = htmlToElement(
+      `<div class="infobox_expand" style="position: static;"><a href="javascript:void(0);">更多制作人员 +</a></div>`
+    ) as HTMLDivElement;
+    $showMoreBtn.onclick = () => {
+      removeFoldedClass();
+      $showMoreBtn.remove();
+    };
+    $infobox.insertAdjacentElement("afterend", $showMoreBtn);
+  }
   $infobox.insertAdjacentElement("afterend", $btn);
 }
 
@@ -40,7 +57,7 @@ function initWhiteList() {
   subjectTypes.forEach((type) => {
     const key = `e_user_show_labels_${type}`;
     const whiteList = localStorage.getItem(key);
-    if (whiteList && whiteList !== 'null') {
+    if (whiteList && whiteList !== "null") {
       TYPE_LABLE_WHITE_LIST[type] = whiteList.split(",");
     }
   });
@@ -71,6 +88,12 @@ function addFolded() {
     if (!isShowLabel(label)) {
       addClass(node as HTMLLIElement, "folded");
     }
+  });
+}
+
+function removeFoldedClass() {
+  document.querySelectorAll("ul#infobox li").forEach((node) => {
+    removeClass(node as HTMLLIElement, "folded");
   });
 }
 

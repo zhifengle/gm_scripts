@@ -84,9 +84,11 @@ function getLabels() {
 
 function addFolded() {
   document.querySelectorAll("ul#infobox li").forEach((node) => {
-    const label = node.querySelector("span").innerText.trim();
+    const label = node.querySelector("span").innerHTML.trim();
     if (!isShowLabel(label)) {
       addClass(node as HTMLLIElement, "folded");
+    } else {
+      removeClass(node as HTMLLIElement, "folded");
     }
   });
 }

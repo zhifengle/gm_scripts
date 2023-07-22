@@ -7,7 +7,7 @@
 // @author      zhifengle
 // @homepage    https://github.com/zhifengle/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/subject\/.*$/
-// @version     0.0.4
+// @version     0.0.5
 // @run-at      document-end
 // ==/UserScript==
 
@@ -92,9 +92,12 @@
   }
   function addFolded() {
       document.querySelectorAll("ul#infobox li").forEach((node) => {
-          const label = node.querySelector("span").innerText.trim();
+          const label = node.querySelector("span").innerHTML.trim();
           if (!isShowLabel(label)) {
               addClass(node, "folded");
+          }
+          else {
+              removeClass(node, "folded");
           }
       });
   }

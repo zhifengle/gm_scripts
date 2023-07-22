@@ -7,6 +7,6 @@
 // @author      zhifengle
 // @homepage    https://github.com/zhifengle/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/subject\/.*$/
-// @version     0.0.4
+// @version     0.0.5
 // @run-at      document-end
 // ==/UserScript==

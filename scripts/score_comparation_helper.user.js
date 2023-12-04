@@ -1674,7 +1674,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           }
       }
       // get release date
-      for (const elem of [...document.querySelectorAll('table.releases tr')]) {
+      for (const elem of $qa('table.releases tr')) {
           if (elem.querySelector('.icon-rtcomplete')) {
               info.releaseDate = elem.querySelector('.tc1')?.innerText;
               break;

@@ -1,5 +1,5 @@
 import { SearchResult, Subject } from '../interface/subject';
-import { $q } from '../utils/domUtils';
+import { $q, $qa } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { normalizeQuery } from '../utils/utils';
 import { filterResults } from './common';
@@ -88,7 +88,7 @@ export function getSearchResult(): SearchResult {
     }
   }
   // get release date
-  for (const elem of [...document.querySelectorAll('table.releases tr')]) {
+  for (const elem of $qa('table.releases tr')) {
     if (elem.querySelector('.icon-rtcomplete')) {
       info.releaseDate = elem.querySelector<HTMLElement>('.tc1')?.innerText
       break

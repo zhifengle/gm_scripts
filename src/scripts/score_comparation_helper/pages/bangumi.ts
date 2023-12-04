@@ -165,7 +165,8 @@ export const bangumiGamePage: PageConfig = {
     const res = await checkSubjectExist(
       subject,
       bgm_origin,
-      SubjectTypeId.game
+      SubjectTypeId.game,
+      true
     );
     if (res) {
       res.url = genBgmUrl(res.url);

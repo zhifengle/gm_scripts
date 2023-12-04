@@ -1023,7 +1023,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           },
       ],
       async getSearchResult(subject) {
-          const res = await checkSubjectExist(subject, bgm_origin, SubjectTypeId.game);
+          const res = await checkSubjectExist(subject, bgm_origin, SubjectTypeId.game, true);
           if (res) {
               res.url = genBgmUrl(res.url);
           }

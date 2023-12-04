@@ -82,7 +82,7 @@ export function getSearchResult(): SearchResult {
     if (v) {
       info.count = v[0];
     }
-    const s = vote.match(/average (\d+(\.\d+))/);
+    const s = vote.match(/(\d+(\.\d+)?)(?= average)/);
     if (s) {
       info.score = s[1];
     }

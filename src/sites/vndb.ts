@@ -6,12 +6,16 @@ import { filterResults } from './common';
 
 export const favicon = 'https://vndb.org/favicon.ico';
 
+function normalizeTitle(title: string) {
+  return title.replace(/＜.+＞/, '')
+}
+
 function getSearchItem($item: HTMLElement): SearchResult {
   const $title = $item.querySelector('.tc_title > a');
   const href = new URL($title.getAttribute('href'), 'https://vndb.org/').href;
   const $rating = $item.querySelector('.tc_rating');
   const info: SearchResult = {
-    name: $title.getAttribute('title'),
+    name: normalizeTitle($title.getAttribute('title')),
     url: href,
     count: 0,
     score: $rating.firstChild.textContent,
@@ -71,7 +75,7 @@ export function getSearchResult(): SearchResult {
     name = $q('tr.title td:nth-of-type(2) > span').textContent;
   }
   const info: SearchResult = {
-    name: name,
+    name: normalizeTitle(name),
     score: $q('.rank-info.control-group .score')?.textContent.trim() ?? 0,
     count: 0,
     url: location.href,

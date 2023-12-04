@@ -13,7 +13,7 @@ import { isEqualDate } from '../utils/utils';
 export function filterResults(
   items: SearchResult[],
   subjectInfo: AllSubject,
-  opts: any = {},
+  opts: { releaseDate?: boolean } & Record<string, any> = {},
   isSearch: boolean = true
 ) {
   if (!items) return;
@@ -21,10 +21,31 @@ export function filterResults(
   if (items.length === 1 && isSearch) {
     return items[0];
   }
+  // 使用发行日期过滤
+  if (subjectInfo.releaseDate && opts.releaseDate) {
+    const obj = items.find((item) =>
+      isEqualDate(item.releaseDate, subjectInfo.releaseDate)
+    );
+    if (obj) {
+      return obj;
+    }
+  }
   var results = new Fuse(items, Object.assign({}, opts)).search(
     subjectInfo.name
   );
-  if (!results.length) return;
+  // 去掉括号包裹的，再次模糊查询
+  if (!results.length && /<|＜|\(|（/.test(subjectInfo.name)) {
+    results = new Fuse(items, Object.assign({}, opts)).search(
+      subjectInfo.name
+        .replace(/＜.+＞/g, '')
+        .replace(/<.+>/g, '')
+        .replace(/（.+）/g, '')
+        .replace(/\(.+\)/g, '')
+    );
+  }
+  if (!results.length) {
+    return;
+  }
   // 有参考的发布时间
   const tempResults = [];
   if (subjectInfo.releaseDate) {

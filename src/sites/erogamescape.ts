@@ -20,8 +20,11 @@ const site_origin = 'https://erogamescape.org';
 function getSearchItem($item: HTMLElement): SearchResult {
   const $title = $item.querySelector('td:nth-child(1) > a');
   const href = $title.getAttribute('href');
+  const $name = $item.querySelector<HTMLElement>('td:nth-child(1)')
+  // remove tooltip text
+  $name.querySelector('div.tooltip')?.remove()
   const info: SearchResult = {
-    name: ($item.querySelector('td:nth-child(1)') as HTMLElement).innerText,
+    name: $name.innerText,
     url: href,
     count: $item.querySelector('td:nth-child(6)')?.textContent ?? 0,
     score: $item.querySelector('td:nth-child(4)')?.textContent ?? 0,

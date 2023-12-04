@@ -18,7 +18,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.10
+// @version     0.1.11
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -1740,8 +1740,11 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   function getSearchItem$1($item) {
       const $title = $item.querySelector('td:nth-child(1) > a');
       const href = $title.getAttribute('href');
+      const $name = $item.querySelector('td:nth-child(1)');
+      // remove tooltip text
+      $name.querySelector('div.tooltip')?.remove();
       const info = {
-          name: $item.querySelector('td:nth-child(1)').innerText,
+          name: $name.innerText,
           url: href,
           count: $item.querySelector('td:nth-child(6)')?.textContent ?? 0,
           score: $item.querySelector('td:nth-child(4)')?.textContent ?? 0,

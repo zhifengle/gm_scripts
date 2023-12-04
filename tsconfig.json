@@ -2,12 +2,11 @@
   "compilerOptions": {
     "outDir": "./dist",
     "lib": [
-      "es2017",
       "dom",
       "dom.iterable"
     ],
     "noImplicitAny": true,
-    "target": "es2017",
+    "target": "es2020",
     "allowJs": true,
     //定义类型定义文件的根目录
     "esModuleInterop": true,

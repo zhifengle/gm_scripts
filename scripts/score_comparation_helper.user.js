@@ -18,7 +18,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.9
+// @version     0.1.10
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -120,7 +120,6 @@
       return res;
   }
   function findElement(selector, $parent) {
-      var _a;
       let r = null;
       if (selector) {
           if (selector instanceof Array) {
@@ -138,8 +137,8 @@
               }
               else if (selector.isIframe) {
                   // iframe 暂时不支持 parent
-                  const $iframeDoc = (_a = $q(selector.selector)) === null || _a === void 0 ? void 0 : _a.contentDocument;
-                  r = $iframeDoc === null || $iframeDoc === void 0 ? void 0 : $iframeDoc.querySelector(selector.subSelector);
+                  const $iframeDoc = $q(selector.selector)?.contentDocument;
+                  r = $iframeDoc?.querySelector(selector.subSelector);
               }
               else {
                   r = findElementByKeyWord(selector, $parent);
@@ -208,24 +207,29 @@
       USER_SITE_CONFIG[host] = config;
   }
   function getSiteConfg(url, host) {
-      var _a;
       let hostname = host;
       if (!host) {
-          hostname = (_a = new URL(url)) === null || _a === void 0 ? void 0 : _a.hostname;
+          hostname = new URL(url)?.hostname;
       }
       const config = USER_SITE_CONFIG[hostname] || {};
       return config;
   }
   function mergeOpts(opts, config) {
-      return Object.assign(Object.assign(Object.assign({}, opts), config), { headers: Object.assign(Object.assign({}, opts === null || opts === void 0 ? void 0 : opts.headers), config === null || config === void 0 ? void 0 : config.headers) });
+      return {
+          ...opts,
+          ...config,
+          headers: {
+              ...opts?.headers,
+              ...config?.headers,
+          },
+      };
   }
   function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
-      var _a;
-      const method = ((_a = opts === null || opts === void 0 ? void 0 : opts.method) === null || _a === void 0 ? void 0 : _a.toUpperCase()) || 'GET';
+      const method = opts?.method?.toUpperCase() || 'GET';
       opts = mergeOpts(opts, getSiteConfg(url));
       // @ts-ignore
       {
-          const gmXhrOpts = Object.assign({}, opts);
+          const gmXhrOpts = { ...opts };
           if (method === 'POST' && gmXhrOpts.body) {
               gmXhrOpts.data = gmXhrOpts.body;
           }
@@ -234,7 +238,12 @@
           }
           return new Promise((resolve, reject) => {
               // @ts-ignore
-              GM_xmlhttpRequest(Object.assign({ method, timeout: TIMEOUT, url, responseType: type, onload: function (res) {
+              GM_xmlhttpRequest({
+                  method,
+                  timeout: TIMEOUT,
+                  url,
+                  responseType: type,
+                  onload: function (res) {
                       if (res.status === 404) {
                           retryCounter = 0;
                           reject(404);
@@ -252,10 +261,13 @@
                           retryCounter = 0;
                           resolve(res.response);
                       }
-                  }, onerror: (e) => {
+                  },
+                  onerror: (e) => {
                       retryCounter = 0;
                       reject(e);
-                  } }, gmXhrOpts));
+                  },
+                  ...gmXhrOpts,
+              });
           });
       }
   }
@@ -266,23 +278,23 @@
       return fetchInfo(url, 'json', opts);
   }
 
-  function formatDate(time, fmt = 'yyyy-MM-dd') {
+  function formatDate(time, fmt = "yyyy-MM-dd") {
       const date = new Date(time);
       var o = {
-          'M+': date.getMonth() + 1,
-          'd+': date.getDate(),
-          'h+': date.getHours(),
-          'm+': date.getMinutes(),
-          's+': date.getSeconds(),
-          'q+': Math.floor((date.getMonth() + 3) / 3),
+          "M+": date.getMonth() + 1,
+          "d+": date.getDate(),
+          "h+": date.getHours(),
+          "m+": date.getMinutes(),
+          "s+": date.getSeconds(),
+          "q+": Math.floor((date.getMonth() + 3) / 3),
           S: date.getMilliseconds(), //毫秒
       };
       if (/(y+)/i.test(fmt)) {
-          fmt = fmt.replace(RegExp.$1, (date.getFullYear() + '').substr(4 - RegExp.$1.length));
+          fmt = fmt.replace(RegExp.$1, (date.getFullYear() + "").substr(4 - RegExp.$1.length));
       }
       for (var k in o) {
-          if (new RegExp('(' + k + ')', 'i').test(fmt)) {
-              fmt = fmt.replace(RegExp.$1, RegExp.$1.length == 1 ? o[k] : ('00' + o[k]).substr(('' + o[k]).length));
+          if (new RegExp("(" + k + ")", "i").test(fmt)) {
+              fmt = fmt.replace(RegExp.$1, RegExp.$1.length == 1 ? o[k] : ("00" + o[k]).substr(("" + o[k]).length));
           }
       }
       return fmt;
@@ -292,12 +304,12 @@
       let l = [];
       if (/\d{4}年\d{1,2}月(\d{1,2}日?)?/.test(dataStr)) {
           l = dataStr
-              .replace('日', '')
+              .replace("日", "")
               .split(/年|月/)
               .filter((i) => i);
       }
       else if (/\d{4}\/\d{1,2}(\/\d{1,2})?/.test(dataStr)) {
-          l = dataStr.split('/');
+          l = dataStr.split("/");
       }
       else if (/\d{4}-\d{1,2}(-\d{1,2})?/.test(dataStr)) {
           return dataStr;
@@ -312,7 +324,7 @@
           }
           return i;
       })
-          .join('-');
+          .join("-");
   }
   function isEqualDate(d1, d2) {
       const resultDate = new Date(d1);
@@ -325,7 +337,35 @@
       return false;
   }
   function normalizeQuery(query) {
-      let newQuery = query.replace(/~|～/g, ' ').replace(/\s{2,}/g, ' ').trim();
+      let newQuery = query
+          .replace(/([^～]*～[^～]*～[^～]*)/g, function (match) {
+          return match.replace(/~|～/g, " ");
+      })
+          .replace(/＝|=/g, " ")
+          .replace(/０/g, "0")
+          .replace(/１/g, "1")
+          .replace(/２/g, "2")
+          .replace(/３/g, "3")
+          .replace(/４/g, "4")
+          .replace(/５/g, "5")
+          .replace(/６/g, "6")
+          .replace(/７/g, "7")
+          .replace(/８/g, "8")
+          .replace(/９/g, "9")
+          .replace(/Ⅰ/g, "I")
+          .replace(/Ⅱ/g, "II")
+          .replace(/Ⅲ/g, "III")
+          .replace(/Ⅳ/g, "IV")
+          .replace(/Ⅴ/g, "V")
+          .replace(/Ⅵ/g, "VI")
+          .replace(/Ⅶ/g, "VII")
+          .replace(/Ⅷ/g, "VIII")
+          .replace(/Ⅸ/g, "IX")
+          .replace(/Ⅹ/g, "X")
+          .replace(/－|-/g, " ")
+          .replace(/\s{2,}/g, " ")
+          .replace(/～/g, "～")
+          .trim();
       return newQuery;
   }
 
@@ -338,7 +378,6 @@
    * @param opts
    */
   function filterResults(items, subjectInfo, opts = {}, isSearch = true) {
-      var _a;
       if (!items)
           return;
       // 只有一个结果时直接返回, 不再比较日期
@@ -383,7 +422,7 @@
           }
       }
       results = tempResults;
-      return (_a = results[0]) === null || _a === void 0 ? void 0 : _a.item;
+      return results[0]?.item;
   }
   async function getSearchResultByGM() {
       return new Promise((resolve, reject) => {
@@ -431,7 +470,11 @@
       });
       await randomSleep(200, 100);
       const rawInfoList = info.map((obj) => {
-          return Object.assign(Object.assign({}, obj), { url: obj.link, greyName: obj.hit });
+          return {
+              ...obj,
+              url: obj.link,
+              greyName: obj.hit,
+          };
       });
       const options = {
           keys: ['greyName'],
@@ -454,7 +497,10 @@
                   scoreObj.count = arr[1].replace(/\).*/g, '');
               }
           }
-          result = Object.assign(Object.assign({}, result), scoreObj);
+          result = {
+              ...result,
+              ...scoreObj,
+          };
           console.info('anidb search result: ', result);
           return result;
       }
@@ -513,13 +559,12 @@
       return { favicon, count, score, url, searchUrl, name };
   }
   function getScoreWrapDom(adjacentSelector, cls = '', style = '') {
-      var _a;
       let $div = document.querySelector('.' + SCORE_ROW_WRAP_CLS);
       if (!$div) {
           $div = document.createElement('div');
           $div.className = `${SCORE_ROW_WRAP_CLS} ${cls}`;
           $div.setAttribute('style', `margin-top:10px;${style}`);
-          (_a = findElement(adjacentSelector)) === null || _a === void 0 ? void 0 : _a.insertAdjacentElement('afterend', $div);
+          findElement(adjacentSelector)?.insertAdjacentElement('afterend', $div);
       }
       return $div;
   }
@@ -885,11 +930,10 @@
           return res;
       },
       getScoreInfo: () => {
-          var _a, _b, _c, _d;
           const info = {
               name: $q('h1>a').textContent.trim(),
-              score: (_b = (_a = $q('.global_score span[property="v:average"')) === null || _a === void 0 ? void 0 : _a.textContent) !== null && _b !== void 0 ? _b : 0,
-              count: (_d = (_c = $q('span[property="v:votes"')) === null || _c === void 0 ? void 0 : _c.textContent) !== null && _d !== void 0 ? _d : 0,
+              score: $q('.global_score span[property="v:average"')?.textContent ?? 0,
+              count: $q('span[property="v:votes"')?.textContent ?? 0,
               url: location.href,
           };
           let infoList = $qa('#infobox>li');
@@ -952,17 +996,24 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           $q('.e-userjs-score-fresh').addEventListener('click', callbacks.refresh, false);
       },
   };
-  const bangumiGamePage = Object.assign(Object.assign({}, bangumiAnimePage), { name: 'bangumi-game', searchApi: 'https://bgm.tv/subject_search/{kw}?cat=4', expiration: 21, pageSelector: [
+  const bangumiGamePage = {
+      ...bangumiAnimePage,
+      name: 'bangumi-game',
+      searchApi: 'https://bgm.tv/subject_search/{kw}?cat=4',
+      expiration: 21,
+      pageSelector: [
           {
               selector: 'a.focus.chl[href="/game"]',
           },
-      ], async getSearchResult(subject) {
+      ],
+      async getSearchResult(subject) {
           const res = await checkSubjectExist(subject, bgm_origin, SubjectTypeId.game);
           if (res) {
               res.url = genBgmUrl(res.url);
           }
           return res;
-      } });
+      },
+  };
 
   function convertHomeSearchItem($item) {
       const dealHref = (href) => {
@@ -1105,10 +1156,9 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       },
       getSearchResult: checkAnimeSubjectExist,
       getScoreInfo() {
-          var _a, _b, _c, _d, _e, _f;
           const $title = $q('#content h1>span');
           const rawName = $title.textContent.trim();
-          const keywords = (_b = (_a = $q('meta[name="keywords"]')) === null || _a === void 0 ? void 0 : _a.getAttribute) === null || _b === void 0 ? void 0 : _b.call(_a, 'content');
+          const keywords = $q('meta[name="keywords"]')?.getAttribute?.('content');
           let name = rawName;
           if (keywords) {
               // 可以考虑剔除第二个关键字里面的 Season 3
@@ -1118,8 +1168,8 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           }
           const subjectInfo = {
               name,
-              score: (_d = (_c = $q('.ll.rating_num')) === null || _c === void 0 ? void 0 : _c.textContent) !== null && _d !== void 0 ? _d : 0,
-              count: (_f = (_e = $q('.rating_people > span')) === null || _e === void 0 ? void 0 : _e.textContent) !== null && _f !== void 0 ? _f : 0,
+              score: $q('.ll.rating_num')?.textContent ?? 0,
+              count: $q('.rating_people > span')?.textContent ?? 0,
               rawName,
               url: location.href,
           };
@@ -1251,13 +1301,12 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       },
       getSearchResult: searchAnimeData,
       getScoreInfo: function () {
-          var _a, _b, _c, _d, _e;
-          let name = (_a = $q('h1-title')) === null || _a === void 0 ? void 0 : _a.textContent;
+          let name = $q('h1-title')?.textContent;
           const info = {
               name: name,
               greyName: name,
-              score: (_c = (_b = $q('span[itemprop="ratingValue"]')) === null || _b === void 0 ? void 0 : _b.textContent.trim()) !== null && _c !== void 0 ? _c : 0,
-              count: (_e = (_d = $q('span[itemprop="ratingCount"]')) === null || _d === void 0 ? void 0 : _d.textContent.trim()) !== null && _e !== void 0 ? _e : 0,
+              score: $q('span[itemprop="ratingValue"]')?.textContent.trim() ?? 0,
+              count: $q('span[itemprop="ratingCount"]')?.textContent.trim() ?? 0,
               url: location.href,
           };
           $qa('.leftside .spaceit_pad > .dark_text').forEach((el) => {
@@ -1477,13 +1526,12 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       return res;
   }
   function getSearchResult$3() {
-      var _a, _b;
       const $table = $q('.media-body.control-group > .control-group');
       const name = $q('.navbar > h3').textContent.trim();
       const info = {
           name: name,
           greyName: name,
-          score: (_b = (_a = $q('.rank-info.control-group .score')) === null || _a === void 0 ? void 0 : _a.textContent.trim()) !== null && _b !== void 0 ? _b : 0,
+          score: $q('.rank-info.control-group .score')?.textContent.trim() ?? 0,
           count: 0,
           url: location.href,
       };
@@ -1604,18 +1652,17 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       }
   }
   function getSearchResult$2() {
-      var _a, _b, _c, _d;
-      let name = (_a = $q('tr.title span[lang="ja"]')) === null || _a === void 0 ? void 0 : _a.textContent;
+      let name = $q('tr.title span[lang="ja"]')?.textContent;
       if (!name) {
           name = $q('tr.title td:nth-of-type(2) > span').textContent;
       }
       const info = {
           name: name,
-          score: (_c = (_b = $q('.rank-info.control-group .score')) === null || _b === void 0 ? void 0 : _b.textContent.trim()) !== null && _c !== void 0 ? _c : 0,
+          score: $q('.rank-info.control-group .score')?.textContent.trim() ?? 0,
           count: 0,
           url: location.href,
       };
-      const vote = (_d = $q('.votegraph tfoot > tr > td')) === null || _d === void 0 ? void 0 : _d.textContent.trim();
+      const vote = $q('.votegraph tfoot > tr > td')?.textContent.trim();
       if (vote) {
           const v = vote.match(/^\d+/);
           if (v) {
@@ -1624,6 +1671,13 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           const s = vote.match(/average (\d+(\.\d+))/);
           if (s) {
               info.score = s[1];
+          }
+      }
+      // get release date
+      for (const elem of [...document.querySelectorAll('table.releases tr')]) {
+          if (elem.querySelector('.icon-rtcomplete')) {
+              info.releaseDate = elem.querySelector('.tc1')?.innerText;
+              break;
           }
       }
       return info;
@@ -1684,14 +1738,13 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   // 'http://erogamescape.org',
   const site_origin = 'https://erogamescape.org';
   function getSearchItem$1($item) {
-      var _a, _b, _c, _d;
       const $title = $item.querySelector('td:nth-child(1) > a');
       const href = $title.getAttribute('href');
       const info = {
-          name: $title.textContent,
+          name: $item.querySelector('td:nth-child(1)').innerText,
           url: href,
-          count: (_b = (_a = $item.querySelector('td:nth-child(6)')) === null || _a === void 0 ? void 0 : _a.textContent) !== null && _b !== void 0 ? _b : 0,
-          score: (_d = (_c = $item.querySelector('td:nth-child(4)')) === null || _c === void 0 ? void 0 : _c.textContent) !== null && _d !== void 0 ? _d : 0,
+          count: $item.querySelector('td:nth-child(6)')?.textContent ?? 0,
+          score: $item.querySelector('td:nth-child(4)')?.textContent ?? 0,
           releaseDate: $item.querySelector('td:nth-child(3)').textContent,
       };
       return info;
@@ -1725,12 +1778,11 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       return searchSubject(info, ErogamescapeCategory.game);
   }
   function getSearchResult$1() {
-      var _a, _b, _c, _d;
       const $title = $q('#soft-title > .bold');
       const info = {
           name: $title.textContent.trim(),
-          score: (_b = (_a = $q('#average > td')) === null || _a === void 0 ? void 0 : _a.textContent.trim()) !== null && _b !== void 0 ? _b : 0,
-          count: (_d = (_c = $q('#count > td')) === null || _c === void 0 ? void 0 : _c.textContent.trim()) !== null && _d !== void 0 ? _d : 0,
+          score: $q('#average > td')?.textContent.trim() ?? 0,
+          count: $q('#count > td')?.textContent.trim() ?? 0,
           url: location.href,
       };
       return info;
@@ -1791,7 +1843,10 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           subSelector: 'tr > th',
           sibling: true,
       };
-      const $d = findElement(Object.assign(Object.assign({}, topTableSelector), { keyWord: '発売日' }));
+      const $d = findElement({
+          ...topTableSelector,
+          keyWord: '発売日',
+      });
       if ($d) {
           info.releaseDate = dealDate($d.textContent.split('日')[0]);
       }
@@ -1938,7 +1993,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       let map = { [curPage.name]: subjectId };
       if (!force) {
           const scoreMap = getScoreMap(curPage.name, subjectId);
-          map = Object.assign(Object.assign({}, scoreMap), { [curPage.name]: subjectId });
+          map = { ...scoreMap, [curPage.name]: subjectId };
           document
               .querySelectorAll('.e-userjs-score-compare')
               .forEach((el) => el.remove());
@@ -1969,10 +2024,9 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       return true;
   }
   function insertControlDOM(curPage, pages) {
-      var _a;
       if (curPage.controlSelector) {
           const $ctrl = findElement(curPage.controlSelector);
-          (_a = curPage === null || curPage === void 0 ? void 0 : curPage.insertControlDOM) === null || _a === void 0 ? void 0 : _a.call(curPage, $ctrl, {
+          curPage?.insertControlDOM?.($ctrl, {
               clear: clearInfoStorage,
               refresh: () => refreshScore(curPage, pages, true),
           });

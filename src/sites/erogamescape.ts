@@ -21,7 +21,7 @@ function getSearchItem($item: HTMLElement): SearchResult {
   const $title = $item.querySelector('td:nth-child(1) > a');
   const href = $title.getAttribute('href');
   const info: SearchResult = {
-    name: $title.textContent,
+    name: ($item.querySelector('td:nth-child(1)') as HTMLElement).innerText,
     url: href,
     count: $item.querySelector('td:nth-child(6)')?.textContent ?? 0,
     score: $item.querySelector('td:nth-child(4)')?.textContent ?? 0,

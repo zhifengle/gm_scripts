@@ -87,5 +87,12 @@ export function getSearchResult(): SearchResult {
       info.score = s[1];
     }
   }
+  // get release date
+  for (const elem of [...document.querySelectorAll('table.releases tr')]) {
+    if (elem.querySelector('.icon-rtcomplete')) {
+      info.releaseDate = elem.querySelector<HTMLElement>('.tc1')?.innerText
+      break
+    }
+  }
   return info;
 }

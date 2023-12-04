@@ -3,37 +3,37 @@ export function genRandomStr(len: number): string {
     .map(function () {
       return (function (chars) {
         return chars.charAt(Math.floor(Math.random() * chars.length));
-      })('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789');
+      })("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
     })
-    .join('');
+    .join("");
 }
 
 export function randomNum(max: number, min: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-export function formatDate(time: any, fmt: string = 'yyyy-MM-dd') {
+export function formatDate(time: any, fmt: string = "yyyy-MM-dd") {
   const date = new Date(time);
   var o: any = {
-    'M+': date.getMonth() + 1, //月份
-    'd+': date.getDate(), //日
-    'h+': date.getHours(), //小时
-    'm+': date.getMinutes(), //分
-    's+': date.getSeconds(), //秒
-    'q+': Math.floor((date.getMonth() + 3) / 3), //季度
+    "M+": date.getMonth() + 1, //月份
+    "d+": date.getDate(), //日
+    "h+": date.getHours(), //小时
+    "m+": date.getMinutes(), //分
+    "s+": date.getSeconds(), //秒
+    "q+": Math.floor((date.getMonth() + 3) / 3), //季度
     S: date.getMilliseconds(), //毫秒
   };
   if (/(y+)/i.test(fmt)) {
     fmt = fmt.replace(
       RegExp.$1,
-      (date.getFullYear() + '').substr(4 - RegExp.$1.length)
+      (date.getFullYear() + "").substr(4 - RegExp.$1.length)
     );
   }
   for (var k in o) {
-    if (new RegExp('(' + k + ')', 'i').test(fmt)) {
+    if (new RegExp("(" + k + ")", "i").test(fmt)) {
       fmt = fmt.replace(
         RegExp.$1,
-        RegExp.$1.length == 1 ? o[k] : ('00' + o[k]).substr(('' + o[k]).length)
+        RegExp.$1.length == 1 ? o[k] : ("00" + o[k]).substr(("" + o[k]).length)
       );
     }
   }
@@ -45,11 +45,11 @@ export function dealDate(dataStr: string): string {
   let l: string[] = [];
   if (/\d{4}年\d{1,2}月(\d{1,2}日?)?/.test(dataStr)) {
     l = dataStr
-      .replace('日', '')
+      .replace("日", "")
       .split(/年|月/)
       .filter((i) => i);
   } else if (/\d{4}\/\d{1,2}(\/\d{1,2})?/.test(dataStr)) {
-    l = dataStr.split('/');
+    l = dataStr.split("/");
   } else if (/\d{4}-\d{1,2}(-\d{1,2})?/.test(dataStr)) {
     return dataStr;
   } else {
@@ -62,7 +62,7 @@ export function dealDate(dataStr: string): string {
       }
       return i;
     })
-    .join('-');
+    .join("-");
 }
 
 export function isEqualDate(d1: string, d2: string): boolean {
@@ -91,7 +91,7 @@ export function isEqualMonth(d1: string, d2: string): boolean {
 
 export function numToPercent(num: number) {
   return Number(num || 0).toLocaleString(undefined, {
-    style: 'percent',
+    style: "percent",
     minimumFractionDigits: 2,
   });
 }
@@ -102,6 +102,34 @@ export function roundNum(num: number, len: number = 2) {
 }
 
 export function normalizeQuery(query: string): string {
-  let newQuery = query.replace(/~|～/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  let newQuery = query
+    .replace(/([^～]*～[^～]*～[^～]*)/g, function (match) {
+      return match.replace(/~|～/g, " ");
+    })
+    .replace(/＝|=/g, " ")
+    .replace(/０/g, "0")
+    .replace(/１/g, "1")
+    .replace(/２/g, "2")
+    .replace(/３/g, "3")
+    .replace(/４/g, "4")
+    .replace(/５/g, "5")
+    .replace(/６/g, "6")
+    .replace(/７/g, "7")
+    .replace(/８/g, "8")
+    .replace(/９/g, "9")
+    .replace(/Ⅰ/g, "I")
+    .replace(/Ⅱ/g, "II")
+    .replace(/Ⅲ/g, "III")
+    .replace(/Ⅳ/g, "IV")
+    .replace(/Ⅴ/g, "V")
+    .replace(/Ⅵ/g, "VI")
+    .replace(/Ⅶ/g, "VII")
+    .replace(/Ⅷ/g, "VIII")
+    .replace(/Ⅸ/g, "IX")
+    .replace(/Ⅹ/g, "X")
+    .replace(/－|-/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .replace(/～/g, "～")
+    .trim();
   return newQuery;
 }

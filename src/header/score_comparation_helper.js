@@ -2,11 +2,11 @@
 // @name        评分对比助手
 // @name:en     score comparation helper
 // @namespace   https://github.com/22earth
-// @description 在Bangumi、豆瓣等上面显示其它网站的评分
+// @description 在Bangumi、VNDB等上面显示其它网站的评分
 // @description:en show subject score information from other site
 // @author      22earth
 // @license     MIT
-// @homepage    https://github.com/22earth/gm_scripts
+// @homepage    https://github.com/zhifengle/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/subject\/.*$/
 // @include     https://movie.douban.com/subject/*
 // @include     https://myanimelist.net/anime/*

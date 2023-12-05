@@ -18,7 +18,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.13
+// @version     0.1.14
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -1627,9 +1627,9 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           score: $rating.firstChild.textContent,
           releaseDate: $item.querySelector('.tc_rel').textContent,
       };
-      const $count = $rating.querySelector('.grayedout');
-      if ($count) {
-          info.count = $count.textContent.trim().replace(/\(|\)/g, '');
+      const m = $rating.textContent.match(/\((\d+)\)/);
+      if (m) {
+          info.count = m[1];
       }
       return info;
   }
@@ -1640,9 +1640,6 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           return Promise.reject();
       }
       let searchResult;
-      const options = {
-          keys: ['name'],
-      };
       const url = `https://vndb.org/v?sq=${encodeURIComponent(query)}`;
       console.info('vndb search URL: ', url);
       const rawText = await fetchText(url, {
@@ -1651,20 +1648,23 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           },
       });
       const $doc = new DOMParser().parseFromString(rawText, 'text/html');
-      const $title = $doc.querySelector('#maincontent > .mainbox > h1');
+      const $vndetails = $doc.querySelector('.vndetails');
       // 重定向
-      if ($title) {
+      if ($vndetails) {
           window._parsedEl = $doc;
           const res = getSearchResult$2();
           res.url = $doc.querySelector('head > base').getAttribute('href');
           window._parsedEl = undefined;
           return res;
       }
-      const items = $doc.querySelectorAll('#maincontent .mainbox table > tbody > tr');
+      const items = $doc.querySelectorAll('.browse.vnbrowse table > tbody > tr');
       const rawInfoList = Array.prototype.slice
           .call(items)
           .map(($item) => getSearchItem$2($item));
-      searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+      searchResult = filterResults(rawInfoList, subjectInfo, {
+          releaseDate: true,
+          keys: ['name'],
+      }, true);
       console.info(`Search result of ${query} on vndb: `, searchResult);
       if (searchResult && searchResult.url) {
           return searchResult;
@@ -1820,6 +1820,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           score: $q('#average > td')?.textContent.trim() ?? 0,
           count: $q('#count > td')?.textContent.trim() ?? 0,
           url: location.href,
+          releaseDate: $q('#sellday > td')?.textContent.trim()
       };
       return info;
   }

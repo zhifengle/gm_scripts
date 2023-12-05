@@ -97,6 +97,7 @@ export function getSearchResult(): SearchResult {
     score: $q('#average > td')?.textContent.trim() ?? 0,
     count: $q('#count > td')?.textContent.trim() ?? 0,
     url: location.href,
+    releaseDate: $q('#sellday > td')?.textContent.trim()
   };
   return info;
 }

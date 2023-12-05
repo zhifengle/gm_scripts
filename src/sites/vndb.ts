@@ -21,9 +21,9 @@ function getSearchItem($item: HTMLElement): SearchResult {
     score: $rating.firstChild.textContent,
     releaseDate: $item.querySelector('.tc_rel').textContent,
   };
-  const $count = $rating.querySelector('.grayedout');
-  if ($count) {
-    info.count = $count.textContent.trim().replace(/\(|\)/g, '');
+  const m = $rating.textContent.match(/\((\d+)\)/);
+  if (m) {
+    info.count = m[1];
   }
   return info;
 }
@@ -36,9 +36,6 @@ export async function searchGameData(
     return Promise.reject();
   }
   let searchResult;
-  const options = {
-    keys: ['name'],
-  };
   const url = `https://vndb.org/v?sq=${encodeURIComponent(query)}`;
   console.info('vndb search URL: ', url);
   const rawText = await fetchText(url, {
@@ -47,9 +44,9 @@ export async function searchGameData(
     },
   });
   const $doc = new DOMParser().parseFromString(rawText, 'text/html');
-  const $title = $doc.querySelector('#maincontent > .mainbox > h1');
+  const $vndetails = $doc.querySelector('.vndetails');
   // 重定向
-  if ($title) {
+  if ($vndetails) {
     window._parsedEl = $doc;
     const res = getSearchResult();
     res.url = $doc.querySelector('head > base').getAttribute('href');
@@ -57,12 +54,15 @@ export async function searchGameData(
     return res;
   }
   const items = $doc.querySelectorAll(
-    '#maincontent .mainbox table > tbody > tr'
+    '.browse.vnbrowse table > tbody > tr'
   );
   const rawInfoList: SearchResult[] = Array.prototype.slice
     .call(items)
     .map(($item: HTMLElement) => getSearchItem($item));
-  searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+  searchResult = filterResults(rawInfoList, subjectInfo, {
+    releaseDate: true,
+    keys: ['name'],
+  }, true);
   console.info(`Search result of ${query} on vndb: `, searchResult);
   if (searchResult && searchResult.url) {
     return searchResult;

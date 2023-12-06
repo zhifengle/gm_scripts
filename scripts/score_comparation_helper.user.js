@@ -2,11 +2,11 @@
 // @name        评分对比助手
 // @name:en     score comparation helper
 // @namespace   https://github.com/22earth
-// @description 在Bangumi、豆瓣等上面显示其它网站的评分
+// @description 在Bangumi、VNDB等上面显示其它网站的评分
 // @description:en show subject score information from other site
 // @author      22earth
 // @license     MIT
-// @homepage    https://github.com/22earth/gm_scripts
+// @homepage    https://github.com/zhifengle/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/subject\/.*$/
 // @include     https://movie.douban.com/subject/*
 // @include     https://myanimelist.net/anime/*
@@ -18,7 +18,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.14
+// @version     0.1.15
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -278,23 +278,23 @@
       return fetchInfo(url, 'json', opts);
   }
 
-  function formatDate(time, fmt = "yyyy-MM-dd") {
+  function formatDate(time, fmt = 'yyyy-MM-dd') {
       const date = new Date(time);
       var o = {
-          "M+": date.getMonth() + 1,
-          "d+": date.getDate(),
-          "h+": date.getHours(),
-          "m+": date.getMinutes(),
-          "s+": date.getSeconds(),
-          "q+": Math.floor((date.getMonth() + 3) / 3),
+          'M+': date.getMonth() + 1,
+          'd+': date.getDate(),
+          'h+': date.getHours(),
+          'm+': date.getMinutes(),
+          's+': date.getSeconds(),
+          'q+': Math.floor((date.getMonth() + 3) / 3),
           S: date.getMilliseconds(), //毫秒
       };
       if (/(y+)/i.test(fmt)) {
-          fmt = fmt.replace(RegExp.$1, (date.getFullYear() + "").substr(4 - RegExp.$1.length));
+          fmt = fmt.replace(RegExp.$1, (date.getFullYear() + '').substr(4 - RegExp.$1.length));
       }
       for (var k in o) {
-          if (new RegExp("(" + k + ")", "i").test(fmt)) {
-              fmt = fmt.replace(RegExp.$1, RegExp.$1.length == 1 ? o[k] : ("00" + o[k]).substr(("" + o[k]).length));
+          if (new RegExp('(' + k + ')', 'i').test(fmt)) {
+              fmt = fmt.replace(RegExp.$1, RegExp.$1.length == 1 ? o[k] : ('00' + o[k]).substr(('' + o[k]).length));
           }
       }
       return fmt;
@@ -304,12 +304,12 @@
       let l = [];
       if (/\d{4}年\d{1,2}月(\d{1,2}日?)?/.test(dataStr)) {
           l = dataStr
-              .replace("日", "")
+              .replace('日', '')
               .split(/年|月/)
               .filter((i) => i);
       }
       else if (/\d{4}\/\d{1,2}(\/\d{1,2})?/.test(dataStr)) {
-          l = dataStr.split("/");
+          l = dataStr.split('/');
       }
       else if (/\d{4}-\d{1,2}(-\d{1,2})?/.test(dataStr)) {
           return dataStr;
@@ -324,7 +324,7 @@
           }
           return i;
       })
-          .join("-");
+          .join('-');
   }
   function isEqualDate(d1, d2) {
       const resultDate = new Date(d1);
@@ -336,36 +336,45 @@
       }
       return false;
   }
+  function replaceCharToSpace(str) {
+      // start U+0080 - U+00FF	Latin-1 Supplement
+      // U+2E00 - U+2E7F	Supplemental Punctuation
+      // Miscellaneous Symbols, U+2600 - U+26FF
+      // Halfwidth and Fullwidth Forms, U+FF00 - U+FFEF
+      // CJK Symbols and Punctuation, U+3000 - U+303F
+      return str.replace(/[\u0080-\u2E7F\u3000-\u303f\uff00-\uffef]+/g, ' ');
+  }
   function normalizeQuery(query) {
       let newQuery = query
-          .replace(/([^～]*～[^～]*～[^～]*)/g, function (match) {
-          return match.replace(/~|～/g, " ");
+          .replace(/^(.*?～)(.*)(～[^～]*)$/, function (_, p1, p2, p3) {
+          return p1.replace(/～/g, ' ') + p2 + p3.replace(/～/g, ' ');
       })
-          .replace(/＝|=/g, " ")
-          .replace(/０/g, "0")
-          .replace(/１/g, "1")
-          .replace(/２/g, "2")
-          .replace(/３/g, "3")
-          .replace(/４/g, "4")
-          .replace(/５/g, "5")
-          .replace(/６/g, "6")
-          .replace(/７/g, "7")
-          .replace(/８/g, "8")
-          .replace(/９/g, "9")
-          .replace(/Ⅰ/g, "I")
-          .replace(/Ⅱ/g, "II")
-          .replace(/Ⅲ/g, "III")
-          .replace(/Ⅳ/g, "IV")
-          .replace(/Ⅴ/g, "V")
-          .replace(/Ⅵ/g, "VI")
-          .replace(/Ⅶ/g, "VII")
-          .replace(/Ⅷ/g, "VIII")
-          .replace(/Ⅸ/g, "IX")
-          .replace(/Ⅹ/g, "X")
-          .replace(/－|-/g, " ")
-          .replace(/\s{2,}/g, " ")
-          .replace(/～/g, "～")
+          .replace(/＝|=/g, ' ')
+          .replace(/　/g, ' ')
+          .replace(/０/g, '0')
+          .replace(/１/g, '1')
+          .replace(/２/g, '2')
+          .replace(/３/g, '3')
+          .replace(/４/g, '4')
+          .replace(/５/g, '5')
+          .replace(/６/g, '6')
+          .replace(/７/g, '7')
+          .replace(/８/g, '8')
+          .replace(/９/g, '9')
+          .replace(/Ⅰ/g, 'I')
+          .replace(/Ⅱ/g, 'II')
+          .replace(/Ⅲ/g, 'III')
+          .replace(/Ⅳ/g, 'IV')
+          .replace(/Ⅴ/g, 'V')
+          .replace(/Ⅵ/g, 'VI')
+          .replace(/Ⅶ/g, 'VII')
+          .replace(/Ⅷ/g, 'VIII')
+          .replace(/Ⅸ/g, 'IX')
+          .replace(/Ⅹ/g, 'X')
+          .replace(/－|-/g, ' ')
           .trim();
+      newQuery = replaceCharToSpace(newQuery);
+      newQuery = newQuery.replace(/－|-/g, ' ');
       return newQuery;
   }
 
@@ -568,7 +577,12 @@
       const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(normalizeQuery(title)));
       let url = searchUrl;
       if (info && info.url) {
-          score = Number(info.score || 0).toFixed(2);
+          if (!isNaN(Number(info.score))) {
+              score = Number(info.score || 0).toFixed(2);
+          }
+          else {
+              score = '0.00';
+          }
           count = (info.count || 0) + ' 人评分';
           url = info.url;
       }
@@ -1624,9 +1638,12 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           name: normalizeTitle($title.getAttribute('title')),
           url: href,
           count: 0,
-          score: $rating.firstChild.textContent,
           releaseDate: $item.querySelector('.tc_rel').textContent,
       };
+      const score = $rating.firstChild.textContent;
+      if (!isNaN(Number(score))) {
+          info.score = score;
+      }
       const m = $rating.textContent.match(/\((\d+)\)/);
       if (m) {
           info.count = m[1];

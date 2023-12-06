@@ -18,9 +18,12 @@ function getSearchItem($item: HTMLElement): SearchResult {
     name: normalizeTitle($title.getAttribute('title')),
     url: href,
     count: 0,
-    score: $rating.firstChild.textContent,
     releaseDate: $item.querySelector('.tc_rel').textContent,
   };
+  const score = $rating.firstChild.textContent
+  if (!isNaN(Number(score))) {
+    info.score = score
+  }
   const m = $rating.textContent.match(/\((\d+)\)/);
   if (m) {
     info.count = m[1];

@@ -19,6 +19,8 @@ export interface SearchResult extends BaseSubject {
   // 日文名
   greyName?: string;
   rawName?: string;
+  queryName?: string;
+  alias?: string;
 }
 
 export interface SingleInfo {

@@ -36,7 +36,7 @@ function getSearchItem($item: HTMLElement): SearchResult {
 }
 
 export async function searchSubject(
-  subjectInfo: Subject,
+  subjectInfo: SearchResult,
   type: ErogamescapeCategory = ErogamescapeCategory.game,
   uniqueQueryStr: string = ''
 ): Promise<SearchResult> {
@@ -76,7 +76,7 @@ export async function searchSubject(
   }
 }
 
-export async function searchGameSubject(info: Subject): Promise<SearchResult> {
+export async function searchGameSubject(info: SearchResult): Promise<SearchResult> {
   const result = await searchSubject(info, ErogamescapeCategory.game);
   if (result && result.url) {
     const rawText = await fetchText(result.url);

@@ -111,7 +111,11 @@ export function genScoreRowInfo(
   const searchUrl = page.searchApi.replace('{kw}', encodeURIComponent(normalizeQuery(title)));
   let url = searchUrl;
   if (info && info.url) {
-    score = Number(info.score || 0).toFixed(2);
+    if (!isNaN(Number(info.score))) {
+      score = Number(info.score || 0).toFixed(2);
+    } else {
+      score = '0.00';
+    }
     count = (info.count || 0) + ' 人评分';
     url = info.url;
   }

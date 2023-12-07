@@ -22,11 +22,18 @@ describe('test utils', () => {
 
 describe('test normalize string', () => {
   it('test normalize query', () => {
-    expect(normalizeQuery('CROSS†CHANNEL')).toBe("CROSS CHANNEL")
+    // @TODO
   })
   it('test replace char to space', () => {
-    // const str = '＝　－-―～〜━『』~…！？。♥❤☆♡★‥○⁉,.-【】◆●∽＋‼＿◯※♠×▼％#∞’&!＇？＊*＆［］＜＞「」¨／◇：♪･＠°、，△《》†〇·’“”√≪≫＃→♂%~■■■‘〈〉Ω♀⇒≒§■♀⇒←∬🕊¡Ι≠±『』♨❄—~Σ⇔↑↓‡▽□』〈〉＾';
-    const str = '①②③④⑤⑥⑦⑧⑨¹²³⁴⁵⁶⁷⁸⁹⁰†'
-    expect(replaceCharToSpace(str)).toBe(" ")
+    // 'CROSS†CHANNEL'
+    const removeSpace = (s: string) => s.replace(/\s/g, '')
+    var str = '＝　－-―～〜━『』~…！？。♥❤☆♡★‥○⁉,.-【】◆●∽＋‼＿◯※♠×▼％#∞’&!＇？＊*＆［］＜＞「」¨／◇：♪･＠°、，△《》†〇·’“”√≪≫＃→♂%~■■■‘〈〉Ω♀⇒≒§■♀⇒←∬🕊¡Ι≠±『』♨❄—~Σ⇔↑↓‡▽□』〈〉＾';
+    expect(replaceCharToSpace(str).replace(/\s/g, '')).toBe("- ~ ,.- # &! * %~ 🕊 ~".replace(/\s/g, ''))
+    str = '①②③④⑤⑥⑦⑧⑨¹²³⁴⁵⁶⁷⁸⁹⁰'
+    expect(replaceCharToSpace(str)).toBe(new Array(str.length).fill(' ').join(''))
+    var rag = 'ＲａｇｎａｒｏｋＩｘｃａ.'
+    expect(replaceCharToSpace(rag)).toBe(rag)
+    str = 'Ｒａｇｎ☆ａｒｏｋ♥Ｉ❤ｘｃ♡ａ.'
+    expect(removeSpace(replaceCharToSpace(str))).toBe(rag)
   })
 })

@@ -42,10 +42,19 @@ const BGM_UA = 'e_user_bgm_ua';
 var g_hide_game_score_flag = GM_getValue('e_user_hide_game_score') || '';
 if (GM_registerMenuCommand) {
   GM_registerMenuCommand(
-    '清除缓存信息',
+    'clear cache',
     () => {
       clearInfoStorage();
-      alert('已清除缓存');
+      alert('cache cleared');
+    },
+    'c'
+  );
+  GM_registerMenuCommand(
+    'refresh score',
+    () => {
+      document.querySelector('.e-userjs-score-compare')?.remove()
+      initPage(animePages, true);
+      !g_hide_game_score_flag && initPage(gamePages, true);
     },
     'c'
   );
@@ -54,7 +63,10 @@ if (GM_registerMenuCommand) {
     GM_setValue(BGM_UA, p);
   });
   GM_registerMenuCommand('显示游戏评分开关', () => {
-    g_hide_game_score_flag = prompt('设置不为空时隐藏游戏评分', g_hide_game_score_flag);
+    g_hide_game_score_flag = prompt(
+      '设置不为空时隐藏游戏评分',
+      g_hide_game_score_flag
+    );
     GM_setValue('e_user_hide_game_score', g_hide_game_score_flag);
   });
 }
@@ -173,14 +185,15 @@ function initSiteConfig() {
   }
 }
 
-async function initPage(pages: PageConfig[]) {
+async function initPage(pages: PageConfig[], force = false) {
   const idx = getPageIdxByHost(pages, location.host);
   if (idx === -1) return;
   const curPage = pages[idx];
   if (!isValidPage(curPage)) return;
   insertControlDOM(curPage, pages);
   initSiteConfig();
-  refreshScore(curPage, pages, false);
+  refreshScore(curPage, pages, force);
 }
+
 initPage(animePages);
 !g_hide_game_score_flag && initPage(gamePages);

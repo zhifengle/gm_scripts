@@ -21,12 +21,12 @@ export function getFavicon(page: PageConfig) {
   if (dict[site]) {
     return dict[site];
   }
+  if (page.favicon) {
+    return page.favicon
+  }
   try {
     favicon = GM_getResourceURL(`${site}_favicon`);
   } catch (error) {}
-  if (!favicon) {
-    favicon = page.favicon || '';
-  }
   return favicon;
 }
 

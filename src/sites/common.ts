@@ -161,3 +161,30 @@ export async function setSearchResultByGM(data: any) {
   };
   GM_setValue(SEARCH_RESULT, res);
 }
+
+/**
+ * search data by queryNames
+ * @param subjectInfo SearchResult
+ * @param searchFn
+ * @returns Promise<SearchResult>
+ */
+export async function searchDataByNames(
+  subjectInfo: SearchResult,
+  searchFn: (info: SearchResult) => Promise<SearchResult>
+): Promise<SearchResult> {
+  let query = (subjectInfo.name || '').trim();
+  let queryList: string[] = [query]
+  if (subjectInfo.queryNames) {
+    queryList = subjectInfo.queryNames
+  }
+  for (const s of queryList) {
+    const res = await searchFn({
+      ...subjectInfo,
+      name: s
+    })
+    if (res) {
+      return res
+    }
+    sleep(200)
+  }
+}

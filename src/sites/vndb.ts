@@ -1,28 +1,45 @@
 import { SearchResult, Subject } from '../interface/subject';
 import { $q, $qa } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
-import { normalizeQuery } from '../utils/utils';
+import { getShortenedQuery, normalizeQuery } from '../utils/utils';
 import { filterResults } from './common';
 
 export const favicon = 'https://vndb.org/favicon.ico';
 
-function normalizeTitle(title: string) {
-  return title.replace(/＜.+＞/, '')
+function reviseTitle(title: string) {
+  const titleDict: Record<string, string> = {
+    'ランス５Ｄ －ひとりぼっちの女の子－': 'Rance5D ひとりぼっちの女の子',
+    'Rance Ⅹ -決戦-': 'ランス10',
+  };
+  if (titleDict[title]) {
+    return titleDict[title];
+  }
+  const shortenTitleDict: Record<string, string> = {
+    '淫獣学園': '淫獣学園'
+  }
+  for (const [key, val] of Object.entries(shortenTitleDict)) {
+    if (title.includes(key)) {
+      return val
+    }
+  }
+  return normalizeQuery(title);
 }
 
 function getSearchItem($item: HTMLElement): SearchResult {
   const $title = $item.querySelector('.tc_title > a');
   const href = new URL($title.getAttribute('href'), 'https://vndb.org/').href;
   const $rating = $item.querySelector('.tc_rating');
+  const rawName = $title.getAttribute('title')
   const info: SearchResult = {
-    name: normalizeTitle($title.getAttribute('title')),
+    name: reviseTitle(rawName),
+    rawName,
     url: href,
     count: 0,
     releaseDate: $item.querySelector('.tc_rel').textContent,
   };
-  const score = $rating.firstChild.textContent
+  const score = $rating.firstChild.textContent;
   if (!isNaN(Number(score))) {
-    info.score = score
+    info.score = score;
   }
   const m = $rating.textContent.match(/\((\d+)\)/);
   if (m) {
@@ -30,6 +47,11 @@ function getSearchItem($item: HTMLElement): SearchResult {
   }
   return info;
 }
+
+// exception title
+// 凍京NECRO＜トウキョウ・ネクロ＞
+// https://vndb.org/v5154
+
 export async function searchGameData(
   subjectInfo: Subject
 ): Promise<SearchResult> {
@@ -56,16 +78,19 @@ export async function searchGameData(
     window._parsedEl = undefined;
     return res;
   }
-  const items = $doc.querySelectorAll(
-    '.browse.vnbrowse table > tbody > tr'
-  );
+  const items = $doc.querySelectorAll('.browse.vnbrowse table > tbody > tr');
   const rawInfoList: SearchResult[] = Array.prototype.slice
     .call(items)
     .map(($item: HTMLElement) => getSearchItem($item));
-  searchResult = filterResults(rawInfoList, subjectInfo, {
-    releaseDate: true,
-    keys: ['name'],
-  }, true);
+  searchResult = filterResults(
+    rawInfoList,
+    { ...subjectInfo, name: query },
+    {
+      releaseDate: true,
+      keys: ['name', 'rawName'],
+    },
+    true
+  );
   console.info(`Search result of ${query} on vndb: `, searchResult);
   if (searchResult && searchResult.url) {
     return searchResult;
@@ -78,7 +103,8 @@ export function getSearchResult(): SearchResult {
     name = $q('tr.title td:nth-of-type(2) > span').textContent;
   }
   const info: SearchResult = {
-    name: normalizeTitle(name),
+    name: reviseTitle(name),
+    rawName: name,
     score: $q('.rank-info.control-group .score')?.textContent.trim() ?? 0,
     count: 0,
     url: location.href,
@@ -97,8 +123,19 @@ export function getSearchResult(): SearchResult {
   // get release date
   for (const elem of $qa('table.releases tr')) {
     if (elem.querySelector('.icon-rtcomplete')) {
-      info.releaseDate = elem.querySelector<HTMLElement>('.tc1')?.innerText
-      break
+      info.releaseDate = elem.querySelector<HTMLElement>('.tc1')?.innerText;
+      break;
+    }
+  }
+  // find alias
+  for (const $el of $qa('.vndetails > table tr > td:first-child')) {
+    if ($el.textContent.includes('Aliases')) {
+      const alias = $el.nextElementSibling.textContent
+        .split(',')
+        .map((s) => s.trim());
+      alias.unshift(info.name);
+      info.queryNames = alias;
+      break;
     }
   }
   return info;

@@ -103,21 +103,26 @@ export function roundNum(num: number, len: number = 2) {
   return +(Math.round(num + `e+${len}`) + `e-${len}`);
 }
 
-export function getNormalizedQuery(info: SearchResult): string {
-  let name = info.name;
-  if (info.queryName) {
-    name = info.queryName;
-  }
-  return normalizeQuery(name);
-}
-
+/**
+ * replace special char to space
+ * @param str
+ * @returns string
+ */
 export function replaceCharToSpace(str: string): string {
   // start U+0080 - U+00FF	Latin-1 Supplement
   // U+2E00 - U+2E7F	Supplemental Punctuation
   // Miscellaneous Symbols, U+2600 - U+26FF
   // Halfwidth and Fullwidth Forms, U+FF00 - U+FFEF
   // CJK Symbols and Punctuation, U+3000 - U+303F
-  return str.replace(/[\u0080-\u2E7F\u3000-\u303f\uff00-\uffef]+/g, ' ');
+  return str.replace(
+    /[\u0080-\u2E7F\u3000-\u303f\uff00-\uffef]/g,
+    function (s) {
+      if (/[Ａ-Ｚａ-ｚ０-９々〆〤]/.test(s)) {
+        return s;
+      }
+      return ' ';
+    }
+  );
 }
 
 export function normalizeQuery(query: string): string {
@@ -147,9 +152,69 @@ export function normalizeQuery(query: string): string {
     .replace(/Ⅷ/g, 'VIII')
     .replace(/Ⅸ/g, 'IX')
     .replace(/Ⅹ/g, 'X')
-    .replace(/－|-/g, ' ')
+    .replace(/[－―～〜━\[\]『』~'…！？。♥☆\/♡★‥○, 【】◆×▼’&＇"＊?]/g, ' ')
+    .replace(/[．・]/g, ' ')
+    //.replace(/ー/g, " ")
+    .replace(/\.\.\./g, ' ')
+    .replace(/～っ.*/, '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/\（.*?\）/g, ' ')
+    .replace(/＜.+?＞/, '')
+    .replace(/<.+?>/, '')
+    .replace(/-.+?-/, '')
     .trim();
-  newQuery = replaceCharToSpace(newQuery);
-  newQuery = newQuery.replace(/－|-/g, ' ');
+  // newQuery = replaceCharToSpace(newQuery);
+  newQuery = newQuery.replace(/\s{2,}/g, ' ');
+  return newQuery;
+}
+
+export function getShortenedQuery(query: string): string {
+  let newQuery = query;
+  let parts = newQuery.split(' ');
+  let englishWordCount = 0;
+  let nonEnglishDetected = false;
+  let japaneseWordCount = 0;
+  let isJapaneseWord = false;
+
+  for (let i = 0; i < parts.length; i++) {
+    let isEnglishWord = /^[a-zA-Z]+$/.test(parts[i]);
+
+    if (isEnglishWord) {
+      englishWordCount++;
+    } else {
+      isJapaneseWord =
+        /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ーa-zA-Z0-9ａ-ｚＡ-Ｚ０-９々〆〤]/u.test(
+          parts[i]
+        );
+      if (isJapaneseWord) {
+        nonEnglishDetected = true;
+        japaneseWordCount++;
+      }
+    }
+
+    if (nonEnglishDetected && englishWordCount > 0) {
+      parts = parts.slice(0, i);
+      break;
+    }
+
+    if (isEnglishWord && englishWordCount == 2) {
+      parts = parts.slice(0, i + 1);
+      break;
+    }
+
+    if (isJapaneseWord && japaneseWordCount == 2) {
+      for (let j = 0; j <= i; j++) {
+        if (parts[j].length <= 1 && j < i) {
+          continue;
+        } else {
+          parts = parts.slice(0, j + 1);
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  newQuery = parts.join(' ');
   return newQuery;
 }

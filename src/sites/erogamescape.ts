@@ -1,7 +1,7 @@
-import { SearchResult, Subject } from '../interface/subject';
+import { SearchResult } from '../interface/subject';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
-import { normalizeQuery } from '../utils/utils';
+import { getShortenedQuery } from '../utils/utils';
 import { filterResults } from './common';
 
 enum ErogamescapeCategory {
@@ -35,12 +35,67 @@ function getSearchItem($item: HTMLElement): SearchResult {
   return info;
 }
 
+export function normalizeQueryEGS(query: string): string {
+  let newQuery = query.replace(/([Ａ-Ｚａ-ｚ０-９])([Ａ-Ｚ])/g, '$1 $2');
+  newQuery = newQuery.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function (s) {
+    return String.fromCharCode(s.charCodeAt(0) - 65248);
+  });
+
+  newQuery = newQuery
+    .replace(/^(.*?～)(.*)(～[^～]*)$/, function (_, p1, p2, p3) {
+      return p1.replace(/～/g, ' ') + p2 + p3.replace(/～/g, ' ');
+    })
+    .replace(/＝|=/g, ' ')
+    .replace(/　/g, ' ')
+    .replace(/０/g, '0')
+    .replace(/１/g, '1')
+    .replace(/２/g, '2')
+    .replace(/３/g, '3')
+    .replace(/４/g, '4')
+    .replace(/５/g, '5')
+    .replace(/６/g, '6')
+    .replace(/７/g, '7')
+    .replace(/８/g, '8')
+    .replace(/９/g, '9')
+    .replace(/Ⅰ/g, 'I')
+    .replace(/Ⅱ/g, 'II')
+    .replace(/Ⅲ/g, 'III')
+    .replace(/Ⅳ/g, 'IV')
+    .replace(/Ⅴ/g, 'V')
+    .replace(/Ⅵ/g, 'VI')
+    .replace(/Ⅶ/g, 'VII')
+    .replace(/Ⅷ/g, 'VIII')
+    .replace(/Ⅸ/g, 'IX')
+    .replace(/Ⅹ/g, 'X')
+    .replace(/[-－―～〜━\[\]『』~'…！？。]/g, ' ')
+    .replace(
+      /[♥❤☆\/♡★‥○⁉,.【】◆●∽＋‼＿◯※♠×▼％#∞’&!:＇"＊\*＆［］<>＜＞`_「」¨／◇：♪･@＠]/g,
+      ' '
+    )
+    .replace(/[、，△《》†〇\/·;^‘“”√≪≫＃→♂?%~■‘〈〉Ω♀⇒≒§♀⇒←∬🕊¡Ι≠±『』♨❄—~Σ⇔↑↓‡▽□』〈〉＾]/g, ' ')
+    .replace(/[─|+．・]/g, ' ')
+    .replace(/°C/g, '℃')
+    .replace(/[①②③④⑤⑥⑦⑧⑨]/g, ' ')
+    .replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]/g, ' ')
+    .replace(/‐.*?‐/g, ' ')
+    .replace(/\(.*?\)/g, ' ')
+    .replace(/\（.*?\）/g, ' ')
+    .replace(/\.\.\./g, ' ')
+    .replace(/([Ａ-Ｚａ-ｚ０-９])([Ａ-Ｚ])/g, '$1 $2')
+    .replace(/～っ.*/, '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/\（.*?\）/g, ' ')
+    .trim();
+  newQuery = newQuery.replace(/\s{2,}/g, ' ');
+  return getShortenedQuery(newQuery)
+}
+
 export async function searchSubject(
   subjectInfo: SearchResult,
   type: ErogamescapeCategory = ErogamescapeCategory.game,
   uniqueQueryStr: string = ''
 ): Promise<SearchResult> {
-  let query = normalizeQuery((subjectInfo.name || '').trim());
+  let query = normalizeQueryEGS((subjectInfo.name || '').trim());
   query = query.replace(/＜.+＞/, '');
   if (uniqueQueryStr) {
     query = uniqueQueryStr;
@@ -61,7 +116,7 @@ export async function searchSubject(
   );
   const res = filterResults(
     rawInfoList,
-    subjectInfo,
+    { ...subjectInfo, name: query },
     {
       releaseDate: true,
       keys: ['name'],
@@ -76,7 +131,9 @@ export async function searchSubject(
   }
 }
 
-export async function searchGameSubject(info: SearchResult): Promise<SearchResult> {
+export async function searchGameSubject(
+  info: SearchResult
+): Promise<SearchResult> {
   const result = await searchSubject(info, ErogamescapeCategory.game);
   if (result && result.url) {
     const rawText = await fetchText(result.url);
@@ -92,12 +149,14 @@ export async function searchGameSubject(info: SearchResult): Promise<SearchResul
 
 export function getSearchResult(): SearchResult {
   const $title = $q('#soft-title > .bold');
+  const rawName = $title.textContent.trim()
   const info: SearchResult = {
-    name: $title.textContent.trim(),
+    name: normalizeQueryEGS(rawName),
+    rawName,
     score: $q('#average > td')?.textContent.trim() ?? 0,
     count: $q('#count > td')?.textContent.trim() ?? 0,
     url: location.href,
-    releaseDate: $q('#sellday > td')?.textContent.trim()
+    releaseDate: $q('#sellday > td')?.textContent.trim(),
   };
   return info;
 }

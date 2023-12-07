@@ -18,7 +18,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.15
+// @version     0.1.16
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -336,14 +336,6 @@
       }
       return false;
   }
-  function replaceCharToSpace(str) {
-      // start U+0080 - U+00FF	Latin-1 Supplement
-      // U+2E00 - U+2E7F	Supplemental Punctuation
-      // Miscellaneous Symbols, U+2600 - U+26FF
-      // Halfwidth and Fullwidth Forms, U+FF00 - U+FFEF
-      // CJK Symbols and Punctuation, U+3000 - U+303F
-      return str.replace(/[\u0080-\u2E7F\u3000-\u303f\uff00-\uffef]+/g, ' ');
-  }
   function normalizeQuery(query) {
       let newQuery = query
           .replace(/^(.*?～)(.*)(～[^～]*)$/, function (_, p1, p2, p3) {
@@ -371,10 +363,63 @@
           .replace(/Ⅷ/g, 'VIII')
           .replace(/Ⅸ/g, 'IX')
           .replace(/Ⅹ/g, 'X')
-          .replace(/－|-/g, ' ')
+          .replace(/[－―～〜━\[\]『』~'…！？。♥☆\/♡★‥○, 【】◆×▼’&＇"＊?]/g, ' ')
+          .replace(/[．・]/g, ' ')
+          //.replace(/ー/g, " ")
+          .replace(/\.\.\./g, ' ')
+          .replace(/～っ.*/, '')
+          .replace(/\(.*?\)/g, '')
+          .replace(/\（.*?\）/g, ' ')
+          .replace(/＜.+?＞/, '')
+          .replace(/<.+?>/, '')
+          .replace(/-.+?-/, '')
           .trim();
-      newQuery = replaceCharToSpace(newQuery);
-      newQuery = newQuery.replace(/－|-/g, ' ');
+      // newQuery = replaceCharToSpace(newQuery);
+      newQuery = newQuery.replace(/\s{2,}/g, ' ');
+      return newQuery;
+  }
+  function getShortenedQuery(query) {
+      let newQuery = query;
+      let parts = newQuery.split(' ');
+      let englishWordCount = 0;
+      let nonEnglishDetected = false;
+      let japaneseWordCount = 0;
+      let isJapaneseWord = false;
+      for (let i = 0; i < parts.length; i++) {
+          let isEnglishWord = /^[a-zA-Z]+$/.test(parts[i]);
+          if (isEnglishWord) {
+              englishWordCount++;
+          }
+          else {
+              isJapaneseWord =
+                  /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ーa-zA-Z0-9ａ-ｚＡ-Ｚ０-９々〆〤]/u.test(parts[i]);
+              if (isJapaneseWord) {
+                  nonEnglishDetected = true;
+                  japaneseWordCount++;
+              }
+          }
+          if (nonEnglishDetected && englishWordCount > 0) {
+              parts = parts.slice(0, i);
+              break;
+          }
+          if (isEnglishWord && englishWordCount == 2) {
+              parts = parts.slice(0, i + 1);
+              break;
+          }
+          if (isJapaneseWord && japaneseWordCount == 2) {
+              for (let j = 0; j <= i; j++) {
+                  if (parts[j].length <= 1 && j < i) {
+                      continue;
+                  }
+                  else {
+                      parts = parts.slice(0, j + 1);
+                      break;
+                  }
+              }
+              break;
+          }
+      }
+      newQuery = parts.join(' ');
       return newQuery;
   }
 
@@ -470,6 +515,29 @@
           });
       });
   }
+  /**
+   * search data by queryNames
+   * @param subjectInfo SearchResult
+   * @param searchFn
+   * @returns Promise<SearchResult>
+   */
+  async function searchDataByNames(subjectInfo, searchFn) {
+      let query = (subjectInfo.name || '').trim();
+      let queryList = [query];
+      if (subjectInfo.queryNames) {
+          queryList = subjectInfo.queryNames;
+      }
+      for (const s of queryList) {
+          const res = await searchFn({
+              ...subjectInfo,
+              name: s
+          });
+          if (res) {
+              return res;
+          }
+          sleep(200);
+      }
+  }
 
   async function searchAnimeData$1(subjectInfo) {
       let query = normalizeQuery((subjectInfo.name || '').trim());
@@ -545,13 +613,13 @@
       if (dict[site]) {
           return dict[site];
       }
+      if (page.favicon) {
+          return page.favicon;
+      }
       try {
           favicon = GM_getResourceURL(`${site}_favicon`);
       }
       catch (error) { }
-      if (!favicon) {
-          favicon = page.favicon || '';
-      }
       return favicon;
   }
   function genScoreRowStr(info) {
@@ -1627,15 +1695,32 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   };
 
   const favicon$1 = 'https://vndb.org/favicon.ico';
-  function normalizeTitle(title) {
-      return title.replace(/＜.+＞/, '');
+  function reviseTitle(title) {
+      const titleDict = {
+          'ランス５Ｄ －ひとりぼっちの女の子－': 'Rance5D ひとりぼっちの女の子',
+          'Rance Ⅹ -決戦-': 'ランス10',
+      };
+      if (titleDict[title]) {
+          return titleDict[title];
+      }
+      const shortenTitleDict = {
+          '淫獣学園': '淫獣学園'
+      };
+      for (const [key, val] of Object.entries(shortenTitleDict)) {
+          if (title.includes(key)) {
+              return val;
+          }
+      }
+      return normalizeQuery(title);
   }
   function getSearchItem$2($item) {
       const $title = $item.querySelector('.tc_title > a');
       const href = new URL($title.getAttribute('href'), 'https://vndb.org/').href;
       const $rating = $item.querySelector('.tc_rating');
+      const rawName = $title.getAttribute('title');
       const info = {
-          name: normalizeTitle($title.getAttribute('title')),
+          name: reviseTitle(rawName),
+          rawName,
           url: href,
           count: 0,
           releaseDate: $item.querySelector('.tc_rel').textContent,
@@ -1650,6 +1735,9 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       }
       return info;
   }
+  // exception title
+  // 凍京NECRO＜トウキョウ・ネクロ＞
+  // https://vndb.org/v5154
   async function searchGameData(subjectInfo) {
       let query = normalizeQuery((subjectInfo.name || '').trim());
       if (!query) {
@@ -1678,9 +1766,9 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       const rawInfoList = Array.prototype.slice
           .call(items)
           .map(($item) => getSearchItem$2($item));
-      searchResult = filterResults(rawInfoList, subjectInfo, {
+      searchResult = filterResults(rawInfoList, { ...subjectInfo, name: query }, {
           releaseDate: true,
-          keys: ['name'],
+          keys: ['name', 'rawName'],
       }, true);
       console.info(`Search result of ${query} on vndb: `, searchResult);
       if (searchResult && searchResult.url) {
@@ -1693,7 +1781,8 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           name = $q('tr.title td:nth-of-type(2) > span').textContent;
       }
       const info = {
-          name: normalizeTitle(name),
+          name: reviseTitle(name),
+          rawName: name,
           score: $q('.rank-info.control-group .score')?.textContent.trim() ?? 0,
           count: 0,
           url: location.href,
@@ -1713,6 +1802,17 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       for (const elem of $qa('table.releases tr')) {
           if (elem.querySelector('.icon-rtcomplete')) {
               info.releaseDate = elem.querySelector('.tc1')?.innerText;
+              break;
+          }
+      }
+      // find alias
+      for (const $el of $qa('.vndetails > table tr > td:first-child')) {
+          if ($el.textContent.includes('Aliases')) {
+              const alias = $el.nextElementSibling.textContent
+                  .split(',')
+                  .map((s) => s.trim());
+              alias.unshift(info.name);
+              info.queryNames = alias;
               break;
           }
       }
@@ -1789,8 +1889,58 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       };
       return info;
   }
+  function normalizeQueryEGS(query) {
+      let newQuery = query.replace(/([Ａ-Ｚａ-ｚ０-９])([Ａ-Ｚ])/g, '$1 $2');
+      newQuery = newQuery.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function (s) {
+          return String.fromCharCode(s.charCodeAt(0) - 65248);
+      });
+      newQuery = newQuery
+          .replace(/^(.*?～)(.*)(～[^～]*)$/, function (_, p1, p2, p3) {
+          return p1.replace(/～/g, ' ') + p2 + p3.replace(/～/g, ' ');
+      })
+          .replace(/＝|=/g, ' ')
+          .replace(/　/g, ' ')
+          .replace(/０/g, '0')
+          .replace(/１/g, '1')
+          .replace(/２/g, '2')
+          .replace(/３/g, '3')
+          .replace(/４/g, '4')
+          .replace(/５/g, '5')
+          .replace(/６/g, '6')
+          .replace(/７/g, '7')
+          .replace(/８/g, '8')
+          .replace(/９/g, '9')
+          .replace(/Ⅰ/g, 'I')
+          .replace(/Ⅱ/g, 'II')
+          .replace(/Ⅲ/g, 'III')
+          .replace(/Ⅳ/g, 'IV')
+          .replace(/Ⅴ/g, 'V')
+          .replace(/Ⅵ/g, 'VI')
+          .replace(/Ⅶ/g, 'VII')
+          .replace(/Ⅷ/g, 'VIII')
+          .replace(/Ⅸ/g, 'IX')
+          .replace(/Ⅹ/g, 'X')
+          .replace(/[-－―～〜━\[\]『』~'…！？。]/g, ' ')
+          .replace(/[♥❤☆\/♡★‥○⁉,.【】◆●∽＋‼＿◯※♠×▼％#∞’&!:＇"＊\*＆［］<>＜＞`_「」¨／◇：♪･@＠]/g, ' ')
+          .replace(/[、，△《》†〇\/·;^‘“”√≪≫＃→♂?%~■‘〈〉Ω♀⇒≒§♀⇒←∬🕊¡Ι≠±『』♨❄—~Σ⇔↑↓‡▽□』〈〉＾]/g, ' ')
+          .replace(/[─|+．・]/g, ' ')
+          .replace(/°C/g, '℃')
+          .replace(/[①②③④⑤⑥⑦⑧⑨]/g, ' ')
+          .replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]/g, ' ')
+          .replace(/‐.*?‐/g, ' ')
+          .replace(/\(.*?\)/g, ' ')
+          .replace(/\（.*?\）/g, ' ')
+          .replace(/\.\.\./g, ' ')
+          .replace(/([Ａ-Ｚａ-ｚ０-９])([Ａ-Ｚ])/g, '$1 $2')
+          .replace(/～っ.*/, '')
+          .replace(/\(.*?\)/g, '')
+          .replace(/\（.*?\）/g, ' ')
+          .trim();
+      newQuery = newQuery.replace(/\s{2,}/g, ' ');
+      return getShortenedQuery(newQuery);
+  }
   async function searchSubject(subjectInfo, type = ErogamescapeCategory.game, uniqueQueryStr = '') {
-      let query = normalizeQuery((subjectInfo.name || '').trim());
+      let query = normalizeQueryEGS((subjectInfo.name || '').trim());
       query = query.replace(/＜.+＞/, '');
       if (uniqueQueryStr) {
           query = uniqueQueryStr;
@@ -1805,7 +1955,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       const $doc = new DOMParser().parseFromString(rawText, 'text/html');
       const items = $doc.querySelectorAll('#result table tr:not(:first-child)');
       const rawInfoList = [...items].map(($item) => getSearchItem$1($item));
-      const res = filterResults(rawInfoList, subjectInfo, {
+      const res = filterResults(rawInfoList, { ...subjectInfo, name: query }, {
           releaseDate: true,
           keys: ['name'],
       }, true);
@@ -1832,12 +1982,14 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   }
   function getSearchResult$1() {
       const $title = $q('#soft-title > .bold');
+      const rawName = $title.textContent.trim();
       const info = {
-          name: $title.textContent.trim(),
+          name: normalizeQueryEGS(rawName),
+          rawName,
           score: $q('#average > td')?.textContent.trim() ?? 0,
           count: $q('#count > td')?.textContent.trim() ?? 0,
           url: location.href,
-          releaseDate: $q('#sellday > td')?.textContent.trim()
+          releaseDate: $q('#sellday > td')?.textContent.trim(),
       };
       return info;
   }
@@ -1871,7 +2023,9 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       genSubjectUrl(id) {
           return `https://erogamescape.org/~ap2/ero/toukei_kaiseki/game.php?game=${id}`;
       },
-      getSearchResult: searchGameSubject$1,
+      // getSearchResult: searchGameSubject
+      // try multiple query
+      getSearchResult: (info) => searchDataByNames(info, searchGameSubject$1),
       getScoreInfo: getSearchResult$1,
       insertScoreInfo: function (page, info) {
           const title = this.getScoreInfo().name;
@@ -1991,9 +2145,14 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   const BGM_UA = 'e_user_bgm_ua';
   var g_hide_game_score_flag = GM_getValue('e_user_hide_game_score') || '';
   if (GM_registerMenuCommand) {
-      GM_registerMenuCommand('清除缓存信息', () => {
+      GM_registerMenuCommand('clear cache', () => {
           clearInfoStorage();
-          alert('已清除缓存');
+          alert('cache cleared');
+      }, 'c');
+      GM_registerMenuCommand('refresh score', () => {
+          document.querySelector('.e-userjs-score-compare')?.remove();
+          initPage(animePages, true);
+          !g_hide_game_score_flag && initPage(gamePages, true);
       }, 'c');
       GM_registerMenuCommand('设置Bangumi UA', () => {
           var p = prompt('设置 Bangumi UA', '');
@@ -2106,7 +2265,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           });
       }
   }
-  async function initPage(pages) {
+  async function initPage(pages, force = false) {
       const idx = getPageIdxByHost(pages, location.host);
       if (idx === -1)
           return;
@@ -2115,7 +2274,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           return;
       insertControlDOM(curPage, pages);
       initSiteConfig();
-      refreshScore(curPage, pages, false);
+      refreshScore(curPage, pages, force);
   }
   initPage(animePages);
   !g_hide_game_score_flag && initPage(gamePages);

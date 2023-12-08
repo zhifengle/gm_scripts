@@ -31,6 +31,40 @@ export enum Protocol {
   https = 'https',
 }
 
+function getSearchItem($item: HTMLElement): SearchResult {
+  let $subjectTitle = $item.querySelector('h3>a.l');
+  let info: SearchResult = {
+    name: $subjectTitle.textContent.trim(),
+    // url 没有协议和域名
+    url: $subjectTitle.getAttribute('href'),
+    greyName: $item.querySelector('h3>.grey')
+      ? $item.querySelector('h3>.grey').textContent.trim()
+      : '',
+  };
+  let matchDate = $item
+    .querySelector('.info')
+    .textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
+  if (matchDate) {
+    info.releaseDate = dealDate(matchDate[0]);
+  }
+  let $rateInfo = $item.querySelector('.rateInfo');
+  if ($rateInfo) {
+    if ($rateInfo.querySelector('.fade')) {
+      info.score = $rateInfo.querySelector('.fade').textContent;
+      info.count = $rateInfo
+        .querySelector('.tip_j')
+        .textContent.replace(/[^0-9]/g, '');
+    } else {
+      info.score = '0';
+      info.count = '少于10';
+    }
+  } else {
+    info.score = '0';
+    info.count = '0';
+  }
+  return info;
+}
+
 /**
  * 处理搜索页面的 html
  * @param info 字符串 html

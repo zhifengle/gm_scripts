@@ -166,7 +166,10 @@ export const bangumiGamePage: PageConfig = {
       subject,
       bgm_origin,
       SubjectTypeId.game,
-      true
+      {
+        releaseDate: true,
+        disableDate: true,
+      }
     );
     if (res) {
       res.url = genBgmUrl(res.url);

@@ -101,7 +101,8 @@ export async function searchSubject(
   subjectInfo: AllSubject,
   bgmHost: string = 'https://bgm.tv',
   type: SubjectTypeId = SubjectTypeId.all,
-  uniqueQueryStr: string = ''
+  uniqueQueryStr: string = '',
+  opts: { releaseDate?: boolean } = {}
 ) {
   let releaseDate: string;
   if (subjectInfo && subjectInfo.releaseDate) {
@@ -131,6 +132,7 @@ export async function searchSubject(
     return rawInfoList[0];
   }
   const options = {
+    releaseDate: opts.releaseDate,
     keys: ['name', 'greyName'],
   };
   return filterResults(rawInfoList, subjectInfo, options);
@@ -233,7 +235,7 @@ async function checkExist(
   subjectInfo: AllSubject,
   bgmHost: string = 'https://bgm.tv',
   type: SubjectTypeId,
-  disabelDate?: boolean
+  opts?: any
 ) {
   const subjectTypeDict = {
     [SubjectTypeId.game]: 'game',
@@ -243,12 +245,26 @@ async function checkExist(
     [SubjectTypeId.real]: 'real',
     [SubjectTypeId.all]: 'all',
   };
-  let searchResult = await searchSubject(subjectInfo, bgmHost, type);
+  let searchOpts = {};
+  if (typeof opts === 'object') {
+    searchOpts = opts;
+  }
+  let searchResult = await searchSubject(
+    subjectInfo,
+    bgmHost,
+    type,
+    '',
+    searchOpts
+  );
   console.info(`First: search result of bangumi: `, searchResult);
   if (searchResult && searchResult.url) {
     return searchResult;
   }
-  if (disabelDate) {
+  // disableDate
+  if (
+    (typeof opts === 'boolean' && opts) ||
+    (typeof opts === 'object' && opts.disableDate)
+  ) {
     return;
   }
   searchResult = await findSubjectByDate(
@@ -265,7 +281,7 @@ export async function checkSubjectExist(
   subjectInfo: AllSubject,
   bgmHost: string = 'https://bgm.tv',
   type: SubjectTypeId = SubjectTypeId.all,
-  disableDate?: boolean
+  opts?: any
 ) {
   let result;
   switch (type) {
@@ -279,7 +295,7 @@ export async function checkSubjectExist(
     case SubjectTypeId.all:
     case SubjectTypeId.game:
     case SubjectTypeId.anime:
-      result = await checkExist(subjectInfo, bgmHost, type, disableDate);
+      result = await checkExist(subjectInfo, bgmHost, type, opts);
       break;
     case SubjectTypeId.real:
     case SubjectTypeId.music:

@@ -1,4 +1,5 @@
 import { SearchResult, Subject } from '../interface/subject';
+import { sleep } from '../utils/async/sleep';
 import { $q, $qa } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery, normalizeQuery } from '../utils/utils';
@@ -9,17 +10,18 @@ export const favicon = 'https://vndb.org/favicon.ico';
 function reviseTitle(title: string) {
   const titleDict: Record<string, string> = {
     'ランス５Ｄ －ひとりぼっちの女の子－': 'Rance5D ひとりぼっちの女の子',
+    'グリザイアの果実 -LE FRUIT DE LA GRISAIA-': 'グリザイアの果実',
     'Rance Ⅹ -決戦-': 'ランス10',
   };
   if (titleDict[title]) {
     return titleDict[title];
   }
   const shortenTitleDict: Record<string, string> = {
-    '淫獣学園': '淫獣学園'
-  }
+    淫獣学園: '淫獣学園',
+  };
   for (const [key, val] of Object.entries(shortenTitleDict)) {
     if (title.includes(key)) {
-      return val
+      return val;
     }
   }
   return normalizeQuery(title);
@@ -29,7 +31,7 @@ function getSearchItem($item: HTMLElement): SearchResult {
   const $title = $item.querySelector('.tc_title > a');
   const href = new URL($title.getAttribute('href'), 'https://vndb.org/').href;
   const $rating = $item.querySelector('.tc_rating');
-  const rawName = $title.getAttribute('title')
+  const rawName = $title.getAttribute('title');
   const info: SearchResult = {
     name: reviseTitle(rawName),
     rawName,
@@ -52,8 +54,8 @@ function getSearchItem($item: HTMLElement): SearchResult {
 // 凍京NECRO＜トウキョウ・ネクロ＞
 // https://vndb.org/v5154
 
-export async function searchGameData(
-  subjectInfo: Subject
+export async function searchSubject(
+  subjectInfo: SearchResult
 ): Promise<SearchResult> {
   let query = normalizeQuery((subjectInfo.name || '').trim());
   if (!query) {
@@ -94,6 +96,29 @@ export async function searchGameData(
   console.info(`Search result of ${query} on vndb: `, searchResult);
   if (searchResult && searchResult.url) {
     return searchResult;
+  }
+}
+
+export async function searchGameData(
+  info: SearchResult
+): Promise<SearchResult> {
+  const result = await searchSubject(info);
+  // when score is empty, try to extract score from page
+  if (
+    result &&
+    result.url &&
+    Number(result.count) > 0 &&
+    isNaN(Number(result.score))
+  ) {
+    await sleep(100);
+    const rawText = await fetchText(result.url);
+    window._parsedEl = new DOMParser().parseFromString(rawText, 'text/html');
+    const res = getSearchResult();
+    res.url = result.url;
+    window._parsedEl = undefined;
+    return res;
+  } else {
+    return result;
   }
 }
 

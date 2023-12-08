@@ -1,7 +1,7 @@
 import { SearchResult } from '../interface/subject';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
-import { getShortenedQuery } from '../utils/utils';
+import { getShortenedQuery, normalizeQuery } from '../utils/utils';
 import { filterResults } from './common';
 
 enum ErogamescapeCategory {
@@ -36,7 +36,8 @@ function getSearchItem($item: HTMLElement): SearchResult {
 }
 
 export function normalizeQueryEGS(query: string): string {
-  let newQuery = query.replace(/([Ａ-Ｚａ-ｚ０-９])([Ａ-Ｚ])/g, '$1 $2');
+  // let newQuery = query.replace(/([Ａ-Ｚａ-ｚ０-９])([Ａ-Ｚ])/g, '$1 $2');
+  let newQuery = query;
   newQuery = newQuery.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function (s) {
     return String.fromCharCode(s.charCodeAt(0) - 65248);
   });
@@ -151,7 +152,7 @@ export function getSearchResult(): SearchResult {
   const $title = $q('#soft-title > .bold');
   const rawName = $title.textContent.trim()
   const info: SearchResult = {
-    name: normalizeQueryEGS(rawName),
+    name: normalizeQuery(rawName),
     rawName,
     score: $q('#average > td')?.textContent.trim() ?? 0,
     count: $q('#count > td')?.textContent.trim() ?? 0,

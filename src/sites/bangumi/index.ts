@@ -91,6 +91,24 @@ function dealSearchResults(info: string): [SearchResult[], number] | [] {
   return [results, numOfPage];
 }
 
+function reviseQuery(title: string): string {
+  const titleDict: Record<string, string> = {
+    // 'グリザイアの果実 -LE FRUIT DE LA GRISAIA-': 'グリザイアの果実',
+  };
+  if (titleDict[title]) {
+    return titleDict[title];
+  }
+  const shortenTitleDict: Record<string, string> = {
+    // 'グリザイアの果実': 'グリザイアの果実',
+  };
+  for (const [key, val] of Object.entries(shortenTitleDict)) {
+    if (title.includes(key)) {
+      return val;
+    }
+  }
+  return title;
+}
+
 /**
  * 搜索条目
  * @param subjectInfo

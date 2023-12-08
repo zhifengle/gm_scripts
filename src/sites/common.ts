@@ -47,8 +47,9 @@ export function filterResults(
     return;
   }
   // 有参考的发布时间
-  const tempResults = [];
   if (subjectInfo.releaseDate) {
+    const sameYearResults = [];
+    const sameMonthResults = [];
     for (const obj of results) {
       const result = obj.item;
       if (result.releaseDate) {
@@ -62,13 +63,20 @@ export function filterResults(
             return result;
           }
         }
-        // 过滤年份不一致的数据
-        if (
-          result.releaseDate.slice(0, 4) === subjectInfo.releaseDate.slice(0, 4)
-        ) {
-          tempResults.push(obj);
+        if (isEqualDate(result.releaseDate, subjectInfo.releaseDate, 'm')) {
+          sameMonthResults.push(obj);
+          continue;
+        }
+        if (isEqualDate(result.releaseDate, subjectInfo.releaseDate, 'y')) {
+          sameYearResults.push(obj);
         }
       }
+    }
+    if (sameMonthResults.length) {
+      return sameMonthResults[0].item;
+    }
+    if (sameYearResults.length) {
+      return sameYearResults[0].item;
     }
   }
   // 比较名称
@@ -83,8 +91,6 @@ export function filterResults(
       return result;
     }
   }
-  results = tempResults;
-  return results[0]?.item;
 }
 
 export const typeIdDict: {
@@ -173,18 +179,18 @@ export async function searchDataByNames(
   searchFn: (info: SearchResult) => Promise<SearchResult>
 ): Promise<SearchResult> {
   let query = (subjectInfo.name || '').trim();
-  let queryList: string[] = [query]
+  let queryList: string[] = [query];
   if (subjectInfo.queryNames) {
-    queryList = subjectInfo.queryNames
+    queryList = subjectInfo.queryNames;
   }
   for (const s of queryList) {
     const res = await searchFn({
       ...subjectInfo,
-      name: s
-    })
+      name: s,
+    });
     if (res) {
-      return res
+      return res;
     }
-    sleep(200)
+    await sleep(200);
   }
 }

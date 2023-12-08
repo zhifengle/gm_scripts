@@ -18,7 +18,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.16
+// @version     0.1.17
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -326,9 +326,16 @@
       })
           .join('-');
   }
-  function isEqualDate(d1, d2) {
+  function isEqualDate(d1, d2, type = 'd') {
       const resultDate = new Date(d1);
       const originDate = new Date(d2);
+      if (type === 'y') {
+          return resultDate.getFullYear() === originDate.getFullYear();
+      }
+      if (type === 'm') {
+          return (resultDate.getFullYear() === originDate.getFullYear() &&
+              resultDate.getMonth() === originDate.getMonth());
+      }
       if (resultDate.getFullYear() === originDate.getFullYear() &&
           resultDate.getMonth() === originDate.getMonth() &&
           resultDate.getDate() === originDate.getDate()) {
@@ -376,6 +383,10 @@
           .trim();
       // newQuery = replaceCharToSpace(newQuery);
       newQuery = newQuery.replace(/\s{2,}/g, ' ');
+      // game: 14 -one & four or the other meaning-
+      if (/^\d+$/.test(newQuery)) {
+          return query;
+      }
       return newQuery;
   }
   function getShortenedQuery(query) {
@@ -398,9 +409,8 @@
                   japaneseWordCount++;
               }
           }
-          if (nonEnglishDetected && englishWordCount > 0) {
-              parts = parts.slice(0, i);
-              break;
+          if (nonEnglishDetected && englishWordCount < 2) {
+              return parts[i];
           }
           if (isEnglishWord && englishWordCount == 2) {
               parts = parts.slice(0, i + 1);
@@ -458,8 +468,9 @@
           return;
       }
       // 有参考的发布时间
-      const tempResults = [];
       if (subjectInfo.releaseDate) {
+          const sameYearResults = [];
+          const sameMonthResults = [];
           for (const obj of results) {
               const result = obj.item;
               if (result.releaseDate) {
@@ -474,11 +485,20 @@
                           return result;
                       }
                   }
-                  // 过滤年份不一致的数据
-                  if (result.releaseDate.slice(0, 4) === subjectInfo.releaseDate.slice(0, 4)) {
-                      tempResults.push(obj);
+                  if (isEqualDate(result.releaseDate, subjectInfo.releaseDate, 'm')) {
+                      sameMonthResults.push(obj);
+                      continue;
+                  }
+                  if (isEqualDate(result.releaseDate, subjectInfo.releaseDate, 'y')) {
+                      sameYearResults.push(obj);
                   }
               }
+          }
+          if (sameMonthResults.length) {
+              return sameMonthResults[0].item;
+          }
+          if (sameYearResults.length) {
+              return sameYearResults[0].item;
           }
       }
       // 比较名称
@@ -491,8 +511,6 @@
               return result;
           }
       }
-      results = tempResults;
-      return results[0]?.item;
   }
   async function getSearchResultByGM() {
       return new Promise((resolve, reject) => {
@@ -530,12 +548,12 @@
       for (const s of queryList) {
           const res = await searchFn({
               ...subjectInfo,
-              name: s
+              name: s,
           });
           if (res) {
               return res;
           }
-          sleep(200);
+          await sleep(200);
       }
   }
 
@@ -840,7 +858,7 @@
    * @param type
    * @param uniqueQueryStr
    */
-  async function searchSubject$1(subjectInfo, bgmHost = 'https://bgm.tv', type = SubjectTypeId.all, uniqueQueryStr = '') {
+  async function searchSubject$2(subjectInfo, bgmHost = 'https://bgm.tv', type = SubjectTypeId.all, uniqueQueryStr = '', opts = {}) {
       if (subjectInfo && subjectInfo.releaseDate) {
           subjectInfo.releaseDate;
       }
@@ -866,6 +884,7 @@
           return rawInfoList[0];
       }
       const options = {
+          releaseDate: opts.releaseDate,
           keys: ['name', 'greyName'],
       };
       return filterResults(rawInfoList, subjectInfo, options);
@@ -917,18 +936,18 @@
       return result;
   }
   async function checkBookSubjectExist(subjectInfo, bgmHost = 'https://bgm.tv', type) {
-      let searchResult = await searchSubject$1(subjectInfo, bgmHost, type, subjectInfo.isbn);
+      let searchResult = await searchSubject$2(subjectInfo, bgmHost, type, subjectInfo.isbn);
       console.info(`First: search book of bangumi: `, searchResult);
       if (searchResult && searchResult.url) {
           return searchResult;
       }
-      searchResult = await searchSubject$1(subjectInfo, bgmHost, type, subjectInfo.asin);
+      searchResult = await searchSubject$2(subjectInfo, bgmHost, type, subjectInfo.asin);
       console.info(`Second: search book by ${subjectInfo.asin}: `, searchResult);
       if (searchResult && searchResult.url) {
           return searchResult;
       }
       // 默认使用名称搜索
-      searchResult = await searchSubject$1(subjectInfo, bgmHost, type);
+      searchResult = await searchSubject$2(subjectInfo, bgmHost, type);
       console.info('Third: search book of bangumi: ', searchResult);
       return searchResult;
   }
@@ -938,7 +957,7 @@
    * @param bgmHost bangumi 域名
    * @param type 条目类型
    */
-  async function checkExist(subjectInfo, bgmHost = 'https://bgm.tv', type, disabelDate) {
+  async function checkExist(subjectInfo, bgmHost = 'https://bgm.tv', type, opts) {
       const subjectTypeDict = {
           [SubjectTypeId.game]: 'game',
           [SubjectTypeId.anime]: 'anime',
@@ -947,19 +966,25 @@
           [SubjectTypeId.real]: 'real',
           [SubjectTypeId.all]: 'all',
       };
-      let searchResult = await searchSubject$1(subjectInfo, bgmHost, type);
+      let searchOpts = {};
+      if (typeof opts === 'object') {
+          searchOpts = opts;
+      }
+      let searchResult = await searchSubject$2(subjectInfo, bgmHost, type, '', searchOpts);
       console.info(`First: search result of bangumi: `, searchResult);
       if (searchResult && searchResult.url) {
           return searchResult;
       }
-      if (disabelDate) {
+      // disableDate
+      if ((typeof opts === 'boolean' && opts) ||
+          (typeof opts === 'object' && opts.disableDate)) {
           return;
       }
       searchResult = await findSubjectByDate(subjectInfo, bgmHost, 1, subjectTypeDict[type]);
       console.info(`Second: search result by date: `, searchResult);
       return searchResult;
   }
-  async function checkSubjectExist(subjectInfo, bgmHost = 'https://bgm.tv', type = SubjectTypeId.all, disableDate) {
+  async function checkSubjectExist(subjectInfo, bgmHost = 'https://bgm.tv', type = SubjectTypeId.all, opts) {
       let result;
       switch (type) {
           case SubjectTypeId.book:
@@ -968,7 +993,7 @@
           case SubjectTypeId.all:
           case SubjectTypeId.game:
           case SubjectTypeId.anime:
-              result = await checkExist(subjectInfo, bgmHost, type, disableDate);
+              result = await checkExist(subjectInfo, bgmHost, type, opts);
               break;
           case SubjectTypeId.real:
           case SubjectTypeId.music:
@@ -1105,7 +1130,10 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           },
       ],
       async getSearchResult(subject) {
-          const res = await checkSubjectExist(subject, bgm_origin, SubjectTypeId.game, true);
+          const res = await checkSubjectExist(subject, bgm_origin, SubjectTypeId.game, {
+              releaseDate: true,
+              disableDate: true,
+          });
           if (res) {
               res.url = genBgmUrl(res.url);
           }
@@ -1698,13 +1726,14 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   function reviseTitle(title) {
       const titleDict = {
           'ランス５Ｄ －ひとりぼっちの女の子－': 'Rance5D ひとりぼっちの女の子',
+          'グリザイアの果実 -LE FRUIT DE LA GRISAIA-': 'グリザイアの果実',
           'Rance Ⅹ -決戦-': 'ランス10',
       };
       if (titleDict[title]) {
           return titleDict[title];
       }
       const shortenTitleDict = {
-          '淫獣学園': '淫獣学園'
+          淫獣学園: '淫獣学園',
       };
       for (const [key, val] of Object.entries(shortenTitleDict)) {
           if (title.includes(key)) {
@@ -1738,7 +1767,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   // exception title
   // 凍京NECRO＜トウキョウ・ネクロ＞
   // https://vndb.org/v5154
-  async function searchGameData(subjectInfo) {
+  async function searchSubject$1(subjectInfo) {
       let query = normalizeQuery((subjectInfo.name || '').trim());
       if (!query) {
           console.info('Query string is empty');
@@ -1773,6 +1802,25 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       console.info(`Search result of ${query} on vndb: `, searchResult);
       if (searchResult && searchResult.url) {
           return searchResult;
+      }
+  }
+  async function searchGameData(info) {
+      const result = await searchSubject$1(info);
+      // when score is empty, try to extract score from page
+      if (result &&
+          result.url &&
+          Number(result.count) > 0 &&
+          isNaN(Number(result.score))) {
+          await sleep(100);
+          const rawText = await fetchText(result.url);
+          window._parsedEl = new DOMParser().parseFromString(rawText, 'text/html');
+          const res = getSearchResult$2();
+          res.url = result.url;
+          window._parsedEl = undefined;
+          return res;
+      }
+      else {
+          return result;
       }
   }
   function getSearchResult$2() {
@@ -1890,7 +1938,8 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       return info;
   }
   function normalizeQueryEGS(query) {
-      let newQuery = query.replace(/([Ａ-Ｚａ-ｚ０-９])([Ａ-Ｚ])/g, '$1 $2');
+      // let newQuery = query.replace(/([Ａ-Ｚａ-ｚ０-９])([Ａ-Ｚ])/g, '$1 $2');
+      let newQuery = query;
       newQuery = newQuery.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function (s) {
           return String.fromCharCode(s.charCodeAt(0) - 65248);
       });
@@ -1984,7 +2033,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       const $title = $q('#soft-title > .bold');
       const rawName = $title.textContent.trim();
       const info = {
-          name: normalizeQueryEGS(rawName),
+          name: normalizeQuery(rawName),
           rawName,
           score: $q('#average > td')?.textContent.trim() ?? 0,
           count: $q('#count > td')?.textContent.trim() ?? 0,
@@ -2028,7 +2077,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       getSearchResult: (info) => searchDataByNames(info, searchGameSubject$1),
       getScoreInfo: getSearchResult$1,
       insertScoreInfo: function (page, info) {
-          const title = this.getScoreInfo().name;
+          const title = normalizeQueryEGS(this.getScoreInfo().name);
           insertScoreCommon(page, info, {
               title,
               adjacentSelector: this.infoSelector,

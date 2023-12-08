@@ -1,5 +1,3 @@
-import { SearchResult } from '../interface/subject';
-
 export function genRandomStr(len: number): string {
   return Array.apply(null, Array(len))
     .map(function () {
@@ -67,9 +65,22 @@ export function dealDate(dataStr: string): string {
     .join('-');
 }
 
-export function isEqualDate(d1: string, d2: string): boolean {
+export function isEqualDate(
+  d1: string,
+  d2: string,
+  type: 'y' | 'm' | 'd' = 'd'
+): boolean {
   const resultDate = new Date(d1);
   const originDate = new Date(d2);
+  if (type === 'y') {
+    return resultDate.getFullYear() === originDate.getFullYear();
+  }
+  if (type === 'm') {
+    return (
+      resultDate.getFullYear() === originDate.getFullYear() &&
+      resultDate.getMonth() === originDate.getMonth()
+    );
+  }
   if (
     resultDate.getFullYear() === originDate.getFullYear() &&
     resultDate.getMonth() === originDate.getMonth() &&
@@ -165,6 +176,10 @@ export function normalizeQuery(query: string): string {
     .trim();
   // newQuery = replaceCharToSpace(newQuery);
   newQuery = newQuery.replace(/\s{2,}/g, ' ');
+  // game: 14 -one & four or the other meaning-
+  if (/^\d+$/.test(newQuery)) {
+    return query
+  }
   return newQuery;
 }
 
@@ -192,9 +207,8 @@ export function getShortenedQuery(query: string): string {
       }
     }
 
-    if (nonEnglishDetected && englishWordCount > 0) {
-      parts = parts.slice(0, i);
-      break;
+    if (nonEnglishDetected && englishWordCount < 2) {
+      return parts[i]
     }
 
     if (isEnglishWord && englishWordCount == 2) {

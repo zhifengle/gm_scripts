@@ -1,4 +1,5 @@
-import { dealDate, genRandomStr, formatDate, replaceCharToSpace, normalizeQuery } from './utils'
+import { normalizeQueryEGS } from '../sites/erogamescape'
+import { dealDate, genRandomStr, formatDate, replaceCharToSpace, normalizeQuery, getShortenedQuery } from './utils'
 
 describe('test utils', () => {
   it('test the length of return value', () => {
@@ -19,10 +20,24 @@ describe('test utils', () => {
     expect(formatDate('27 September 2019', 'yyyy-MM-dd')).toEqual('2019-09-27')
   })
 })
+describe('test shortened query', () => {
+  it('test shortened query', () => {
+    expect(getShortenedQuery('HHG ハートヒートガールズ')).toBe('ハートヒートガールズ')
+    expect(getShortenedQuery('hello world ゲーム')).toBe('hello world')
+    expect(getShortenedQuery('ゲーム hello world')).toBe('ゲーム')
+    expect(getShortenedQuery('Rance5D ひとりぼっちの女の子')).toBe('Rance5D')
+    expect(getShortenedQuery('hello ゲーム ゲーム world')).toBe('ゲーム')
+    expect(getShortenedQuery('バルドスカイ ゼロ')).toBe('バルドスカイ')
+  })
+})
 
 describe('test normalize string', () => {
   it('test normalize query', () => {
-    // @TODO
+    var str = '14 -one & four or the other meaning-'
+    expect(normalizeQuery(str)).toBe(str)
+    // no search result in bgm and 2dfan
+    str = 'グリザイアの果実 -LE FRUIT DE LA GRISAIA-'
+    expect(normalizeQuery(str)).toBe('グリザイアの果実')
   })
   it('test replace char to space', () => {
     // 'CROSS†CHANNEL'

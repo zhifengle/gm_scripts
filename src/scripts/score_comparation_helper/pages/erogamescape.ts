@@ -3,6 +3,7 @@ import { searchDataByNames } from '../../../sites/common';
 import {
   favicon,
   getSearchResult,
+  normalizeQueryEGS,
   searchGameSubject,
 } from '../../../sites/erogamescape';
 import { insertScoreCommon } from '../common';
@@ -44,7 +45,7 @@ export const erogamescapePage: PageConfig = {
     searchDataByNames(info, searchGameSubject),
   getScoreInfo: getSearchResult,
   insertScoreInfo: function (page: PageConfig, info: SearchResult): void {
-    const title = this.getScoreInfo().name;
+    const title = normalizeQueryEGS(this.getScoreInfo().name);
     insertScoreCommon(page, info, {
       title,
       adjacentSelector: this.infoSelector,

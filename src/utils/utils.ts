@@ -172,7 +172,7 @@ export function normalizeQuery(query: string): string {
     .replace(/\（.*?\）/g, ' ')
     .replace(/＜.+?＞/, '')
     .replace(/<.+?>/, '')
-    .replace(/-.+?-/, '')
+    .replace(/\s-[^-]+?-$/, '')
     .trim();
   // newQuery = replaceCharToSpace(newQuery);
   newQuery = newQuery.replace(/\s{2,}/g, ' ');

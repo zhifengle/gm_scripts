@@ -1,5 +1,4 @@
 import { SearchResult } from '../../../interface/subject';
-import { searchDataByNames } from '../../../sites/common';
 import {
   favicon,
   getSearchResult,
@@ -39,10 +38,7 @@ export const erogamescapePage: PageConfig = {
   genSubjectUrl(id) {
     return `https://erogamescape.org/~ap2/ero/toukei_kaiseki/game.php?game=${id}`;
   },
-  // getSearchResult: searchGameSubject
-  // try multiple query
-  getSearchResult: (info: SearchResult) =>
-    searchDataByNames(info, searchGameSubject),
+  getSearchResult: searchGameSubject,
   getScoreInfo: getSearchResult,
   insertScoreInfo: function (page: PageConfig, info: SearchResult): void {
     const title = normalizeQueryEGS(this.getScoreInfo().name);

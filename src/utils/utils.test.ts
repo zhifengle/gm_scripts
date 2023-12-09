@@ -1,4 +1,3 @@
-import { normalizeQueryEGS } from '../sites/erogamescape'
 import { dealDate, genRandomStr, formatDate, replaceCharToSpace, normalizeQuery, getShortenedQuery } from './utils'
 
 describe('test utils', () => {

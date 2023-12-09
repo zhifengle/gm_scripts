@@ -65,6 +65,27 @@ function getSearchItem($item: HTMLElement): SearchResult {
   return info;
 }
 
+function getTotalPageNum($doc: Document | HTMLElement | Element): number {
+  let totalPage = 1;
+  let pList = $doc.querySelectorAll('.page_inner>.p');
+  if (pList && pList.length) {
+    let tempNum = parseInt(
+      pList[pList.length - 2].getAttribute('href').match(/page=(\d*)/)[1]
+    );
+    totalPage = parseInt(
+      pList[pList.length - 1].getAttribute('href').match(/page=(\d*)/)[1]
+    );
+    totalPage = totalPage > tempNum ? totalPage : tempNum;
+  }
+  return totalPage
+}
+
+function extractInfoList($doc: Document | HTMLElement | Element): SearchResult[] {
+  return [...$doc.querySelectorAll<HTMLElement>('#browserItemList>li')].map($item => {
+    return getSearchItem($item)
+  })
+}
+
 /**
  * 处理搜索页面的 html
  * @param info 字符串 html
@@ -177,8 +198,9 @@ export async function searchSubject(
     query
   )}?cat=${type}`;
   console.info('search bangumi subject URL: ', url);
-  const rawText = await fetchText(url);
-  const rawInfoList = dealSearchResults(rawText)[0] || [];
+  const content = await fetchText(url)
+  const $doc = new DOMParser().parseFromString(content, 'text/html');
+  const rawInfoList = extractInfoList($doc);
   // 使用指定搜索字符串如 ISBN 搜索时, 并且结果只有一条时，不再使用名称过滤
   if (uniqueQueryStr && rawInfoList && rawInfoList.length === 1) {
     return rawInfoList[0];

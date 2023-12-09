@@ -41,4 +41,6 @@ declare var unsafeWindow: typeof window;
 interface Window {
   _parsedEl?: Element | Document;
   gm_val_listen_id?: string;
+  VNDB_REVISE_TITLE_DICT?: Record<string, string>
+  EGS_REVISE_TITLE_DICT?: Record<string, string>
 }

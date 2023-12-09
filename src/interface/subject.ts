@@ -19,8 +19,7 @@ export interface SearchResult extends BaseSubject {
   // jp name
   greyName?: string;
   rawName?: string;
-  queryNames?: string[];
-  alias?: string;
+  alias?: string[];
 }
 
 export interface SingleInfo {

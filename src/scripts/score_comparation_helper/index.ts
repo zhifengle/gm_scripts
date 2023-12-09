@@ -195,5 +195,13 @@ async function initPage(pages: PageConfig[], force = false) {
   refreshScore(curPage, pages, force);
 }
 
+// user config for revising title
+window.VNDB_REVISE_TITLE_DICT = {
+  // your config
+}
+window.EGS_REVISE_TITLE_DICT = {
+  // your config
+}
+
 initPage(animePages);
 !g_hide_game_score_flag && initPage(gamePages);

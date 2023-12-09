@@ -7,12 +7,24 @@ import { filterResults } from './common';
 
 export const favicon = 'https://vndb.org/favicon.ico';
 
+function normalizeQueryVNDB(str: string) {
+  // fixed: White x Red
+  return str.replace(' x ', ' ');
+}
+
 function reviseTitle(title: string) {
   const titleDict: Record<string, string> = {
     'ランス５Ｄ －ひとりぼっちの女の子－': 'Rance5D ひとりぼっちの女の子',
     'グリザイアの果実 -LE FRUIT DE LA GRISAIA-': 'グリザイアの果実',
+    'ブラック ウルヴス サーガ -ブラッディーナイトメア-': 'Black Wolves Saga -Bloody Nightmare-',
+    'ファミコン探偵倶楽部PartII うしろに立つ少女': 'ファミコン探偵倶楽部 うしろに立つ少女',
     'Rance Ⅹ -決戦-': 'ランス10',
+    'PARTS ─パーツ─': 'PARTS',
   };
+  const userTitleDict = window.VNDB_REVISE_TITLE_DICT || {}
+  if (userTitleDict[title]) {
+    return userTitleDict[title]
+  }
   if (titleDict[title]) {
     return titleDict[title];
   }
@@ -24,7 +36,7 @@ function reviseTitle(title: string) {
       return val;
     }
   }
-  return normalizeQuery(title);
+  return normalizeQueryVNDB(normalizeQuery(title));
 }
 
 function getSearchItem($item: HTMLElement): SearchResult {
@@ -54,9 +66,7 @@ function getSearchItem($item: HTMLElement): SearchResult {
 // 凍京NECRO＜トウキョウ・ネクロ＞
 // https://vndb.org/v5154
 
-export async function searchSubject(
-  subjectInfo: SearchResult
-): Promise<SearchResult> {
+export async function searchSubject(subjectInfo: SearchResult): Promise<SearchResult> {
   let query = normalizeQuery((subjectInfo.name || '').trim());
   if (!query) {
     console.info('Query string is empty');
@@ -86,7 +96,7 @@ export async function searchSubject(
     .map(($item: HTMLElement) => getSearchItem($item));
   searchResult = filterResults(
     rawInfoList,
-    { ...subjectInfo, name: query },
+    subjectInfo,
     {
       releaseDate: true,
       keys: ['name', 'rawName'],
@@ -99,17 +109,10 @@ export async function searchSubject(
   }
 }
 
-export async function searchGameData(
-  info: SearchResult
-): Promise<SearchResult> {
+export async function searchGameData(info: SearchResult): Promise<SearchResult> {
   const result = await searchSubject(info);
   // when score is empty, try to extract score from page
-  if (
-    result &&
-    result.url &&
-    Number(result.count) > 0 &&
-    isNaN(Number(result.score))
-  ) {
+  if (result && result.url && Number(result.count) > 0 && isNaN(Number(result.score))) {
     await sleep(100);
     const rawText = await fetchText(result.url);
     window._parsedEl = new DOMParser().parseFromString(rawText, 'text/html');
@@ -152,16 +155,30 @@ export function getSearchResult(): SearchResult {
       break;
     }
   }
+  let alias = [];
+  const $title = $q('tr.title td:nth-of-type(2)')?.cloneNode(true) as HTMLElement;
+  if ($title) {
+    $title.querySelector('span')?.remove();
+    const enName = $title.textContent.trim();
+    if (enName) {
+      alias.push(enName);
+    }
+  }
   // find alias
   for (const $el of $qa('.vndetails > table tr > td:first-child')) {
     if ($el.textContent.includes('Aliases')) {
-      const alias = $el.nextElementSibling.textContent
-        .split(',')
-        .map((s) => s.trim());
-      alias.unshift(info.name);
-      info.queryNames = alias;
+      // let alias = [info.name];
+      const subTitleRe = /\s-([^-]+?)-$/;
+      if (subTitleRe.test(name)) {
+        const m = name.match(subTitleRe);
+        alias.push(m[1]);
+      }
+      alias.push(...$el.nextElementSibling.textContent.split(',').map((s) => s.trim()));
       break;
     }
+  }
+  if (alias.length > 0) {
+    info.alias = [...new Set(alias)];
   }
   return info;
 }

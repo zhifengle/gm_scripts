@@ -1,8 +1,9 @@
 import { SearchResult } from '../interface/subject';
+import { sleep } from '../utils/async/sleep';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery, normalizeQuery } from '../utils/utils';
-import { filterResults } from './common';
+import { filterResults, searchDataByNames } from './common';
 
 enum ErogamescapeCategory {
   game = 'game',
@@ -13,11 +14,33 @@ enum ErogamescapeCategory {
   character = 'character',
 }
 // https://erogamescape.org/favicon.ico
-export const favicon =
-  'https://www.google.com/s2/favicons?domain=erogamescape.org';
+export const favicon = 'https://www.google.com/s2/favicons?domain=erogamescape.org';
 
 // 'http://erogamescape.org',
 const site_origin = 'https://erogamescape.org';
+
+
+function reviseTitle(title: string) {
+  const titleDict: Record<string, string> = {
+    // @TODO
+  };
+  const userTitleDict = window.EGS_REVISE_TITLE_DICT || {}
+  if (userTitleDict[title]) {
+    return userTitleDict[title]
+  }
+  if (titleDict[title]) {
+    return titleDict[title];
+  }
+  const shortenTitleDict: Record<string, string> = {
+    // @TODO
+  };
+  for (const [key, val] of Object.entries(shortenTitleDict)) {
+    if (title.includes(key)) {
+      return val;
+    }
+  }
+  return title;
+}
 
 function getSearchItem($item: HTMLElement): SearchResult {
   const $title = $item.querySelector('td:nth-child(1) > a');
@@ -69,10 +92,7 @@ export function normalizeQueryEGS(query: string): string {
     .replace(/Ⅸ/g, 'IX')
     .replace(/Ⅹ/g, 'X')
     .replace(/[-－―～〜━\[\]『』~'…！？。]/g, ' ')
-    .replace(
-      /[♥❤☆\/♡★‥○⁉,.【】◆●∽＋‼＿◯※♠×▼％#∞’&!:＇"＊\*＆［］<>＜＞`_「」¨／◇：♪･@＠]/g,
-      ' '
-    )
+    .replace(/[♥❤☆\/♡★‥○⁉,.【】◆●∽＋‼＿◯※♠×▼％#∞’&!:＇"＊\*＆［］<>＜＞`_「」¨／◇：♪･@＠]/g, ' ')
     .replace(/[、，△《》†〇\/·;^‘“”√≪≫＃→♂?%~■‘〈〉Ω♀⇒≒§♀⇒←∬🕊¡Ι≠±『』♨❄—~Σ⇔↑↓‡▽□』〈〉＾]/g, ' ')
     .replace(/[─|+．・]/g, ' ')
     .replace(/°C/g, '℃')
@@ -87,37 +107,30 @@ export function normalizeQueryEGS(query: string): string {
     .replace(/\(.*?\)/g, '')
     .replace(/\（.*?\）/g, ' ')
     .trim();
+  // 	White x Red --->  	White Red
+  newQuery = newQuery.replace(/ x /, ' ');
   newQuery = newQuery.replace(/\s{2,}/g, ' ');
-  return getShortenedQuery(newQuery)
+  // return getShortenedQuery(newQuery);
+  return newQuery;
 }
 
 export async function searchSubject(
   subjectInfo: SearchResult,
   type: ErogamescapeCategory = ErogamescapeCategory.game,
-  uniqueQueryStr: string = ''
+  query: string = ''
 ): Promise<SearchResult> {
-  let query = normalizeQueryEGS((subjectInfo.name || '').trim());
-  query = query.replace(/＜.+＞/, '');
-  if (uniqueQueryStr) {
-    query = uniqueQueryStr;
-  }
-  if (!query) {
-    console.info('Query string is empty');
-    return;
-  }
+  query = query || subjectInfo.name;
   const url = `${site_origin}/~ap2/ero/toukei_kaiseki/kensaku.php?category=${type}&word_category=name&word=${encodeURIComponent(
     query
   )}&mode=normal`;
-  console.info('search subject URL: ', url);
+  console.info('search erogamescape subject URL: ', url);
   const rawText = await fetchText(url);
   const $doc = new DOMParser().parseFromString(rawText, 'text/html');
   const items = $doc.querySelectorAll('#result table tr:not(:first-child)');
-  const rawInfoList: SearchResult[] = [...items].map(($item: HTMLElement) =>
-    getSearchItem($item)
-  );
+  const rawInfoList: SearchResult[] = [...items].map(($item: HTMLElement) => getSearchItem($item));
   const res = filterResults(
     rawInfoList,
-    { ...subjectInfo, name: query },
+    subjectInfo,
     {
       releaseDate: true,
       keys: ['name'],
@@ -132,11 +145,27 @@ export async function searchSubject(
   }
 }
 
-export async function searchGameSubject(
-  info: SearchResult
-): Promise<SearchResult> {
-  const result = await searchSubject(info, ErogamescapeCategory.game);
+export async function searchGameSubject(info: SearchResult): Promise<SearchResult> {
+  let query = normalizeQueryEGS((info.name || '').trim());
+  let res = await searchAndFollow(info, query);
+  if (res) {
+    return res;
+  }
+  await sleep(100);
+  query = getShortenedQuery(query);
+  res = await searchAndFollow(info, query);
+  if (res) {
+    return res;
+  }
+  await sleep(100);
+  return await searchDataByNames(info, searchAndFollow);
+}
+
+// search and follow the URL of search result
+export async function searchAndFollow(info: SearchResult, uniqueQueryStr: string = ''): Promise<SearchResult> {
+  const result = await searchSubject(info, ErogamescapeCategory.game, uniqueQueryStr);
   if (result && result.url) {
+    // await sleep(50)
     const rawText = await fetchText(result.url);
     window._parsedEl = new DOMParser().parseFromString(rawText, 'text/html');
     const res = getSearchResult();
@@ -150,9 +179,16 @@ export async function searchGameSubject(
 
 export function getSearchResult(): SearchResult {
   const $title = $q('#soft-title > .bold');
-  const rawName = $title.textContent.trim()
+  const rawName = $title.textContent.trim();
+  const title = reviseTitle(rawName)
+  let name = rawName
+  if (title !== rawName) {
+    name = title
+  } else {
+    name = normalizeQuery(rawName)
+  }
   const info: SearchResult = {
-    name: normalizeQuery(rawName),
+    name,
     rawName,
     score: $q('#average > td')?.textContent.trim() ?? 0,
     count: $q('#count > td')?.textContent.trim() ?? 0,

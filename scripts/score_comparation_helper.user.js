@@ -18,7 +18,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.17
+// @version     0.1.18
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -379,7 +379,7 @@
           .replace(/\（.*?\）/g, ' ')
           .replace(/＜.+?＞/, '')
           .replace(/<.+?>/, '')
-          .replace(/-.+?-/, '')
+          .replace(/\s-[^-]+?-$/, '')
           .trim();
       // newQuery = replaceCharToSpace(newQuery);
       newQuery = newQuery.replace(/\s{2,}/g, ' ');
@@ -540,15 +540,15 @@
    * @returns Promise<SearchResult>
    */
   async function searchDataByNames(subjectInfo, searchFn) {
-      let query = (subjectInfo.name || '').trim();
-      let queryList = [query];
-      if (subjectInfo.queryNames) {
-          queryList = subjectInfo.queryNames;
+      let queryList = [];
+      if (subjectInfo.alias) {
+          queryList = subjectInfo.alias;
       }
       for (const s of queryList) {
           const res = await searchFn({
               ...subjectInfo,
               name: s,
+              alias: undefined,
           });
           if (res) {
               return res;
@@ -794,6 +794,46 @@
       Protocol["http"] = "http";
       Protocol["https"] = "https";
   })(Protocol || (Protocol = {}));
+  function getSearchItem$4($item) {
+      let $subjectTitle = $item.querySelector('h3>a.l');
+      let info = {
+          name: $subjectTitle.textContent.trim(),
+          // url 没有协议和域名
+          url: $subjectTitle.getAttribute('href'),
+          greyName: $item.querySelector('h3>.grey')
+              ? $item.querySelector('h3>.grey').textContent.trim()
+              : '',
+      };
+      let matchDate = $item
+          .querySelector('.info')
+          .textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
+      if (matchDate) {
+          info.releaseDate = dealDate(matchDate[0]);
+      }
+      let $rateInfo = $item.querySelector('.rateInfo');
+      if ($rateInfo) {
+          if ($rateInfo.querySelector('.fade')) {
+              info.score = $rateInfo.querySelector('.fade').textContent;
+              info.count = $rateInfo
+                  .querySelector('.tip_j')
+                  .textContent.replace(/[^0-9]/g, '');
+          }
+          else {
+              info.score = '0';
+              info.count = '少于10';
+          }
+      }
+      else {
+          info.score = '0';
+          info.count = '0';
+      }
+      return info;
+  }
+  function extractInfoList($doc) {
+      return [...$doc.querySelectorAll('#browserItemList>li')].map($item => {
+          return getSearchItem$4($item);
+      });
+  }
   /**
    * 处理搜索页面的 html
    * @param info 字符串 html
@@ -877,8 +917,9 @@
       }
       const url = `${bgmHost}/subject_search/${encodeURIComponent(query)}?cat=${type}`;
       console.info('search bangumi subject URL: ', url);
-      const rawText = await fetchText(url);
-      const rawInfoList = dealSearchResults(rawText)[0] || [];
+      const content = await fetchText(url);
+      const $doc = new DOMParser().parseFromString(content, 'text/html');
+      const rawInfoList = extractInfoList($doc);
       // 使用指定搜索字符串如 ISBN 搜索时, 并且结果只有一条时，不再使用名称过滤
       if (uniqueQueryStr && rawInfoList && rawInfoList.length === 1) {
           return rawInfoList[0];
@@ -1615,6 +1656,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       }
       let searchResult;
       const options = {
+          releaseDate: true,
           keys: ['name'],
       };
       const url = `https://2dfan.org/subjects/search?keyword=${encodeURIComponent(query)}`;
@@ -1723,12 +1765,23 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   };
 
   const favicon$1 = 'https://vndb.org/favicon.ico';
-  function reviseTitle(title) {
+  function normalizeQueryVNDB(str) {
+      // fixed: White x Red
+      return str.replace(' x ', ' ');
+  }
+  function reviseTitle$1(title) {
       const titleDict = {
           'ランス５Ｄ －ひとりぼっちの女の子－': 'Rance5D ひとりぼっちの女の子',
           'グリザイアの果実 -LE FRUIT DE LA GRISAIA-': 'グリザイアの果実',
+          'ブラック ウルヴス サーガ -ブラッディーナイトメア-': 'Black Wolves Saga -Bloody Nightmare-',
+          'ファミコン探偵倶楽部PartII うしろに立つ少女': 'ファミコン探偵倶楽部 うしろに立つ少女',
           'Rance Ⅹ -決戦-': 'ランス10',
+          'PARTS ─パーツ─': 'PARTS',
       };
+      const userTitleDict = window.VNDB_REVISE_TITLE_DICT || {};
+      if (userTitleDict[title]) {
+          return userTitleDict[title];
+      }
       if (titleDict[title]) {
           return titleDict[title];
       }
@@ -1740,7 +1793,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
               return val;
           }
       }
-      return normalizeQuery(title);
+      return normalizeQueryVNDB(normalizeQuery(title));
   }
   function getSearchItem$2($item) {
       const $title = $item.querySelector('.tc_title > a');
@@ -1748,7 +1801,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       const $rating = $item.querySelector('.tc_rating');
       const rawName = $title.getAttribute('title');
       const info = {
-          name: reviseTitle(rawName),
+          name: reviseTitle$1(rawName),
           rawName,
           url: href,
           count: 0,
@@ -1795,7 +1848,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       const rawInfoList = Array.prototype.slice
           .call(items)
           .map(($item) => getSearchItem$2($item));
-      searchResult = filterResults(rawInfoList, { ...subjectInfo, name: query }, {
+      searchResult = filterResults(rawInfoList, subjectInfo, {
           releaseDate: true,
           keys: ['name', 'rawName'],
       }, true);
@@ -1807,10 +1860,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   async function searchGameData(info) {
       const result = await searchSubject$1(info);
       // when score is empty, try to extract score from page
-      if (result &&
-          result.url &&
-          Number(result.count) > 0 &&
-          isNaN(Number(result.score))) {
+      if (result && result.url && Number(result.count) > 0 && isNaN(Number(result.score))) {
           await sleep(100);
           const rawText = await fetchText(result.url);
           window._parsedEl = new DOMParser().parseFromString(rawText, 'text/html');
@@ -1829,7 +1879,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           name = $q('tr.title td:nth-of-type(2) > span').textContent;
       }
       const info = {
-          name: reviseTitle(name),
+          name: reviseTitle$1(name),
           rawName: name,
           score: $q('.rank-info.control-group .score')?.textContent.trim() ?? 0,
           count: 0,
@@ -1853,16 +1903,30 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
               break;
           }
       }
+      let alias = [];
+      const $title = $q('tr.title td:nth-of-type(2)')?.cloneNode(true);
+      if ($title) {
+          $title.querySelector('span')?.remove();
+          const enName = $title.textContent.trim();
+          if (enName) {
+              alias.push(enName);
+          }
+      }
       // find alias
       for (const $el of $qa('.vndetails > table tr > td:first-child')) {
           if ($el.textContent.includes('Aliases')) {
-              const alias = $el.nextElementSibling.textContent
-                  .split(',')
-                  .map((s) => s.trim());
-              alias.unshift(info.name);
-              info.queryNames = alias;
+              // let alias = [info.name];
+              const subTitleRe = /\s-([^-]+?)-$/;
+              if (subTitleRe.test(name)) {
+                  const m = name.match(subTitleRe);
+                  alias.push(m[1]);
+              }
+              alias.push(...$el.nextElementSibling.textContent.split(',').map((s) => s.trim()));
               break;
           }
+      }
+      if (alias.length > 0) {
+          info.alias = [...new Set(alias)];
       }
       return info;
   }
@@ -1922,6 +1986,27 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   const favicon = 'https://www.google.com/s2/favicons?domain=erogamescape.org';
   // 'http://erogamescape.org',
   const site_origin = 'https://erogamescape.org';
+  function reviseTitle(title) {
+      const titleDict = {
+      // @TODO
+      };
+      const userTitleDict = window.EGS_REVISE_TITLE_DICT || {};
+      if (userTitleDict[title]) {
+          return userTitleDict[title];
+      }
+      if (titleDict[title]) {
+          return titleDict[title];
+      }
+      const shortenTitleDict = {
+      // @TODO
+      };
+      for (const [key, val] of Object.entries(shortenTitleDict)) {
+          if (title.includes(key)) {
+              return val;
+          }
+      }
+      return title;
+  }
   function getSearchItem$1($item) {
       const $title = $item.querySelector('td:nth-child(1) > a');
       const href = $title.getAttribute('href');
@@ -1985,26 +2070,21 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           .replace(/\(.*?\)/g, '')
           .replace(/\（.*?\）/g, ' ')
           .trim();
+      // 	White x Red --->  	White Red
+      newQuery = newQuery.replace(/ x /, ' ');
       newQuery = newQuery.replace(/\s{2,}/g, ' ');
-      return getShortenedQuery(newQuery);
+      // return getShortenedQuery(newQuery);
+      return newQuery;
   }
-  async function searchSubject(subjectInfo, type = ErogamescapeCategory.game, uniqueQueryStr = '') {
-      let query = normalizeQueryEGS((subjectInfo.name || '').trim());
-      query = query.replace(/＜.+＞/, '');
-      if (uniqueQueryStr) {
-          query = uniqueQueryStr;
-      }
-      if (!query) {
-          console.info('Query string is empty');
-          return;
-      }
+  async function searchSubject(subjectInfo, type = ErogamescapeCategory.game, query = '') {
+      query = query || subjectInfo.name;
       const url = `${site_origin}/~ap2/ero/toukei_kaiseki/kensaku.php?category=${type}&word_category=name&word=${encodeURIComponent(query)}&mode=normal`;
-      console.info('search subject URL: ', url);
+      console.info('search erogamescape subject URL: ', url);
       const rawText = await fetchText(url);
       const $doc = new DOMParser().parseFromString(rawText, 'text/html');
       const items = $doc.querySelectorAll('#result table tr:not(:first-child)');
       const rawInfoList = [...items].map(($item) => getSearchItem$1($item));
-      const res = filterResults(rawInfoList, { ...subjectInfo, name: query }, {
+      const res = filterResults(rawInfoList, subjectInfo, {
           releaseDate: true,
           keys: ['name'],
       }, true);
@@ -2016,8 +2096,25 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       }
   }
   async function searchGameSubject$1(info) {
-      const result = await searchSubject(info, ErogamescapeCategory.game);
+      let query = normalizeQueryEGS((info.name || '').trim());
+      let res = await searchAndFollow(info, query);
+      if (res) {
+          return res;
+      }
+      await sleep(100);
+      query = getShortenedQuery(query);
+      res = await searchAndFollow(info, query);
+      if (res) {
+          return res;
+      }
+      await sleep(100);
+      return await searchDataByNames(info, searchAndFollow);
+  }
+  // search and follow the URL of search result
+  async function searchAndFollow(info, uniqueQueryStr = '') {
+      const result = await searchSubject(info, ErogamescapeCategory.game, uniqueQueryStr);
       if (result && result.url) {
+          // await sleep(50)
           const rawText = await fetchText(result.url);
           window._parsedEl = new DOMParser().parseFromString(rawText, 'text/html');
           const res = getSearchResult$1();
@@ -2032,8 +2129,16 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   function getSearchResult$1() {
       const $title = $q('#soft-title > .bold');
       const rawName = $title.textContent.trim();
+      const title = reviseTitle(rawName);
+      let name = rawName;
+      if (title !== rawName) {
+          name = title;
+      }
+      else {
+          name = normalizeQuery(rawName);
+      }
       const info = {
-          name: normalizeQuery(rawName),
+          name,
           rawName,
           score: $q('#average > td')?.textContent.trim() ?? 0,
           count: $q('#count > td')?.textContent.trim() ?? 0,
@@ -2072,9 +2177,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       genSubjectUrl(id) {
           return `https://erogamescape.org/~ap2/ero/toukei_kaiseki/game.php?game=${id}`;
       },
-      // getSearchResult: searchGameSubject
-      // try multiple query
-      getSearchResult: (info) => searchDataByNames(info, searchGameSubject$1),
+      getSearchResult: searchGameSubject$1,
       getScoreInfo: getSearchResult$1,
       insertScoreInfo: function (page, info) {
           const title = normalizeQueryEGS(this.getScoreInfo().name);
@@ -2325,6 +2428,13 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       initSiteConfig();
       refreshScore(curPage, pages, force);
   }
+  // user config for revising title
+  window.VNDB_REVISE_TITLE_DICT = {
+  // your config
+  };
+  window.EGS_REVISE_TITLE_DICT = {
+  // your config
+  };
   initPage(animePages);
   !g_hide_game_score_flag && initPage(gamePages);
 

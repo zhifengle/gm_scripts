@@ -178,15 +178,15 @@ export async function searchDataByNames(
   subjectInfo: SearchResult,
   searchFn: (info: SearchResult) => Promise<SearchResult>
 ): Promise<SearchResult> {
-  let query = (subjectInfo.name || '').trim();
-  let queryList: string[] = [query];
-  if (subjectInfo.queryNames) {
-    queryList = subjectInfo.queryNames;
+  let queryList: string[] = [];
+  if (subjectInfo.alias) {
+    queryList = subjectInfo.alias;
   }
   for (const s of queryList) {
     const res = await searchFn({
       ...subjectInfo,
       name: s,
+      alias: undefined,
     });
     if (res) {
       return res;

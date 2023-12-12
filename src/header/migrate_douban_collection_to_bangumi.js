@@ -18,5 +18,5 @@
 // @grant       GM_getValue
 // @grant       GM_getResourceText
 // @require     https://cdn.staticfile.org/fuse.js/6.4.0/fuse.min.js
-// @resource    bangumiDataURL https://unpkg.com/bangumi-data@0.3/dist/data.json
+// @resource    bangumiDataURL https://registry.npmmirror.com/bangumi-data/latest/files/dist/data.json
 // ==/UserScript==

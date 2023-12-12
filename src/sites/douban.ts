@@ -100,10 +100,10 @@ export function convertItemInfo($item: HTMLElement): SubjectItem {
     collectInfo.tags = $collectInfo
       .querySelector('li .tags')
       ?.textContent.replace('标签: ', '')
-      .trim();
+      .trim() ?? '';
     collectInfo.comment = $collectInfo
       .querySelector('li .comment')
-      ?.textContent.trim();
+      ?.textContent.trim() ?? '';
     const $rating = $collectInfo.querySelector('[class^=rating]');
     if ($rating) {
       const m = $rating.getAttribute('class').match(/\d/);

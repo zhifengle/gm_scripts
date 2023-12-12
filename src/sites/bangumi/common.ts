@@ -2,6 +2,7 @@ import { dealDate } from '../../utils/utils';
 import { fetchText } from '../../utils/fetchData';
 import { sleep } from '../../utils/async/sleep';
 import {
+  CollectionInfo,
   IInterestData,
   InterestType,
   InterestTypeId,
@@ -149,7 +150,7 @@ export function convertItemInfo($item: HTMLElement): SubjectItem {
     itemSubject.rank = $rank.textContent.replace('Rank', '').trim();
   }
   const $collectInfo = $item.querySelector('.collectInfo');
-  const collectInfo: any = {};
+  const collectInfo = {} as CollectionInfo;
   const $comment = $item.querySelector('#comment_box');
   if ($comment) {
     collectInfo.comment = $comment.textContent.trim();
@@ -172,6 +173,8 @@ export function convertItemInfo($item: HTMLElement): SubjectItem {
     }
   }
   if (Object.keys(collectInfo).length) {
+    collectInfo.tags = collectInfo.tags || ''
+    collectInfo.comment = collectInfo.comment || ''
     itemSubject.collectInfo = collectInfo;
   }
   const $cover = $item.querySelector('.subjectCover img');

@@ -9,7 +9,7 @@
 // @include     https://search.douban.com/movie/subject_search*
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
-// @version     0.0.6
+// @version     0.0.7
 // @run-at      document-end
 // @grant       GM_registerMenuCommand
 // @grant       GM_xmlhttpRequest

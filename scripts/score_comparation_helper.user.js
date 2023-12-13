@@ -419,7 +419,7 @@
               parts = [parts[i]];
               break;
           }
-          if (isEnglishWord && englishWordCount == 2) {
+          if (isEnglishWord && englishWordCount >= 2 && parts.slice(0, i + 1).join('').length > 2) {
               parts = parts.slice(0, i + 1);
               break;
           }
@@ -1922,19 +1922,20 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
               alias.push(enName);
           }
       }
+      const subTitleRe = /\s-([^-]+?)-$/;
+      if (subTitleRe.test(name)) {
+          const m = name.match(subTitleRe);
+          alias.push(name.split(' ')[0]);
+          alias.push(m[1]);
+      }
+      let m = name.match(/\s─([^─]+?)─$/);
+      if (m) {
+          alias.push(name.split(' ')[0]);
+          alias.push(m[1]);
+      }
       // find alias
       for (const $el of $qa('.vndetails > table tr > td:first-child')) {
           if ($el.textContent.includes('Aliases')) {
-              // let alias = [info.name];
-              const subTitleRe = /\s-([^-]+?)-$/;
-              if (subTitleRe.test(name)) {
-                  const m = name.match(subTitleRe);
-                  alias.push(m[1]);
-              }
-              let m = name.match(/\s─([^─]+?)─$/);
-              if (m) {
-                  alias.push(m[1]);
-              }
               alias.push(...$el.nextElementSibling.textContent.split(',').map((s) => s.trim()));
               break;
           }

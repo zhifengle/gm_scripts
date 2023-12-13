@@ -173,19 +173,20 @@ export function getSearchResult(): SearchResult {
       alias.push(enName);
     }
   }
+  const subTitleRe = /\s-([^-]+?)-$/;
+  if (subTitleRe.test(name)) {
+    const m = name.match(subTitleRe);
+    alias.push(name.split(' ')[0])
+    alias.push(m[1]);
+  }
+  let m = name.match(/\s─([^─]+?)─$/)
+  if (m) {
+    alias.push(name.split(' ')[0])
+    alias.push(m[1])
+  }
   // find alias
   for (const $el of $qa('.vndetails > table tr > td:first-child')) {
     if ($el.textContent.includes('Aliases')) {
-      // let alias = [info.name];
-      const subTitleRe = /\s-([^-]+?)-$/;
-      if (subTitleRe.test(name)) {
-        const m = name.match(subTitleRe);
-        alias.push(m[1]);
-      }
-      let m = name.match(/\s─([^─]+?)─$/)
-      if (m) {
-        alias.push(m[1])
-      }
       alias.push(...$el.nextElementSibling.textContent.split(',').map((s) => s.trim()));
       break;
     }

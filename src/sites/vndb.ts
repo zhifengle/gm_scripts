@@ -2,12 +2,16 @@ import { SearchResult, Subject } from '../interface/subject';
 import { sleep } from '../utils/async/sleep';
 import { $q, $qa } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
-import { getShortenedQuery, normalizeQuery } from '../utils/utils';
+import { getShortenedQuery, normalizeEditionName, normalizeQuery } from '../utils/utils';
 import { filterResults } from './common';
 
 export const favicon = 'https://vndb.org/favicon.ico';
 
 function normalizeQueryVNDB(str: string) {
+  // fixed: カオスQueen遼子4 森山由梨＆郁美姉妹併呑編
+  if (/.+?\s[^\s]+$/.test(str)) {
+    return str.replace(/\d\s.+$/, '')
+  }
   // fixed: White x Red
   return str.replace(' x ', ' ');
 }
@@ -15,6 +19,7 @@ function normalizeQueryVNDB(str: string) {
 function reviseTitle(title: string) {
   const titleDict: Record<string, string> = {
     'ランス５Ｄ －ひとりぼっちの女の子－': 'Rance5D ひとりぼっちの女の子',
+    'ＲａｇｎａｒｏｋＩｘｃａ': 'Ragnarok Ixca',
     'グリザイアの果実 -LE FRUIT DE LA GRISAIA-': 'グリザイアの果実',
     'ブラック ウルヴス サーガ -ブラッディーナイトメア-': 'Black Wolves Saga -Bloody Nightmare-',
     'ファミコン探偵倶楽部PartII うしろに立つ少女': 'ファミコン探偵倶楽部 うしろに立つ少女',
@@ -36,7 +41,7 @@ function reviseTitle(title: string) {
       return val;
     }
   }
-  return normalizeQueryVNDB(normalizeQuery(title));
+  return normalizeQueryVNDB(title);
 }
 
 function getSearchItem($item: HTMLElement): SearchResult {
@@ -131,7 +136,7 @@ export function getSearchResult(): SearchResult {
     name = $q('tr.title td:nth-of-type(2) > span').textContent;
   }
   const info: SearchResult = {
-    name: reviseTitle(name),
+    name,
     rawName: name,
     score: $q('.rank-info.control-group .score')?.textContent.trim() ?? 0,
     count: 0,
@@ -152,6 +157,10 @@ export function getSearchResult(): SearchResult {
   for (const elem of $qa('table.releases tr')) {
     if (elem.querySelector('.icon-rtcomplete')) {
       info.releaseDate = elem.querySelector<HTMLElement>('.tc1')?.innerText;
+      const jaTitle = elem.querySelector<HTMLElement>('.tc4 > [lang="ja-Latn"]')?.title
+      if (jaTitle && !jaTitle.includes(info.name)) {
+        info.name = normalizeEditionName(jaTitle)
+      }
       break;
     }
   }
@@ -173,6 +182,10 @@ export function getSearchResult(): SearchResult {
         const m = name.match(subTitleRe);
         alias.push(m[1]);
       }
+      let m = name.match(/\s─([^─]+?)─$/)
+      if (m) {
+        alias.push(m[1])
+      }
       alias.push(...$el.nextElementSibling.textContent.split(',').map((s) => s.trim()));
       break;
     }
@@ -180,5 +193,7 @@ export function getSearchResult(): SearchResult {
   if (alias.length > 0) {
     info.alias = [...new Set(alias)];
   }
+  // final step
+  info.name = reviseTitle(info.name)
   return info;
 }

@@ -3,7 +3,7 @@ import { sleep } from '../utils/async/sleep';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery, normalizeQuery } from '../utils/utils';
-import { filterResults, searchDataByNames } from './common';
+import { filterResults, filterResultsByMonth, searchDataByNames } from './common';
 
 enum ErogamescapeCategory {
   game = 'game',
@@ -128,15 +128,20 @@ export async function searchSubject(
   const $doc = new DOMParser().parseFromString(rawText, 'text/html');
   const items = $doc.querySelectorAll('#result table tr:not(:first-child)');
   const rawInfoList: SearchResult[] = [...items].map(($item: HTMLElement) => getSearchItem($item));
-  const res = filterResults(
-    rawInfoList,
-    subjectInfo,
-    {
-      releaseDate: true,
-      keys: ['name'],
-    },
-    true
-  );
+  let res: SearchResult;
+  if (query) {
+    res = filterResultsByMonth(rawInfoList, subjectInfo)
+  } else {
+    res = filterResults(
+      rawInfoList,
+      subjectInfo,
+      {
+        releaseDate: true,
+        keys: ['name'],
+      },
+      true
+    );
+  }
   console.info(`Search result of ${query} on erogamescape: `, res);
   if (res && res.url) {
     // 相对路径需要设置一下
@@ -158,7 +163,17 @@ export async function searchGameSubject(info: SearchResult): Promise<SearchResul
     return res;
   }
   await sleep(100);
-  return await searchDataByNames(info, searchAndFollow);
+  let queryList: string[] = [];
+  if (info.alias) {
+    queryList = info.alias;
+  }
+  for (const s of queryList) {
+    const res = await searchAndFollow(info, s);
+    if (res) {
+      return res;
+    }
+    await sleep(200);
+  }
 }
 
 // search and follow the URL of search result

@@ -24,17 +24,11 @@ export function formatDate(time: any, fmt: string = 'yyyy-MM-dd') {
     S: date.getMilliseconds(), //毫秒
   };
   if (/(y+)/i.test(fmt)) {
-    fmt = fmt.replace(
-      RegExp.$1,
-      (date.getFullYear() + '').substr(4 - RegExp.$1.length)
-    );
+    fmt = fmt.replace(RegExp.$1, (date.getFullYear() + '').substr(4 - RegExp.$1.length));
   }
   for (var k in o) {
     if (new RegExp('(' + k + ')', 'i').test(fmt)) {
-      fmt = fmt.replace(
-        RegExp.$1,
-        RegExp.$1.length == 1 ? o[k] : ('00' + o[k]).substr(('' + o[k]).length)
-      );
+      fmt = fmt.replace(RegExp.$1, RegExp.$1.length == 1 ? o[k] : ('00' + o[k]).substr(('' + o[k]).length));
     }
   }
   return fmt;
@@ -65,21 +59,14 @@ export function dealDate(dataStr: string): string {
     .join('-');
 }
 
-export function isEqualDate(
-  d1: string,
-  d2: string,
-  type: 'y' | 'm' | 'd' = 'd'
-): boolean {
+export function isEqualDate(d1: string, d2: string, type: 'y' | 'm' | 'd' = 'd'): boolean {
   const resultDate = new Date(d1);
   const originDate = new Date(d2);
   if (type === 'y') {
     return resultDate.getFullYear() === originDate.getFullYear();
   }
   if (type === 'm') {
-    return (
-      resultDate.getFullYear() === originDate.getFullYear() &&
-      resultDate.getMonth() === originDate.getMonth()
-    );
+    return resultDate.getFullYear() === originDate.getFullYear() && resultDate.getMonth() === originDate.getMonth();
   }
   if (
     resultDate.getFullYear() === originDate.getFullYear() &&
@@ -93,10 +80,7 @@ export function isEqualDate(
 export function isEqualMonth(d1: string, d2: string): boolean {
   const resultDate = new Date(d1);
   const originDate = new Date(d2);
-  if (
-    resultDate.getFullYear() === originDate.getFullYear() &&
-    resultDate.getMonth() === originDate.getMonth()
-  ) {
+  if (resultDate.getFullYear() === originDate.getFullYear() && resultDate.getMonth() === originDate.getMonth()) {
     return true;
   }
   return false;
@@ -125,15 +109,12 @@ export function replaceCharToSpace(str: string): string {
   // Miscellaneous Symbols, U+2600 - U+26FF
   // Halfwidth and Fullwidth Forms, U+FF00 - U+FFEF
   // CJK Symbols and Punctuation, U+3000 - U+303F
-  return str.replace(
-    /[\u0080-\u2E7F\u3000-\u303f\uff00-\uffef]/g,
-    function (s) {
-      if (/[Ａ-Ｚａ-ｚ０-９々〆〤]/.test(s)) {
-        return s;
-      }
-      return ' ';
+  return str.replace(/[\u0080-\u2E7F\u3000-\u303f\uff00-\uffef]/g, function (s) {
+    if (/[Ａ-Ｚａ-ｚ０-９々〆〤]/.test(s)) {
+      return s;
     }
-  );
+    return ' ';
+  });
 }
 
 export function normalizeQuery(query: string): string {
@@ -178,7 +159,7 @@ export function normalizeQuery(query: string): string {
   newQuery = newQuery.replace(/\s{2,}/g, ' ');
   // game: 14 -one & four or the other meaning-
   if (/^\d+$/.test(newQuery)) {
-    return query
+    return query;
   }
   return newQuery;
 }
@@ -197,10 +178,9 @@ export function getShortenedQuery(query: string): string {
     if (isEnglishWord) {
       englishWordCount++;
     } else {
-      isJapaneseWord =
-        /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ーa-zA-Z0-9ａ-ｚＡ-Ｚ０-９々〆〤]/u.test(
-          parts[i]
-        );
+      isJapaneseWord = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ーa-zA-Z0-9ａ-ｚＡ-Ｚ０-９々〆〤]/u.test(
+        parts[i]
+      );
       if (isJapaneseWord) {
         nonEnglishDetected = true;
         japaneseWordCount++;
@@ -208,10 +188,11 @@ export function getShortenedQuery(query: string): string {
     }
 
     if (nonEnglishDetected && englishWordCount < 2) {
-      return parts[i]
+      parts = [parts[i]];
+      break;
     }
 
-    if (isEnglishWord && englishWordCount == 2) {
+    if (isEnglishWord && englishWordCount >= 2 && parts.slice(0, i + 1).join('').length > 2) {
       parts = parts.slice(0, i + 1);
       break;
     }
@@ -230,5 +211,16 @@ export function getShortenedQuery(query: string): string {
   }
 
   newQuery = parts.join(' ');
+  // xxx1  bb2, cc3 ----> xx1, bb, cc
+  if (/[^\d]+\d+$/.test(newQuery)) {
+    return newQuery.replace(/\d+$/, '');
+  }
   return newQuery;
+}
+
+export function normalizeEditionName(str: string): string {
+  return str.replace(
+    /\s[^ ]*?(スペシャルプライス版|限定版|通常版|廉価版|復刻版|初回.*?版|描き下ろし).*?$|＜.*＞$/g,
+    ''
+  );
 }

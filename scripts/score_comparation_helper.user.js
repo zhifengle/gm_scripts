@@ -18,7 +18,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.18
+// @version     0.1.19
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -333,12 +333,19 @@
           return resultDate.getFullYear() === originDate.getFullYear();
       }
       if (type === 'm') {
-          return (resultDate.getFullYear() === originDate.getFullYear() &&
-              resultDate.getMonth() === originDate.getMonth());
+          return resultDate.getFullYear() === originDate.getFullYear() && resultDate.getMonth() === originDate.getMonth();
       }
       if (resultDate.getFullYear() === originDate.getFullYear() &&
           resultDate.getMonth() === originDate.getMonth() &&
           resultDate.getDate() === originDate.getDate()) {
+          return true;
+      }
+      return false;
+  }
+  function isEqualMonth(d1, d2) {
+      const resultDate = new Date(d1);
+      const originDate = new Date(d2);
+      if (resultDate.getFullYear() === originDate.getFullYear() && resultDate.getMonth() === originDate.getMonth()) {
           return true;
       }
       return false;
@@ -402,15 +409,15 @@
               englishWordCount++;
           }
           else {
-              isJapaneseWord =
-                  /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ーa-zA-Z0-9ａ-ｚＡ-Ｚ０-９々〆〤]/u.test(parts[i]);
+              isJapaneseWord = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ーa-zA-Z0-9ａ-ｚＡ-Ｚ０-９々〆〤]/u.test(parts[i]);
               if (isJapaneseWord) {
                   nonEnglishDetected = true;
                   japaneseWordCount++;
               }
           }
           if (nonEnglishDetected && englishWordCount < 2) {
-              return parts[i];
+              parts = [parts[i]];
+              break;
           }
           if (isEnglishWord && englishWordCount == 2) {
               parts = parts.slice(0, i + 1);
@@ -430,7 +437,14 @@
           }
       }
       newQuery = parts.join(' ');
+      // xxx1  bb2, cc3 ----> xx1, bb, cc
+      if (/[^\d]+\d+$/.test(newQuery)) {
+          return newQuery.replace(/\d+$/, '');
+      }
       return newQuery;
+  }
+  function normalizeEditionName(str) {
+      return str.replace(/\s[^ ]*?(スペシャルプライス版|限定版|通常版|廉価版|復刻版|初回.*?版|描き下ろし).*?$|＜.*＞$/g, '');
   }
 
   const SEARCH_RESULT = 'search_result';
@@ -512,6 +526,16 @@
           }
       }
   }
+  function filterResultsByMonth(items, info) {
+      const list = items.filter(item => isEqualMonth(item.releaseDate, info.releaseDate));
+      if (list.length === 1) {
+          return list[0];
+      }
+      const obj = list.find((item) => isEqualDate(item.releaseDate, info.releaseDate));
+      if (obj) {
+          return obj;
+      }
+  }
   async function getSearchResultByGM() {
       return new Promise((resolve, reject) => {
           const listenId = window.gm_val_listen_id;
@@ -532,29 +556,6 @@
               reject('mismatch timestamp');
           });
       });
-  }
-  /**
-   * search data by queryNames
-   * @param subjectInfo SearchResult
-   * @param searchFn
-   * @returns Promise<SearchResult>
-   */
-  async function searchDataByNames(subjectInfo, searchFn) {
-      let queryList = [];
-      if (subjectInfo.alias) {
-          queryList = subjectInfo.alias;
-      }
-      for (const s of queryList) {
-          const res = await searchFn({
-              ...subjectInfo,
-              name: s,
-              alias: undefined,
-          });
-          if (res) {
-              return res;
-          }
-          await sleep(200);
-      }
   }
 
   async function searchAnimeData$1(subjectInfo) {
@@ -1766,12 +1767,17 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
 
   const favicon$1 = 'https://vndb.org/favicon.ico';
   function normalizeQueryVNDB(str) {
+      // fixed: カオスQueen遼子4 森山由梨＆郁美姉妹併呑編
+      if (/.+?\s[^\s]+$/.test(str)) {
+          return str.replace(/\d\s.+$/, '');
+      }
       // fixed: White x Red
       return str.replace(' x ', ' ');
   }
   function reviseTitle$1(title) {
       const titleDict = {
           'ランス５Ｄ －ひとりぼっちの女の子－': 'Rance5D ひとりぼっちの女の子',
+          'ＲａｇｎａｒｏｋＩｘｃａ': 'Ragnarok Ixca',
           'グリザイアの果実 -LE FRUIT DE LA GRISAIA-': 'グリザイアの果実',
           'ブラック ウルヴス サーガ -ブラッディーナイトメア-': 'Black Wolves Saga -Bloody Nightmare-',
           'ファミコン探偵倶楽部PartII うしろに立つ少女': 'ファミコン探偵倶楽部 うしろに立つ少女',
@@ -1793,7 +1799,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
               return val;
           }
       }
-      return normalizeQueryVNDB(normalizeQuery(title));
+      return normalizeQueryVNDB(title);
   }
   function getSearchItem$2($item) {
       const $title = $item.querySelector('.tc_title > a');
@@ -1879,7 +1885,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           name = $q('tr.title td:nth-of-type(2) > span').textContent;
       }
       const info = {
-          name: reviseTitle$1(name),
+          name,
           rawName: name,
           score: $q('.rank-info.control-group .score')?.textContent.trim() ?? 0,
           count: 0,
@@ -1900,6 +1906,10 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       for (const elem of $qa('table.releases tr')) {
           if (elem.querySelector('.icon-rtcomplete')) {
               info.releaseDate = elem.querySelector('.tc1')?.innerText;
+              const jaTitle = elem.querySelector('.tc4 > [lang="ja-Latn"]')?.title;
+              if (jaTitle && !jaTitle.includes(info.name)) {
+                  info.name = normalizeEditionName(jaTitle);
+              }
               break;
           }
       }
@@ -1921,6 +1931,10 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
                   const m = name.match(subTitleRe);
                   alias.push(m[1]);
               }
+              let m = name.match(/\s─([^─]+?)─$/);
+              if (m) {
+                  alias.push(m[1]);
+              }
               alias.push(...$el.nextElementSibling.textContent.split(',').map((s) => s.trim()));
               break;
           }
@@ -1928,6 +1942,8 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       if (alias.length > 0) {
           info.alias = [...new Set(alias)];
       }
+      // final step
+      info.name = reviseTitle$1(info.name);
       return info;
   }
 
@@ -2084,10 +2100,16 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       const $doc = new DOMParser().parseFromString(rawText, 'text/html');
       const items = $doc.querySelectorAll('#result table tr:not(:first-child)');
       const rawInfoList = [...items].map(($item) => getSearchItem$1($item));
-      const res = filterResults(rawInfoList, subjectInfo, {
-          releaseDate: true,
-          keys: ['name'],
-      }, true);
+      let res;
+      if (query) {
+          res = filterResultsByMonth(rawInfoList, subjectInfo);
+      }
+      else {
+          res = filterResults(rawInfoList, subjectInfo, {
+              releaseDate: true,
+              keys: ['name'],
+          }, true);
+      }
       console.info(`Search result of ${query} on erogamescape: `, res);
       if (res && res.url) {
           // 相对路径需要设置一下
@@ -2108,7 +2130,17 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           return res;
       }
       await sleep(100);
-      return await searchDataByNames(info, searchAndFollow);
+      let queryList = [];
+      if (info.alias) {
+          queryList = info.alias;
+      }
+      for (const s of queryList) {
+          const res = await searchAndFollow(info, s);
+          if (res) {
+              return res;
+          }
+          await sleep(200);
+      }
   }
   // search and follow the URL of search result
   async function searchAndFollow(info, uniqueQueryStr = '') {

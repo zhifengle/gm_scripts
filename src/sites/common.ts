@@ -2,7 +2,7 @@ import { SEARCH_RESULT } from '../contants';
 import { AllSubject, SearchResult } from '../interface/subject';
 import { InterestType, InterestTypeId, MsgResponse } from '../interface/types';
 import { sleep } from '../utils/async/sleep';
-import { isEqualDate } from '../utils/utils';
+import { isEqualDate, isEqualMonth } from '../utils/utils';
 
 /**
  * 过滤搜索结果： 通过名称以及日期
@@ -92,7 +92,21 @@ export function filterResults(
     }
   }
 }
-
+export function filterResultsByMonth(
+  items: SearchResult[],
+  info: AllSubject,
+): SearchResult {
+  const list: SearchResult[] = items.filter(item => isEqualMonth(item.releaseDate, info.releaseDate))
+  if (list.length === 1) {
+    return list[0]
+  }
+  const obj = list.find((item) =>
+    isEqualDate(item.releaseDate, info.releaseDate)
+  );
+  if (obj) {
+    return obj;
+  }
+}
 export const typeIdDict: {
   [key in InterestType]: { name: string; id: InterestTypeId };
 } = {

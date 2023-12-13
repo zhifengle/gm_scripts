@@ -27,6 +27,8 @@ describe('test shortened query', () => {
     expect(getShortenedQuery('Rance5D ひとりぼっちの女の子')).toBe('Rance5D')
     expect(getShortenedQuery('hello ゲーム ゲーム world')).toBe('ゲーム')
     expect(getShortenedQuery('バルドスカイ ゼロ')).toBe('バルドスカイ')
+    expect(getShortenedQuery('カオスQueen遼子4 森山由梨＆郁美姉妹併呑編')).toBe('カオスQueen遼子')
+    expect(getShortenedQuery('D N ANGEL TV Animation Series 紅の翼')).toBe('D N ANGEL')
   })
 })
 
@@ -37,6 +39,7 @@ describe('test normalize string', () => {
     // no search result in bgm and 2dfan
     str = 'グリザイアの果実 -LE FRUIT DE LA GRISAIA-'
     expect(normalizeQuery(str)).toBe('グリザイアの果実')
+    expect(normalizeQuery('ＲａｇｎａｒｏｋＩｘｃａ')).toBe('ＲａｇｎａｒｏｋＩｘｃａ')
   })
   it('test replace char to space', () => {
     // 'CROSS†CHANNEL'

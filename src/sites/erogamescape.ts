@@ -151,16 +151,21 @@ export async function searchSubject(
 }
 
 export async function searchGameSubject(info: SearchResult): Promise<SearchResult> {
+  const querySet = new Set()
   let query = normalizeQueryEGS((info.name || '').trim());
   let res = await searchAndFollow(info, query);
+  querySet.add(query)
   if (res) {
     return res;
   }
   await sleep(100);
   query = getShortenedQuery(query);
-  res = await searchAndFollow(info, query);
-  if (res) {
-    return res;
+  if (!querySet.has(query)) {
+    res = await searchAndFollow(info, query);
+    querySet.add(query)
+    if (res) {
+      return res;
+    }
   }
   await sleep(100);
   let queryList: string[] = [];
@@ -168,7 +173,11 @@ export async function searchGameSubject(info: SearchResult): Promise<SearchResul
     queryList = info.alias;
   }
   for (const s of queryList) {
+    if (querySet.has(s)) {
+      continue
+    }
     const res = await searchAndFollow(info, s);
+    querySet.add(s)
     if (res) {
       return res;
     }

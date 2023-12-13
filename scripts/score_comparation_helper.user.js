@@ -2119,16 +2119,21 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       }
   }
   async function searchGameSubject$1(info) {
+      const querySet = new Set();
       let query = normalizeQueryEGS((info.name || '').trim());
       let res = await searchAndFollow(info, query);
+      querySet.add(query);
       if (res) {
           return res;
       }
       await sleep(100);
       query = getShortenedQuery(query);
-      res = await searchAndFollow(info, query);
-      if (res) {
-          return res;
+      if (!querySet.has(query)) {
+          res = await searchAndFollow(info, query);
+          querySet.add(query);
+          if (res) {
+              return res;
+          }
       }
       await sleep(100);
       let queryList = [];
@@ -2136,7 +2141,11 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           queryList = info.alias;
       }
       for (const s of queryList) {
+          if (querySet.has(s)) {
+              continue;
+          }
           const res = await searchAndFollow(info, s);
+          querySet.add(s);
           if (res) {
               return res;
           }

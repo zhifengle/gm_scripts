@@ -1,4 +1,4 @@
-import { dealDate, genRandomStr, formatDate, replaceCharToSpace, normalizeQuery, getShortenedQuery } from './utils'
+import { dealDate, genRandomStr, formatDate, replaceCharToSpace, normalizeQuery, getShortenedQuery, normalizeEditionName } from './utils'
 
 describe('test utils', () => {
   it('test the length of return value', () => {
@@ -52,5 +52,11 @@ describe('test normalize string', () => {
     expect(replaceCharToSpace(rag)).toBe(rag)
     str = 'Ｒａｇｎ☆ａｒｏｋ♥Ｉ❤ｘｃ♡ａ.'
     expect(removeSpace(replaceCharToSpace(str))).toBe(rag)
+  })
+  it('test normalize edition query', () => {
+    expect(normalizeEditionName('ずっとすきして たくさんすきして パッケージ版')).toBe('ずっとすきして たくさんすきして')
+    expect(normalizeEditionName('ずっとすきして たくさんすきして ダウンロード版')).toBe('ずっとすきして たくさんすきして')
+    expect(normalizeEditionName('ずっとすきして たくさんすきして 体験版')).toBe('ずっとすきして たくさんすきして')
+    expect(normalizeEditionName('チュートリアルサマー DVDPG')).toBe('チュートリアルサマー')
   })
 })

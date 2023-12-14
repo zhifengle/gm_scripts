@@ -175,7 +175,7 @@ export function getShortenedQuery(query: string): string {
   for (let i = 0; i < parts.length; i++) {
     let isEnglishWord = /^[a-zA-Z]+$/.test(parts[i]);
 
-    if (isEnglishWord) {
+    if (isEnglishWord || /^\d+$/.test(parts[i])) {
       englishWordCount++;
     } else {
       isJapaneseWord = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ーa-zA-Z0-9ａ-ｚＡ-Ｚ０-９々〆〤]/u.test(
@@ -213,8 +213,10 @@ export function getShortenedQuery(query: string): string {
   newQuery = parts.join(' ');
   // xxx1  bb2, cc3 ----> xx1, bb, cc
   if (/[^\d]+\d+$/.test(newQuery)) {
-    return newQuery.replace(/\d+$/, '');
+    return newQuery.replace(/\d+$/, '').trim();
   }
+  // remove version
+  // newQuery = newQuery.replace(/(V?I{1,3}|I?V|I?X)$/, '')
   return newQuery;
 }
 

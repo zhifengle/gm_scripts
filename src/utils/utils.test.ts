@@ -30,6 +30,9 @@ describe('test shortened query', () => {
     expect(getShortenedQuery('カオスQueen遼子4 森山由梨＆郁美姉妹併呑編')).toBe('カオスQueen遼子')
     expect(getShortenedQuery('D N ANGEL TV Animation Series 紅の翼')).toBe('D N ANGEL')
   })
+  it('test shortened version', () => {
+    expect(getShortenedQuery('Branmarker 2')).toBe('Branmarker')
+  })
 })
 
 describe('test normalize string', () => {

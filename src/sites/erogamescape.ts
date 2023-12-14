@@ -1,4 +1,4 @@
-import TinySegmenter from 'tiny-segmenter'
+import TinySegmenter from 'tiny-segmenter';
 import { SearchResult } from '../interface/subject';
 import { sleep } from '../utils/async/sleep';
 import { $q } from '../utils/domUtils';
@@ -142,15 +142,10 @@ export async function searchSubject(
       );
     }
   } else {
-    res = filterResults(
-      rawInfoList,
-      subjectInfo,
-      {
-        releaseDate: true,
-        keys: ['name'],
-      },
-      true
-    );
+    res = filterResults(rawInfoList, subjectInfo, {
+      releaseDate: true,
+      keys: ['name'],
+    });
   }
   console.info(`Search result of ${query} on erogamescape: `, res);
   if (res && res.url) {
@@ -182,11 +177,13 @@ export async function searchGameSubject(info: SearchResult): Promise<SearchResul
     const segmenter = new TinySegmenter();
     const segs = segmenter.segment(query);
     if (segs && segs.length > 2) {
-      query = segs[0] + '?' + segs[segs.length - 1]
-      res = await searchAndFollow(info, query);
-      querySet.add(query);
-      if (res) {
-        return res;
+      query = segs[0] + '?' + segs[segs.length - 1];
+      if (!querySet.has(query)) {
+        res = await searchAndFollow(info, query);
+        querySet.add(query);
+        if (res) {
+          return res;
+        }
       }
     }
   }
@@ -197,11 +194,12 @@ export async function searchGameSubject(info: SearchResult): Promise<SearchResul
     queryList = info.alias;
   }
   for (const s of queryList) {
-    if (querySet.has(s)) {
+    const queryStr = getShortenedQuery(normalizeQueryEGS(s))
+    if (querySet.has(queryStr)) {
       continue;
     }
-    const res = await searchAndFollow(info, normalizeQueryEGS(s));
-    querySet.add(s);
+    const res = await searchAndFollow({ ...info, rawName: s }, queryStr);
+    querySet.add(queryStr);
     if (res) {
       return res;
     }

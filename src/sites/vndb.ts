@@ -161,8 +161,7 @@ export function getSearchResult(): SearchResult {
       const jaTitle = elem.querySelector<HTMLElement>('.tc4 > [lang="ja-Latn"]')?.title;
       if (jaTitle && !jaTitle.includes(info.name)) {
         // add title to alias
-        alias.push(name);
-        info.name = normalizeEditionName(jaTitle);
+        alias.push(normalizeEditionName(jaTitle));
       }
       break;
     }
@@ -175,7 +174,6 @@ export function getSearchResult(): SearchResult {
       alias.push(enName);
     }
   }
-  alias.push(...getAlias(info.name))
   alias.push(...getAlias(name))
   // find alias
   for (const $el of $qa('.vndetails > table tr > td:first-child')) {
@@ -193,7 +191,7 @@ export function getSearchResult(): SearchResult {
 }
 
 function getAlias(name: string) {
-  const alias = [];
+  const alias: string[] = [];
   let m: RegExpMatchArray;
   if (name.match(/\s─(.+?)─$/)) {
     m = name.match(/\s─(.+?)─$/);
@@ -207,6 +205,9 @@ function getAlias(name: string) {
   if (m) {
     alias.push(name.split(' ')[0]);
     alias.push(m[1]);
+  } else if (name.split(' ').length === 2) {
+    // fix: ギャラクシーエンジェルII 永劫回帰の刻
+    alias.push(...name.split(' '))
   }
   return alias
 }

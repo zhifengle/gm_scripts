@@ -110,6 +110,10 @@ export function normalizeQueryEGS(query: string): string {
   // 	White x Red --->  	White Red
   newQuery = newQuery.replace(/ x /, ' ');
   newQuery = newQuery.replace(/\s{2,}/g, ' ');
+  // カオスQueen遼子4 森山由梨＆郁美姉妹併呑編
+  if (/^[^\d]+?\d+[^\d]+$/.test(newQuery)) {
+    newQuery = newQuery.split(/\d+/).join('?')
+  }
   // return getShortenedQuery(newQuery);
   return newQuery;
 }

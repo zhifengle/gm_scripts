@@ -8,16 +8,15 @@ import { filterResults } from './common';
 export const favicon = 'https://vndb.org/favicon.ico';
 
 function normalizeQueryVNDB(str: string) {
-  // fixed: カオスQueen遼子4 森山由梨＆郁美姉妹併呑編
-  if (/.+?\s[^\s]+$/.test(str)) {
-    return str.replace(/\d\s.+$/, '');
-  }
+  // @TODO: カオスQueen遼子4 森山由梨＆郁美姉妹併呑編
+
   // fixed: White x Red
-  return str.replace(' x ', ' ');
+  return str.replace(' x ', ' ').replace(/　/g, ' ');
 }
 
 function reviseTitle(title: string) {
   const titleDict: Record<string, string> = {
+    'ランス4　－教団の遺産－': 'Rance IV -教団の遺産-',
     'ランス５Ｄ －ひとりぼっちの女の子－': 'Rance5D ひとりぼっちの女の子',
     ＲａｇｎａｒｏｋＩｘｃａ: 'Ragnarok Ixca',
     'グリザイアの果実 -LE FRUIT DE LA GRISAIA-': 'グリザイアの果実',
@@ -174,7 +173,7 @@ export function getSearchResult(): SearchResult {
       alias.push(enName);
     }
   }
-  alias.push(...getAlias(name))
+  alias.push(...getAlias(name));
   // find alias
   for (const $el of $qa('.vndetails > table tr > td:first-child')) {
     if ($el.textContent.includes('Aliases')) {
@@ -191,6 +190,7 @@ export function getSearchResult(): SearchResult {
 }
 
 function getAlias(name: string) {
+  name = name.replace(/　/g, ' ');
   const alias: string[] = [];
   let m: RegExpMatchArray;
   if (name.match(/\s─(.+?)─$/)) {
@@ -199,15 +199,20 @@ function getAlias(name: string) {
     m = name.match(/\s~(.+?)~$/);
   } else if (name.match(/\s～(.+?)～$/)) {
     m = name.match(/\s～(.+?)～$/);
+  } else if (name.match(/\s－(.+?)－$/)) {
+    m = name.match(/\s－(.+?)－$/);
   } else if (name.match(/\s-(.+?)-$/)) {
     m = name.match(/\s-(.+?)-$/);
   }
   if (m) {
     alias.push(name.split(' ')[0]);
     alias.push(m[1]);
-  } else if (name.split(' ').length === 2) {
-    // fix: ギャラクシーエンジェルII 永劫回帰の刻
-    alias.push(...name.split(' '))
+    return alias;
   }
-  return alias
+  let query = normalizeQuery(name);
+  if (query.split(' ').length === 2) {
+    // fix: ギャラクシーエンジェルII 永劫回帰の刻
+    alias.push(...name.split(' '));
+  }
+  return alias;
 }

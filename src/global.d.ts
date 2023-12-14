@@ -44,3 +44,5 @@ interface Window {
   VNDB_REVISE_TITLE_DICT?: Record<string, string>
   EGS_REVISE_TITLE_DICT?: Record<string, string>
 }
+
+declare module "tiny-segmenter";

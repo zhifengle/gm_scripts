@@ -1,9 +1,10 @@
+import TinySegmenter from 'tiny-segmenter'
 import { SearchResult } from '../interface/subject';
 import { sleep } from '../utils/async/sleep';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery, normalizeQuery } from '../utils/utils';
-import { filterResults, filterResultsByMonth, searchDataByNames } from './common';
+import { filterResults, filterResultsByMonth } from './common';
 
 enum ErogamescapeCategory {
   game = 'game',
@@ -19,14 +20,13 @@ export const favicon = 'https://www.google.com/s2/favicons?domain=erogamescape.o
 // 'http://erogamescape.org',
 const site_origin = 'https://erogamescape.org';
 
-
 function reviseTitle(title: string) {
   const titleDict: Record<string, string> = {
     // @TODO
   };
-  const userTitleDict = window.EGS_REVISE_TITLE_DICT || {}
+  const userTitleDict = window.EGS_REVISE_TITLE_DICT || {};
   if (userTitleDict[title]) {
-    return userTitleDict[title]
+    return userTitleDict[title];
   }
   if (titleDict[title]) {
     return titleDict[title];
@@ -117,9 +117,9 @@ export function normalizeQueryEGS(query: string): string {
 export async function searchSubject(
   subjectInfo: SearchResult,
   type: ErogamescapeCategory = ErogamescapeCategory.game,
-  query: string = ''
+  uniqueQueryStr: string = ''
 ): Promise<SearchResult> {
-  query = query || subjectInfo.name;
+  let query = uniqueQueryStr || subjectInfo.name;
   const url = `${site_origin}/~ap2/ero/toukei_kaiseki/kensaku.php?category=${type}&word_category=name&word=${encodeURIComponent(
     query
   )}&mode=normal`;
@@ -129,8 +129,18 @@ export async function searchSubject(
   const items = $doc.querySelectorAll('#result table tr:not(:first-child)');
   const rawInfoList: SearchResult[] = [...items].map(($item: HTMLElement) => getSearchItem($item));
   let res: SearchResult;
-  if (query) {
-    res = filterResultsByMonth(rawInfoList, subjectInfo)
+  if (uniqueQueryStr) {
+    res = filterResultsByMonth(rawInfoList, subjectInfo);
+    // no result. try to fuse search by rawName
+    if (!res && subjectInfo.rawName) {
+      res = filterResults(
+        rawInfoList,
+        { ...subjectInfo, name: subjectInfo.rawName },
+        {
+          keys: ['name'],
+        }
+      );
+    }
   } else {
     res = filterResults(
       rawInfoList,
@@ -151,10 +161,10 @@ export async function searchSubject(
 }
 
 export async function searchGameSubject(info: SearchResult): Promise<SearchResult> {
-  const querySet = new Set()
+  const querySet = new Set();
   let query = normalizeQueryEGS((info.name || '').trim());
-  let res = await searchAndFollow(info, query);
-  querySet.add(query)
+  let res = await searchAndFollow({ ...info, name: query });
+  querySet.add(query);
   if (res) {
     return res;
   }
@@ -162,22 +172,36 @@ export async function searchGameSubject(info: SearchResult): Promise<SearchResul
   query = getShortenedQuery(query);
   if (!querySet.has(query)) {
     res = await searchAndFollow(info, query);
-    querySet.add(query)
+    querySet.add(query);
     if (res) {
       return res;
     }
   }
   await sleep(100);
+  if (query.length > 3) {
+    const segmenter = new TinySegmenter();
+    const segs = segmenter.segment(query);
+    if (segs && segs.length > 2) {
+      query = segs[0] + '?' + segs[segs.length - 1]
+      res = await searchAndFollow(info, query);
+      querySet.add(query);
+      if (res) {
+        return res;
+      }
+    }
+  }
+  await sleep(100);
+
   let queryList: string[] = [];
   if (info.alias) {
     queryList = info.alias;
   }
   for (const s of queryList) {
     if (querySet.has(s)) {
-      continue
+      continue;
     }
-    const res = await searchAndFollow(info, s);
-    querySet.add(s)
+    const res = await searchAndFollow(info, normalizeQueryEGS(s));
+    querySet.add(s);
     if (res) {
       return res;
     }
@@ -204,12 +228,12 @@ export async function searchAndFollow(info: SearchResult, uniqueQueryStr: string
 export function getSearchResult(): SearchResult {
   const $title = $q('#soft-title > .bold');
   const rawName = $title.textContent.trim();
-  const title = reviseTitle(rawName)
-  let name = rawName
+  const title = reviseTitle(rawName);
+  let name = rawName;
   if (title !== rawName) {
-    name = title
+    name = title;
   } else {
-    name = normalizeQuery(rawName)
+    name = normalizeQuery(rawName);
   }
   const info: SearchResult = {
     name,

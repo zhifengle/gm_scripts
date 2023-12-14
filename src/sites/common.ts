@@ -23,16 +23,14 @@ export function filterResults(
   }
   // 使用发行日期过滤
   if (subjectInfo.releaseDate && opts.releaseDate) {
-    const obj = items.find((item) =>
-      isEqualDate(item.releaseDate, subjectInfo.releaseDate)
-    );
-    if (obj) {
-      return obj;
+    const list = items
+      .filter((item) => isEqualDate(item.releaseDate, subjectInfo.releaseDate))
+      .sort((a, b) => +b.count - +a.count);
+    if (list && list.length > 0) {
+      return list[0];
     }
   }
-  var results = new Fuse(items, Object.assign({}, opts)).search(
-    subjectInfo.name
-  );
+  var results = new Fuse(items, Object.assign({}, opts)).search(subjectInfo.name);
   // 去掉括号包裹的，再次模糊查询
   if (!results.length && /<|＜|\(|（/.test(subjectInfo.name)) {
     results = new Fuse(items, Object.assign({}, opts)).search(
@@ -83,30 +81,37 @@ export function filterResults(
   const nameRe = new RegExp(subjectInfo.name.trim());
   for (const item of results) {
     const result = item.item;
-    if (
-      nameRe.test(result.name) ||
-      nameRe.test(result.greyName) ||
-      nameRe.test(result.rawName)
-    ) {
+    if (nameRe.test(result.name) || nameRe.test(result.greyName) || nameRe.test(result.rawName)) {
       return result;
     }
   }
 }
-export function filterResultsByMonth(
-  items: SearchResult[],
-  info: AllSubject,
-): SearchResult {
-  const list: SearchResult[] = items.filter(item => isEqualMonth(item.releaseDate, info.releaseDate))
-  if (list.length === 1) {
-    return list[0]
+export function filterResultsByMonth(items: SearchResult[], info: AllSubject): SearchResult {
+  const list = items
+    .filter((item) => isEqualMonth(item.releaseDate, info.releaseDate))
+    .sort((a, b) => +b.count - +a.count);
+  if (!list.length) {
+    return;
   }
-  const obj = list.find((item) =>
-    isEqualDate(item.releaseDate, info.releaseDate)
-  );
+  if (list.length === 1) {
+    return list[0];
+  }
+  const obj = list.find((item) => isEqualDate(item.releaseDate, info.releaseDate));
   if (obj) {
     return obj;
   }
+  return list[0];
 }
+
+export function filterResultsByDate(items: SearchResult[], info: AllSubject): SearchResult {
+  const list = items
+    .filter((item) => isEqualDate(item.releaseDate, info.releaseDate))
+    .sort((a, b) => +b.count - +a.count);
+  if (list && list.length > 0) {
+    return list[0];
+  }
+}
+
 export const typeIdDict: {
   [key in InterestType]: { name: string; id: InterestTypeId };
 } = {
@@ -159,11 +164,7 @@ export async function getSearchResultByGM(): Promise<SearchResult[]> {
       (n, oldValue, newValue: MsgResponse) => {
         console.log('enter promise');
         const now = +new Date();
-        if (
-          newValue.type === SEARCH_RESULT &&
-          newValue.timestamp &&
-          newValue.timestamp < now
-        ) {
+        if (newValue.type === SEARCH_RESULT && newValue.timestamp && newValue.timestamp < now) {
           // GM_removeValueChangeListener(listenId);
           resolve(newValue.data);
         }

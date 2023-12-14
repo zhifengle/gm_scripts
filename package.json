@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "bangumi-data": "0.3.99",
-    "kv-expiration": "0.0.5"
+    "kv-expiration": "0.0.5",
+    "tiny-segmenter": "0.2.0"
   }
 }

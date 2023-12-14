@@ -12,7 +12,8 @@ const HEADERS = {
   referer: 'https://2dfan.org/',
 };
 
-export const favicon = 'https://2dfan.org/favicon.ico';
+// export const favicon = 'https://2dfan.org/favicon.ico';
+export const favicon = 'https://www.google.com/s2/favicons?domain=2dfan.org';
 
 function getSearchItem($item: HTMLElement): SearchResult {
   const $title = $item.querySelector('h4.media-heading > a');

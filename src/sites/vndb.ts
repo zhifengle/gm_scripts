@@ -10,7 +10,7 @@ export const favicon = 'https://vndb.org/favicon.ico';
 function normalizeQueryVNDB(str: string) {
   // fixed: カオスQueen遼子4 森山由梨＆郁美姉妹併呑編
   if (/.+?\s[^\s]+$/.test(str)) {
-    return str.replace(/\d\s.+$/, '')
+    return str.replace(/\d\s.+$/, '');
   }
   // fixed: White x Red
   return str.replace(' x ', ' ');
@@ -19,16 +19,16 @@ function normalizeQueryVNDB(str: string) {
 function reviseTitle(title: string) {
   const titleDict: Record<string, string> = {
     'ランス５Ｄ －ひとりぼっちの女の子－': 'Rance5D ひとりぼっちの女の子',
-    'ＲａｇｎａｒｏｋＩｘｃａ': 'Ragnarok Ixca',
+    ＲａｇｎａｒｏｋＩｘｃａ: 'Ragnarok Ixca',
     'グリザイアの果実 -LE FRUIT DE LA GRISAIA-': 'グリザイアの果実',
     'ブラック ウルヴス サーガ -ブラッディーナイトメア-': 'Black Wolves Saga -Bloody Nightmare-',
     'ファミコン探偵倶楽部PartII うしろに立つ少女': 'ファミコン探偵倶楽部 うしろに立つ少女',
     'Rance Ⅹ -決戦-': 'ランス10',
     'PARTS ─パーツ─': 'PARTS',
   };
-  const userTitleDict = window.VNDB_REVISE_TITLE_DICT || {}
+  const userTitleDict = window.VNDB_REVISE_TITLE_DICT || {};
   if (userTitleDict[title]) {
-    return userTitleDict[title]
+    return userTitleDict[title];
   }
   if (titleDict[title]) {
     return titleDict[title];
@@ -153,18 +153,20 @@ export function getSearchResult(): SearchResult {
       info.score = s[1];
     }
   }
+  let alias = [];
   // get release date
   for (const elem of $qa('table.releases tr')) {
     if (elem.querySelector('.icon-rtcomplete')) {
       info.releaseDate = elem.querySelector<HTMLElement>('.tc1')?.innerText;
-      const jaTitle = elem.querySelector<HTMLElement>('.tc4 > [lang="ja-Latn"]')?.title
+      const jaTitle = elem.querySelector<HTMLElement>('.tc4 > [lang="ja-Latn"]')?.title;
       if (jaTitle && !jaTitle.includes(info.name)) {
-        info.name = normalizeEditionName(jaTitle)
+        // add title to alias
+        alias.push(name);
+        info.name = normalizeEditionName(jaTitle);
       }
       break;
     }
   }
-  let alias = [];
   const $title = $q('tr.title td:nth-of-type(2)')?.cloneNode(true) as HTMLElement;
   if ($title) {
     $title.querySelector('span')?.remove();
@@ -173,17 +175,8 @@ export function getSearchResult(): SearchResult {
       alias.push(enName);
     }
   }
-  const subTitleRe = /\s-([^-]+?)-$/;
-  if (subTitleRe.test(name)) {
-    const m = name.match(subTitleRe);
-    alias.push(name.split(' ')[0])
-    alias.push(m[1]);
-  }
-  let m = name.match(/\s─([^─]+?)─$/)
-  if (m) {
-    alias.push(name.split(' ')[0])
-    alias.push(m[1])
-  }
+  alias.push(...getAlias(info.name))
+  alias.push(...getAlias(name))
   // find alias
   for (const $el of $qa('.vndetails > table tr > td:first-child')) {
     if ($el.textContent.includes('Aliases')) {
@@ -195,6 +188,25 @@ export function getSearchResult(): SearchResult {
     info.alias = [...new Set(alias)];
   }
   // final step
-  info.name = reviseTitle(info.name)
+  info.name = reviseTitle(info.name);
   return info;
+}
+
+function getAlias(name: string) {
+  const alias = [];
+  let m: RegExpMatchArray;
+  if (name.match(/\s─(.+?)─$/)) {
+    m = name.match(/\s─(.+?)─$/);
+  } else if (name.match(/\s~(.+?)~$/)) {
+    m = name.match(/\s~(.+?)~$/);
+  } else if (name.match(/\s～(.+?)～$/)) {
+    m = name.match(/\s～(.+?)～$/);
+  } else if (name.match(/\s-(.+?)-$/)) {
+    m = name.match(/\s-(.+?)-$/);
+  }
+  if (m) {
+    alias.push(name.split(' ')[0]);
+    alias.push(m[1]);
+  }
+  return alias
 }

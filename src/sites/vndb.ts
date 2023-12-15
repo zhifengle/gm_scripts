@@ -2,8 +2,9 @@ import { SearchSubject, Subject } from '../interface/subject';
 import { sleep } from '../utils/async/sleep';
 import { $q, $qa } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
-import { getShortenedQuery, normalizeEditionName, normalizeQuery } from '../utils/utils';
+import { normalizeQuery } from '../utils/utils';
 import { filterResults } from './common';
+import { getAlias, normalizeEditionName } from './utils';
 
 export const favicon = 'https://vndb.org/favicon.ico';
 
@@ -16,6 +17,10 @@ function normalizeQueryVNDB(str: string) {
 
 function reviseTitle(title: string) {
   const titleDict: Record<string, string> = {
+    // https://vndb.org/v13666
+    '凍京NECRO＜トウキョウ・ネクロ＞': '凍京NECRO',
+    // https://vndb.org/v4102
+    'Ｓｕｍｍｅｒラディッシュ・バケーション!!2': 'サマー・ラディッシュ・バケーション!! 2',
     'ランス4　－教団の遺産－': 'Rance IV -教団の遺産-',
     'ランス５Ｄ －ひとりぼっちの女の子－': 'Rance5D ひとりぼっちの女の子',
     ＲａｇｎａｒｏｋＩｘｃａ: 'Ragnarok Ixca',
@@ -159,7 +164,6 @@ export function getSearchSubject(): SearchSubject {
       info.releaseDate = elem.querySelector<HTMLElement>('.tc1')?.innerText;
       const jaTitle = elem.querySelector<HTMLElement>('.tc4 > [lang="ja-Latn"]')?.title;
       if (jaTitle && !jaTitle.includes(info.name)) {
-        // add title to alias
         alias.push(normalizeEditionName(jaTitle));
       }
       break;
@@ -173,7 +177,7 @@ export function getSearchSubject(): SearchSubject {
       alias.push(enName);
     }
   }
-  alias.push(...getAlias(name));
+  alias.push(...getAliasVNDB(name));
   // find alias
   for (const $el of $qa('.vndetails > table tr > td:first-child')) {
     if ($el.textContent.includes('Aliases')) {
@@ -182,31 +186,23 @@ export function getSearchSubject(): SearchSubject {
     }
   }
   if (alias.length > 0) {
-    info.alias = [...new Set(alias)];
+    const newAlias: string[] = [];
+    for (const s of alias) {
+      if (!newAlias.includes(s)) {
+        newAlias.push(s);
+      }
+    }
+    info.alias = newAlias;
   }
   // final step
   info.name = reviseTitle(info.name);
   return info;
 }
 
-function getAlias(name: string) {
+function getAliasVNDB(name: string) {
   name = name.replace(/　/g, ' ');
-  const alias: string[] = [];
-  let m: RegExpMatchArray;
-  if (name.match(/\s─(.+?)─$/)) {
-    m = name.match(/\s─(.+?)─$/);
-  } else if (name.match(/\s~(.+?)~$/)) {
-    m = name.match(/\s~(.+?)~$/);
-  } else if (name.match(/\s～(.+?)～$/)) {
-    m = name.match(/\s～(.+?)～$/);
-  } else if (name.match(/\s－(.+?)－$/)) {
-    m = name.match(/\s－(.+?)－$/);
-  } else if (name.match(/\s-(.+?)-$/)) {
-    m = name.match(/\s-(.+?)-$/);
-  }
-  if (m) {
-    alias.push(name.split(' ')[0]);
-    alias.push(m[1]);
+  const alias = getAlias(name) || [];
+  if (alias && alias.length > 0) {
     return alias;
   }
   let query = normalizeQuery(name);

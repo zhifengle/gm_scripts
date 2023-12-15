@@ -4,6 +4,18 @@ import { InterestType, InterestTypeId, MsgResponse } from '../interface/types';
 import { sleep } from '../utils/async/sleep';
 import { isEqualDate, isEqualMonth } from '../utils/utils';
 
+export function fuseFilterSubjects(items: SearchSubject[], info: SearchSubject, opts: Record<string, any>): SearchSubject[] {
+  let str = info.name;
+  if (info.rawName) {
+    str = info.rawName;
+  }
+  var results = new Fuse(items, Object.assign({}, opts)).search(str);
+  if (!results.length) {
+    return [];
+  }
+  return results.map((item: { item: SearchSubject; }) => item.item);
+}
+
 /**
  * 过滤搜索结果： 通过名称以及日期
  * @param items
@@ -85,6 +97,7 @@ export function filterResults(
       return result;
     }
   }
+  return results[0]?.item;
 }
 export function filterResultsByMonth(items: SearchSubject[], info: AllSubject): SearchSubject {
   const list = items

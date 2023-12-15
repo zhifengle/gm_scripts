@@ -187,7 +187,7 @@ export function getShortenedQuery(query: string): string {
       }
     }
 
-    if (nonEnglishDetected && englishWordCount < 2) {
+    if (nonEnglishDetected && englishWordCount < 2 && parts[i].length > 2) {
       parts = [parts[i]];
       break;
     }
@@ -215,14 +215,6 @@ export function getShortenedQuery(query: string): string {
   if (/[^\d]+\d+$/.test(newQuery)) {
     return newQuery.replace(/\d+$/, '').trim();
   }
-  // remove version
-  // newQuery = newQuery.replace(/(V?I{1,3}|I?V|I?X)$/, '')
   return newQuery;
 }
 
-export function normalizeEditionName(str: string): string {
-  return str.replace(
-    /\s[^ ]*?(スペシャルプライス版|体験版|ダウンロード版|パッケージ版|限定版|通常版|廉価版|復刻版|初回.*?版|描き下ろし|DVDPG).*?$/g,
-    ''
-  );
-}

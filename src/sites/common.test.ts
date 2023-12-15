@@ -65,8 +65,8 @@ describe('test filterResults', () => {
       filterResults(rawList, info, {
         releaseDate: true,
         keys: ['name'],
-      }).url.includes('1583')
-    ).toBeTruthy();
+      })
+    ).toEqual(rawList[5]);
   });
   test('test same release date', () => {
     var rawList = [
@@ -107,7 +107,34 @@ describe('test filterResults', () => {
       filterResults(rawList, info, {
         releaseDate: true,
         keys: ['name'],
-      }).url.includes('44782')
-    ).toBeTruthy();
+      })
+    ).toEqual(rawList[1]);
+  });
+  test('test fuse search', () => {
+    var rawList = [
+      {
+        name: 'イケメン戦国◆時をかける恋 -新たなる出逢い-(PSV)',
+        url: 'game.php?game=25305#ad',
+        count: '',
+        score: '',
+        releaseDate: '2018-03-22',
+      },
+      {
+        name: 'イケメン戦国◆時をかける恋 -新たなる出逢い- for Nintendo Switch(NS)',
+        url: 'game.php?game=32039#ad',
+        count: '1',
+        score: '90',
+        releaseDate: '2022-04-28',
+      },
+    ];
+    var info = {
+      name: 'イケメン戦国 時をかける恋',
+      rawName: 'イケメン戦国◆時をかける恋',
+      score: '7.12',
+      count: '126',
+      url: 'https://vndb.org/v18641',
+      releaseDate: '2015-06-22',
+    };
+    expect(filterResults(rawList, info, { keys: ['name'] })).toEqual(rawList[0]);
   });
 });

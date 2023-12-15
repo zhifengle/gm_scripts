@@ -1,4 +1,4 @@
-import { dealDate, genRandomStr, formatDate, replaceCharToSpace, normalizeQuery, getShortenedQuery, normalizeEditionName } from './utils'
+import { dealDate, genRandomStr, formatDate, replaceCharToSpace, normalizeQuery, getShortenedQuery } from './utils'
 
 describe('test utils', () => {
   it('test the length of return value', () => {
@@ -33,6 +33,12 @@ describe('test shortened query', () => {
   it('test shortened version', () => {
     expect(getShortenedQuery('Branmarker 2')).toBe('Branmarker')
   })
+  it('test mixed English and Japanese', () => {
+    expect(getShortenedQuery('すてぃーるMyはぁと Rhapsody of moonlight ')).toBe('すてぃーるMyはぁと')
+  })
+  it('test two short Japanese', () => {
+    expect(getShortenedQuery('番外 ソルト編')).toBe('ソルト編')
+  })
 })
 
 describe('test normalize string', () => {
@@ -55,11 +61,5 @@ describe('test normalize string', () => {
     expect(replaceCharToSpace(rag)).toBe(rag)
     str = 'Ｒａｇｎ☆ａｒｏｋ♥Ｉ❤ｘｃ♡ａ.'
     expect(removeSpace(replaceCharToSpace(str))).toBe(rag)
-  })
-  it('test normalize edition query', () => {
-    expect(normalizeEditionName('ずっとすきして たくさんすきして パッケージ版')).toBe('ずっとすきして たくさんすきして')
-    expect(normalizeEditionName('ずっとすきして たくさんすきして ダウンロード版')).toBe('ずっとすきして たくさんすきして')
-    expect(normalizeEditionName('ずっとすきして たくさんすきして 体験版')).toBe('ずっとすきして たくさんすきして')
-    expect(normalizeEditionName('チュートリアルサマー DVDPG')).toBe('チュートリアルサマー')
   })
 })

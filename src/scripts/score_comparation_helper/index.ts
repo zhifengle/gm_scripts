@@ -32,11 +32,11 @@ const animePages: PageConfig[] = [
 ];
 
 const gamePages: PageConfig[] = [
-  // bangumiGamePage,
-  // twodfanPage,
+  bangumiGamePage,
+  twodfanPage,
   vndbPage,
   erogamescapePage,
-  // moepediaPage,
+  moepediaPage,
 ];
 const BGM_UA = 'e_user_bgm_ua';
 var g_hide_game_score_flag = GM_getValue('e_user_hide_game_score') || '';

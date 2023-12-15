@@ -4,12 +4,24 @@ import { InterestType, InterestTypeId, MsgResponse } from '../interface/types';
 import { sleep } from '../utils/async/sleep';
 import { isEqualDate, isEqualMonth } from '../utils/utils';
 
-export function fuseFilterSubjects(items: SearchSubject[], info: SearchSubject, opts: Record<string, any>): SearchSubject[] {
+type FuseOptions = {
+  isCaseSensitive?: boolean;
+  shouldSort?: boolean;
+  threshold?: number;
+  location?: number;
+  distance?: number;
+  ignoreLocation?: boolean;
+  keys: string[];
+};
+
+export function fuseFilterSubjects(items: SearchSubject[], info: SearchSubject, opts: FuseOptions): SearchSubject[] {
   let str = info.name;
   if (info.rawName) {
     str = info.rawName;
   }
-  var results = new Fuse(items, Object.assign({}, opts)).search(str);
+  var results = new Fuse(items, Object.assign({
+    threshold: 0.3,
+  }, opts)).search(str);
   if (!results.length) {
     return [];
   }
@@ -99,7 +111,7 @@ export function filterResults(
   }
   return results[0]?.item;
 }
-export function filterResultsByMonth(items: SearchSubject[], info: AllSubject): SearchSubject {
+export function findResultByMonth(items: SearchSubject[], info: AllSubject): SearchSubject {
   const list = items
     .filter((item) => isEqualMonth(item.releaseDate, info.releaseDate))
     .sort((a, b) => +b.count - +a.count);
@@ -116,7 +128,7 @@ export function filterResultsByMonth(items: SearchSubject[], info: AllSubject): 
   return list[0];
 }
 
-export function filterResultsByDate(items: SearchSubject[], info: AllSubject): SearchSubject {
+export function findResultByDate(items: SearchSubject[], info: AllSubject): SearchSubject {
   const list = items
     .filter((item) => isEqualDate(item.releaseDate, info.releaseDate))
     .sort((a, b) => +b.count - +a.count);

@@ -3,7 +3,7 @@ import { sleep } from '../utils/async/sleep';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery, normalizeQuery } from '../utils/utils';
-import { filterResults, filterResultsByMonth, fuseFilterSubjects } from './common';
+import { filterResults, findResultByMonth, fuseFilterSubjects } from './common';
 import { getHiraganaSubTitle } from './utils';
 
 enum ErogamescapeCategory {
@@ -134,16 +134,12 @@ export async function searchSubject(
   const rawInfoList: SearchSubject[] = [...items].map(($item: HTMLElement) => getSearchItem($item));
   let res: SearchSubject;
   if (uniqueQueryStr) {
-    res = filterResultsByMonth(rawInfoList, subjectInfo);
-    // no result. try to fuse search by rawName
-    if (!res && subjectInfo.rawName) {
-      res = filterResults(
-        rawInfoList,
-        { ...subjectInfo, name: subjectInfo.rawName },
-        {
-          keys: ['name'],
-        }
-      );
+    const list = fuseFilterSubjects(rawInfoList, subjectInfo, {
+      keys: ['name'],
+    });
+    res = findResultByMonth(list, subjectInfo);
+    if (!res && list.length > 0) {
+      res = list[0];
     }
   } else {
     res = filterResults(
@@ -151,6 +147,7 @@ export async function searchSubject(
       subjectInfo,
       {
         releaseDate: true,
+        threshold: 0.4,
         keys: ['name'],
       },
       false
@@ -181,7 +178,7 @@ export async function searchGameSubject(info: SearchSubject): Promise<SearchSubj
     return res;
   }
   await sleep(100);
-  query = getShortenedQuery(normalizeQueryEGS((info.name || '')));
+  query = getShortenedQuery(normalizeQueryEGS(info.name || ''));
   if (!querySet.has(query)) {
     res = await searchAndFollow(info, query);
     querySet.add(query);
@@ -215,7 +212,7 @@ export async function searchGameSubject(info: SearchSubject): Promise<SearchSubj
     if (querySet.has(queryStr)) {
       continue;
     }
-    const res = await searchAndFollow({ ...info, rawName: s }, queryStr);
+    const res = await searchAndFollow(info, queryStr);
     querySet.add(queryStr);
     if (res) {
       return res;

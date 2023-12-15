@@ -1,4 +1,5 @@
-import { filterResults } from './common';
+import { SearchSubject } from '../interface/subject';
+import { filterResults, fuseFilterSubjects } from './common';
 import Fuse from 'fuse.js';
 
 Object.defineProperty(globalThis, 'Fuse', {
@@ -64,6 +65,7 @@ describe('test filterResults', () => {
     expect(
       filterResults(rawList, info, {
         releaseDate: true,
+        threshold: 0.3,
         keys: ['name'],
       })
     ).toEqual(rawList[5]);
@@ -110,15 +112,12 @@ describe('test filterResults', () => {
       })
     ).toEqual(rawList[1]);
   });
-  test('test fuse search', () => {
-    var rawList = [
-      {
-        name: 'イケメン戦国◆時をかける恋 -新たなる出逢い-(PSV)',
-        url: 'game.php?game=25305#ad',
-        count: '',
-        score: '',
-        releaseDate: '2018-03-22',
-      },
+  test('test fuse search with 0.1 threshold', () => {
+    const opts = {
+      threshold: 0.1,
+      keys: ['name'],
+    }
+    var rawList: SearchSubject[] = [
       {
         name: 'イケメン戦国◆時をかける恋 -新たなる出逢い- for Nintendo Switch(NS)',
         url: 'game.php?game=32039#ad',
@@ -126,8 +125,15 @@ describe('test filterResults', () => {
         score: '90',
         releaseDate: '2022-04-28',
       },
+      {
+        name: 'イケメン戦国◆時をかける恋 -新たなる出逢い-(PSV)',
+        url: 'game.php?game=25305#ad',
+        count: '',
+        score: '',
+        releaseDate: '2018-03-22',
+      },
     ];
-    var info = {
+    var info: SearchSubject = {
       name: 'イケメン戦国 時をかける恋',
       rawName: 'イケメン戦国◆時をかける恋',
       score: '7.12',
@@ -135,6 +141,93 @@ describe('test filterResults', () => {
       url: 'https://vndb.org/v18641',
       releaseDate: '2015-06-22',
     };
-    expect(filterResults(rawList, info, { keys: ['name'] })).toEqual(rawList[0]);
+    expect(fuseFilterSubjects(rawList, info, opts)).toEqual([...rawList].reverse());
+    rawList = [
+      {
+        name: '2月14日の午後',
+        url: 'game.php?game=14835#ad',
+        count: '2',
+        score: '65',
+        releaseDate: '2010-12-18',
+      },
+      {
+        name: '麻雀 2014',
+        url: 'game.php?game=19992#ad',
+        count: '14',
+        score: '60',
+        releaseDate: '2014-01-31',
+      },
+      {
+        name: 'LAST CHILD ～14th Nervous Breakdown～',
+        url: 'game.php?game=822#ad',
+        count: '21',
+        score: '60',
+        releaseDate: '1998-07-17',
+      },
+      {
+        name: 'RUSH ～危険な香り CRISIS:2014～',
+        url: 'game.php?game=3564#ad',
+        count: '',
+        score: '',
+        releaseDate: '2000-08-04',
+      },
+      {
+        name: 'LoveSongs♪ADV 双葉理保 14歳 ～夏～(PS2)',
+        url: 'game.php?game=6062#ad',
+        count: '1',
+        score: '60',
+        releaseDate: '2004-09-30',
+      },
+      {
+        name: '14 -one & four or the other meaning-',
+        url: 'game.php?game=1583#ad',
+        count: '12',
+        score: '83',
+        releaseDate: '2000-11-24',
+      },
+    ];
+    info = {
+      name: '14',
+      rawName: '14 -one & four or the other meaning-',
+      score: '7.00',
+      count: '1',
+      url: 'https://vndb.org/v20719',
+      releaseDate: '2000-11-12',
+    };
+    expect(fuseFilterSubjects(rawList, info, opts)).toEqual(rawList.slice(5, 6));
+  });
+  test('test fuse filter', () => {
+    var rawList = [
+      {
+        name: '月影の鎖 -狂爛モラトリアム-(PSV)',
+        url: 'game.php?game=25429#ad',
+        count: '5',
+        score: '75',
+        releaseDate: '2016-12-21',
+      },
+      {
+        name: '月影の鎖 -錯乱パラノイア-(PSP)',
+        url: 'game.php?game=20450#ad',
+        count: '5',
+        score: '80',
+        releaseDate: '2013-04-18',
+      },
+      {
+        name: '月影の鎖 ～錯乱パラノイア～(PSV)',
+        url: 'game.php?game=22790#ad',
+        count: '4',
+        score: '80',
+        releaseDate: '2015-12-23',
+      },
+    ];
+    var info = {
+      name: '月影の鎖～紅に染まる番外編～',
+      rawName: '月影の鎖～紅に染まる番外編～',
+      score: '0',
+      count: '0',
+      url: 'https://vndb.org/v21704',
+      releaseDate: '2016-12-29',
+    };
+    expect(fuseFilterSubjects(rawList, info, { keys: ['name'] })).toEqual([]);
   });
 });

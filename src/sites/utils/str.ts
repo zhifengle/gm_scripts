@@ -35,7 +35,7 @@ export function getHiraganaSubTitle(name: string): string {
     if (hanAndHiraganaRe.test(alias[1])) {
       // 以假名开头的、包含版本号的
       if (
-        /^\p{Script=Katakana}/.test(alias[0]) ||
+        /^\p{Script=Katakana}/u.test(alias[0]) ||
         /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}][ａ-ｚＡ-Ｚ0-9０-９]/u.test(alias[0])
       ) {
         return alias[1];

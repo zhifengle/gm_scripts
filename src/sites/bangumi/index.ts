@@ -1,7 +1,7 @@
 import {
   AllSubject,
   BookSubject,
-  SearchResult,
+  SearchSubject,
   Subject,
 } from '../../interface/subject';
 import { sleep } from '../../utils/async/sleep';
@@ -31,9 +31,9 @@ export enum Protocol {
   https = 'https',
 }
 
-function getSearchItem($item: HTMLElement): SearchResult {
+function getSearchItem($item: HTMLElement): SearchSubject {
   let $subjectTitle = $item.querySelector('h3>a.l');
-  let info: SearchResult = {
+  let info: SearchSubject = {
     name: $subjectTitle.textContent.trim(),
     // url 没有协议和域名
     url: $subjectTitle.getAttribute('href'),
@@ -80,7 +80,7 @@ function getTotalPageNum($doc: Document | HTMLElement | Element): number {
   return totalPage
 }
 
-function extractInfoList($doc: Document | HTMLElement | Element): SearchResult[] {
+function extractInfoList($doc: Document | HTMLElement | Element): SearchSubject[] {
   return [...$doc.querySelectorAll<HTMLElement>('#browserItemList>li')].map($item => {
     return getSearchItem($item)
   })
@@ -90,8 +90,8 @@ function extractInfoList($doc: Document | HTMLElement | Element): SearchResult[]
  * 处理搜索页面的 html
  * @param info 字符串 html
  */
-function dealSearchResults(info: string): [SearchResult[], number] | [] {
-  const results: SearchResult[] = [];
+function dealSearchResults(info: string): [SearchSubject[], number] | [] {
+  const results: SearchSubject[] = [];
   let $doc = new DOMParser().parseFromString(info, 'text/html');
   let items = $doc.querySelectorAll('#browserItemList>li>div.inner');
   // get number of page
@@ -109,7 +109,7 @@ function dealSearchResults(info: string): [SearchResult[], number] | [] {
   if (items && items.length) {
     for (const item of Array.prototype.slice.call(items)) {
       let $subjectTitle = item.querySelector('h3>a.l');
-      let itemSubject: SearchResult = {
+      let itemSubject: SearchSubject = {
         name: $subjectTitle.textContent.trim(),
         // url 没有协议和域名
         url: $subjectTitle.getAttribute('href'),
@@ -223,7 +223,7 @@ export async function findSubjectByDate(
   bgmHost: string = 'https://bgm.tv',
   pageNumber: number = 1,
   type: string
-): Promise<SearchResult> {
+): Promise<SearchSubject> {
   if (!subjectInfo || !subjectInfo.releaseDate || !subjectInfo.name) {
     throw new Error('invalid subject info');
   }
@@ -398,7 +398,7 @@ export function changeDomain(
 }
 async function checkAnimeSubjectExist(
   subjectInfo: Subject
-): Promise<SearchResult> {
+): Promise<SearchSubject> {
   const result = await checkExist(
     subjectInfo,
     getBgmHost(),

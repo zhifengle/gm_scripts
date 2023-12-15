@@ -1,5 +1,5 @@
-import { SearchResult } from '../../../interface/subject';
-import { favicon, getSearchResult, searchGameData } from '../../../sites/vndb';
+import { SearchSubject } from '../../../interface/subject';
+import { favicon, getSearchSubject, searchGameData } from '../../../sites/vndb';
 import {
   genScoreRowInfo,
   genScoreRowStr,
@@ -35,8 +35,8 @@ export const vndbPage: PageConfig = {
     return `https://vndb.org/subjects/${id}`;
   },
   getSearchResult: searchGameData,
-  getScoreInfo: getSearchResult,
-  insertScoreInfo: function (page: PageConfig, info: SearchResult): void {
+  getScoreInfo: getSearchSubject,
+  insertScoreInfo: function (page: PageConfig, info: SearchSubject): void {
     const title = this.getScoreInfo().name;
     const opts = {
       title,

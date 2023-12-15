@@ -1,4 +1,4 @@
-import { SearchResult } from '../../../interface/subject';
+import { SearchSubject } from '../../../interface/subject';
 import { searchAnimeData } from '../../../sites/anidb';
 import { $q } from '../../../utils/domUtils';
 import {
@@ -36,10 +36,10 @@ export const anidbPage: PageConfig = {
     return `https://anidb.net/anime/${id}`;
   },
   getSearchResult: searchAnimeData,
-  getScoreInfo: function (): SearchResult {
+  getScoreInfo: function (): SearchSubject {
     const $table = $q('#tabbed_pane .g_definitionlist > table');
     let names = $table.querySelectorAll('tr.official .value > label');
-    const info: SearchResult = {
+    const info: SearchSubject = {
       name: names[0].textContent.trim(),
       greyName: names[names.length - 1].textContent.trim(),
       score: 0,
@@ -76,7 +76,7 @@ export const anidbPage: PageConfig = {
     }
     return info;
   },
-  insertScoreInfo: function (page: PageConfig, info: SearchResult): void {
+  insertScoreInfo: function (page: PageConfig, info: SearchSubject): void {
     const title = this.getScoreInfo().name;
     const opts = {
       title,

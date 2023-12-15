@@ -1,4 +1,4 @@
-import { SearchResult } from '../../interface/subject';
+import { SearchSubject } from '../../interface/subject';
 import { findElement } from '../../utils/domUtils';
 import { anidbPage } from './pages/anidb';
 import { bangumiAnimePage, bangumiGamePage } from './pages/bangumi';
@@ -21,7 +21,7 @@ import { addSiteOption } from '../../utils/fetchData';
 // 也许使用索引更快?
 type SaveTask = {
   page: PageConfig;
-  info: SearchResult;
+  info: SearchSubject;
 };
 
 const animePages: PageConfig[] = [
@@ -85,7 +85,7 @@ function getPageIdxByHost(pages: PageConfig[], host: string) {
 async function insertScoreRows(
   curPage: PageConfig,
   pages: PageConfig[],
-  curInfo: SearchResult,
+  curInfo: SearchSubject,
   map: ScoreMap,
   tasks: SaveTask[]
 ) {
@@ -93,7 +93,7 @@ async function insertScoreRows(
     if (page.name === curPage.name || page.type === 'info') {
       continue;
     }
-    let searchResult: SearchResult = getInfo(map[page.name]);
+    let searchResult: SearchSubject = getInfo(map[page.name]);
     if (!searchResult) {
       try {
         searchResult = await page.getSearchResult(curInfo);

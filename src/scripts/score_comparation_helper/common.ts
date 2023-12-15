@@ -1,4 +1,4 @@
-import { SearchResult } from '../../interface/subject';
+import { SearchSubject } from '../../interface/subject';
 import { Selector } from '../../interface/wiki';
 import { favicon as anidbFavicon } from '../../sites/anidb';
 import { findElement, htmlToElement } from '../../utils/domUtils';
@@ -102,7 +102,7 @@ export function genSearchUrl(
 export function genScoreRowInfo(
   title: string,
   page: PageConfig,
-  info: SearchResult
+  info: SearchSubject
 ): ScoreRowInfo {
   const favicon = getFavicon(page);
   const name = page.name.split('-')[0];
@@ -142,7 +142,7 @@ export function insertScoreRow(wrapDom: HTMLElement, rowInfo: ScoreRowInfo) {
 
 export function insertScoreCommon(
   page: PageConfig,
-  info: SearchResult,
+  info: SearchSubject,
   opts: {
     title: string;
     adjacentSelector: Selector[];

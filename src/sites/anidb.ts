@@ -1,4 +1,4 @@
-import { SearchResult, Subject } from '../interface/subject';
+import { SearchSubject, Subject } from '../interface/subject';
 import { randomSleep } from '../utils/async/sleep';
 import { fetchJson } from '../utils/fetchData';
 import { normalizeQuery } from '../utils/utils';
@@ -6,7 +6,7 @@ import { filterResults } from './common';
 
 export async function searchAnimeData(
   subjectInfo: Subject
-): Promise<SearchResult> {
+): Promise<SearchSubject> {
   let query = normalizeQuery((subjectInfo.name || '').trim());
   if (!query) {
     console.info('Query string is empty');
@@ -32,7 +32,7 @@ export async function searchAnimeData(
   });
   await randomSleep(200, 100);
 
-  const rawInfoList: SearchResult[] = info.map((obj: any) => {
+  const rawInfoList: SearchSubject[] = info.map((obj: any) => {
     return {
       ...obj,
       url: obj.link,
@@ -42,7 +42,7 @@ export async function searchAnimeData(
   const options = {
     keys: ['greyName'],
   };
-  let result: SearchResult;
+  let result: SearchSubject;
 
   result = filterResults(rawInfoList, subjectInfo, options, true);
   if (result && result.url) {

@@ -1,4 +1,4 @@
-import { SearchResult } from '../../../interface/subject';
+import { SearchSubject } from '../../../interface/subject';
 import { checkAnimeSubjectExist } from '../../../sites/douban';
 import { $q, htmlToElement } from '../../../utils/domUtils';
 import { BLANK_LINK, genScoreRowInfo, getScoreWrapDom } from '../common';
@@ -49,7 +49,7 @@ export const doubanAnimePage: PageConfig = {
       name = rawName.replace(firstKeyword, '').trim();
       // name: rawName.replace(/第.季/, ''),
     }
-    const subjectInfo: SearchResult = {
+    const subjectInfo: SearchSubject = {
       name,
       score: $q('.ll.rating_num')?.textContent ?? 0,
       count: $q('.rating_people > span')?.textContent ?? 0,
@@ -62,7 +62,7 @@ export const doubanAnimePage: PageConfig = {
     }
     return subjectInfo;
   },
-  insertScoreInfo(page: PageConfig, info: SearchResult) {
+  insertScoreInfo(page: PageConfig, info: SearchSubject) {
     const title = this.getScoreInfo().name;
     const opts = {
       title,

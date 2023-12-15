@@ -1,4 +1,4 @@
-import { SearchResult, Subject } from '../interface/subject';
+import { SearchSubject, Subject } from '../interface/subject';
 import { randomSleep } from '../utils/async/sleep';
 import { fetchJson, fetchText } from '../utils/fetchData';
 import { normalizeQuery } from '../utils/utils';
@@ -7,7 +7,7 @@ export const favicon = 'https://cdn.myanimelist.net/images/favicon.ico';
 
 export async function searchAnimeData(
   subjectInfo: Subject
-): Promise<SearchResult> {
+): Promise<SearchSubject> {
   let query = normalizeQuery((subjectInfo.name || '').trim());
   const url = `https://myanimelist.net/search/prefix.json?type=anime&keyword=${encodeURIComponent(
     query
@@ -45,7 +45,7 @@ export async function searchAnimeData(
   if (!pageUrl) {
     throw new Error('No match results');
   }
-  let result: SearchResult = {
+  let result: SearchSubject = {
     name,
     url: pageUrl,
   };

@@ -1,4 +1,4 @@
-import { SearchResult } from './interface/subject';
+import { SearchSubject } from './interface/subject';
 import { Selector, SubjectTypeId } from './interface/wiki';
 import { checkSubjectExist } from './sites/bangumi';
 import { checkAnimeSubjectExist as checkAnimeSubjectExistDouban } from './sites/douban';
@@ -14,7 +14,7 @@ import { dealDate } from './utils/utils';
 const sites = ['douban', 'bangumi', 'myanimelist', 'anidb'] as const;
 type ScoreSites = typeof sites[number];
 
-type ScoreInfo = SearchResult & { site: ScoreSites };
+type ScoreInfo = SearchSubject & { site: ScoreSites };
 type SubjectIdDict = {
   [key in ScoreSites]?: string;
 };
@@ -23,7 +23,7 @@ interface ScorePage {
   name: ScoreSites;
   controlSelector: Selector[];
   pageSelector: Selector[];
-  getSubjectInfo: () => SearchResult;
+  getSubjectInfo: () => SearchSubject;
   // 插入评分信息的 DOM
   insertScoreInfo: (info: ScoreInfo) => void;
   initControlDOM?: ($el: Element) => void;
@@ -125,9 +125,9 @@ function saveScoreInfo(info: ScoreInfo) {
   });
 }
 
-async function fetchScoreInfo(name: ScoreSites, subjectInfo: SearchResult) {
+async function fetchScoreInfo(name: ScoreSites, subjectInfo: SearchSubject) {
   let info: ScoreInfo;
-  let res: SearchResult;
+  let res: SearchSubject;
   let bgmOrigin = 'https://bgm.tv';
   GM_setValue(BANGUMI_LOADING, true);
   try {
@@ -196,7 +196,7 @@ const DoubanScorePage: ScorePage = {
       name = rawName.replace(firstKeyword, '').trim();
       // name: rawName.replace(/第.季/, ''),
     }
-    const subjectInfo: SearchResult = {
+    const subjectInfo: SearchSubject = {
       name,
       score: $q('.ll.rating_num')?.textContent ?? 0,
       count: $q('.rating_people > span')?.textContent ?? 0,
@@ -254,7 +254,7 @@ const BangumiScorePage: ScorePage = {
     },
   ],
   getSubjectInfo: function () {
-    let info: SearchResult = {
+    let info: SearchSubject = {
       name: $q('h1>a').textContent.trim(),
       score: $q('.global_score span[property="v:average"')?.textContent ?? 0,
       count: $q('span[property="v:votes"')?.textContent ?? 0,

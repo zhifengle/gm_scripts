@@ -1,4 +1,4 @@
-import { SearchResult, Subject } from '../interface/subject';
+import { SearchSubject, Subject } from '../interface/subject';
 import {
   IInterestData,
   InterestType,
@@ -12,7 +12,7 @@ import { fetchJson, fetchText } from '../utils/fetchData';
 import {
   filterResults,
   findInterestStatusById,
-  getSearchResultByGM,
+  getSearchSubjectByGM,
   setSearchResultByGM,
 } from './common';
 
@@ -165,7 +165,7 @@ export async function getAllPageInfo(
   return res;
 }
 
-function convertHomeSearchItem($item: HTMLElement): SearchResult {
+function convertHomeSearchItem($item: HTMLElement): SearchSubject {
   const dealHref = (href: string) => {
     if (/^https:\/\/movie\.douban\.com\/subject\/\d+\/$/.test(href)) {
       return href;
@@ -213,7 +213,7 @@ function convertHomeSearchItem($item: HTMLElement): SearchResult {
 async function getHomeSearchResults(
   query: string,
   cat = '1002'
-): Promise<SearchResult[]> {
+): Promise<SearchSubject[]> {
   const url = `https://www.douban.com/search?cat=${cat}&q=${encodeURIComponent(
     query
   )}`;
@@ -234,7 +234,7 @@ async function getHomeSearchResults(
  */
 function getAllSearchResult(
   $doc: Element | Document = document
-): SearchResult[] {
+): SearchSubject[] {
   let items = $doc.querySelectorAll('#root .item-root');
   return Array.prototype.slice
     .call(items)
@@ -245,7 +245,7 @@ function getAllSearchResult(
  * 提取 search.douban.com 的条目信息
  * @param $item 单项搜索结果容器 DOM
  */
-export function convertSubjectSearchItem($item: HTMLElement): SearchResult {
+export function convertSubjectSearchItem($item: HTMLElement): SearchSubject {
   // item-root
   const $title = $item.querySelector('.title a') as HTMLElement;
   let name = '';
@@ -296,7 +296,7 @@ export function convertSubjectSearchItem($item: HTMLElement): SearchResult {
 export async function getSubjectSearchResults(
   query: string,
   cat = '1002'
-): Promise<SearchResult[]> {
+): Promise<SearchSubject[]> {
   const url = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(
     query
   )}&cat=${cat}`;
@@ -315,11 +315,11 @@ export async function getSubjectSearchResults(
   }
   // 这里不能使用 await 否则数据加载完毕了监听器还没有初始化
   loadIframe($iframe, url, 1000 * 10);
-  return await getSearchResultByGM();
+  return await getSearchSubjectByGM();
 }
 
 export async function sendSearchResults() {
-  const searchItems: SearchResult[] = getAllSearchResult();
+  const searchItems: SearchSubject[] = getAllSearchResult();
   setSearchResultByGM(searchItems);
 }
 async function updateInterest(subjectId: string, data: IInterestData) {
@@ -379,7 +379,7 @@ async function updateInterest(subjectId: string, data: IInterestData) {
 export async function checkAnimeSubjectExist(
   subjectInfo: Subject,
   type: string = 'home_search'
-): Promise<SearchResult> {
+): Promise<SearchSubject> {
   let query = (subjectInfo.name || '').trim();
   if (!query) {
     console.info('Query string is empty');

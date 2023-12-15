@@ -1,4 +1,4 @@
-import { SearchResult } from '../../../interface/subject';
+import { SearchSubject } from '../../../interface/subject';
 import { $q, findElement } from '../../../utils/domUtils';
 import { dealDate } from '../../../utils/utils';
 import { insertScoreCommon } from '../common';
@@ -46,19 +46,19 @@ export const getchuGamePage: PageConfig = {
   genSubjectUrl(id) {
     return `http://www.getchu.com/soft.phtml?id=${id}`;
   },
-  insertScoreInfo: function (page: PageConfig, info: SearchResult): void {
+  insertScoreInfo: function (page: PageConfig, info: SearchSubject): void {
     const title = this.getScoreInfo().title;
     insertScoreCommon(page, info, {
       title,
       adjacentSelector: this.infoSelector,
     });
   },
-  getSearchResult: function (subjectInfo: SearchResult): Promise<SearchResult> {
+  getSearchResult: function (subjectInfo: SearchSubject): Promise<SearchSubject> {
     return;
   },
-  getScoreInfo: function (): SearchResult {
+  getScoreInfo: function (): SearchSubject {
     const title = dealTitle($q('#soft-title').textContent);
-    const info: SearchResult = {
+    const info: SearchSubject = {
       name: title,
       score: 0,
       count: '-',

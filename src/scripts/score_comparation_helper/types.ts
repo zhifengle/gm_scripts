@@ -1,4 +1,4 @@
-import { SearchResult } from '../../interface/subject';
+import { SearchSubject } from '../../interface/subject';
 import { Selector } from '../../interface/wiki';
 
 export type ScoreMap = Record<string, string>;
@@ -13,11 +13,11 @@ export type PageConfig = {
   genSubjectUrl: (id: string) => string;
   infoSelector: Selector[];
   pageSelector: Selector[];
-  getSearchResult: (subjectInfo: SearchResult) => Promise<SearchResult>;
+  getSearchResult: (subjectInfo: SearchSubject) => Promise<SearchSubject>;
   // 可能会解析 html. 所以使用 $q $qa
-  getScoreInfo: () => SearchResult;
+  getScoreInfo: () => SearchSubject;
   // 插入评分信息的 DOM
-  insertScoreInfo: (page: PageConfig, info: SearchResult) => void;
+  insertScoreInfo: (page: PageConfig, info: SearchSubject) => void;
   controlSelector?: Selector[];
   insertControlDOM?: (
     $el: Element,

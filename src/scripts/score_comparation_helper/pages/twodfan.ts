@@ -1,7 +1,7 @@
-import { SearchResult } from '../../../interface/subject';
+import { SearchSubject } from '../../../interface/subject';
 import {
   favicon,
-  getSearchResult,
+  getSearchSubject,
   searchGameData,
 } from '../../../sites/twodfan';
 import { $q } from '../../../utils/domUtils';
@@ -45,8 +45,8 @@ export const twodfanPage: PageConfig = {
     return `${site_origin}/subjects/${id}`;
   },
   getSearchResult: searchGameData,
-  getScoreInfo: getSearchResult,
-  insertScoreInfo: function (page: PageConfig, info: SearchResult): void {
+  getScoreInfo: getSearchSubject,
+  insertScoreInfo: function (page: PageConfig, info: SearchSubject): void {
     const title = $q('.navbar > h3').textContent.trim();
     insertScoreCommon(page, info, {
       title,

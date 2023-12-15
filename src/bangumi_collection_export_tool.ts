@@ -1,4 +1,4 @@
-import { SearchResult } from './interface/subject';
+import { SearchSubject } from './interface/subject';
 import {
   IInterestData,
   InterestType,
@@ -226,7 +226,7 @@ function genExportBtn(filename: string) {
 }
 
 async function updateUserInterest(
-  subject: SearchResult,
+  subject: SearchSubject,
   data: IInterestData,
   $infoDom: Element
 ) {
@@ -284,7 +284,7 @@ async function handleFileAsync(e: Event) {
   const $menu = document.querySelector('#columnSubjectBrowserB .menu_inner');
   for (const item of jsonData) {
     try {
-      const subject: SearchResult = {
+      const subject: SearchSubject = {
         name: item['名称'],
         url: item['地址'],
       };

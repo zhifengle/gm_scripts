@@ -1,4 +1,4 @@
-import { SearchResult, Subject } from '../interface/subject';
+import { SearchSubject, Subject } from '../interface/subject';
 import { randomSleep } from '../utils/async/sleep';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
@@ -15,7 +15,7 @@ const HEADERS = {
 // export const favicon = 'https://2dfan.org/favicon.ico';
 export const favicon = 'https://www.google.com/s2/favicons?domain=2dfan.org';
 
-function getSearchItem($item: HTMLElement): SearchResult {
+function getSearchItem($item: HTMLElement): SearchSubject {
   const $title = $item.querySelector('h4.media-heading > a');
   const href = new URL($title.getAttribute('href'), site_origin).href;
   const infos = $item.querySelectorAll('.tags > span');
@@ -40,7 +40,7 @@ function getSearchItem($item: HTMLElement): SearchResult {
 
 export async function searchGameData(
   subjectInfo: Subject
-): Promise<SearchResult> {
+): Promise<SearchSubject> {
   let query = normalizeQuery((subjectInfo.name || '').trim());
   if (!query) {
     console.info('Query string is empty');
@@ -60,7 +60,7 @@ export async function searchGameData(
   });
   const $doc = new DOMParser().parseFromString(rawText, 'text/html');
   const items = $doc.querySelectorAll('#subjects > li');
-  const rawInfoList: SearchResult[] = Array.prototype.slice
+  const rawInfoList: SearchSubject[] = Array.prototype.slice
     .call(items)
     .map(($item: HTMLElement) => getSearchItem($item));
   searchResult = filterResults(rawInfoList, subjectInfo, options, true);
@@ -76,7 +76,7 @@ export async function searchGameData(
   }
 }
 
-async function followSearch(url: string): Promise<SearchResult> {
+async function followSearch(url: string): Promise<SearchSubject> {
   const rawText = await fetchText(url, {
     headers: {
       accept: HEADERS.accept,
@@ -84,15 +84,15 @@ async function followSearch(url: string): Promise<SearchResult> {
     },
   });
   window._parsedEl = new DOMParser().parseFromString(rawText, 'text/html');
-  const res = getSearchResult();
+  const res = getSearchSubject();
   window._parsedEl = undefined;
   return res;
 }
 
-export function getSearchResult(): SearchResult {
+export function getSearchSubject(): SearchSubject {
   const $table = $q('.media-body.control-group > .control-group');
   const name = $q('.navbar > h3').textContent.trim();
-  const info: SearchResult = {
+  const info: SearchSubject = {
     name: name,
     greyName: name,
     score: $q('.rank-info.control-group .score')?.textContent.trim() ?? 0,

@@ -1,4 +1,4 @@
-import { SearchResult } from '../../../interface/subject';
+import { SearchSubject } from '../../../interface/subject';
 import { searchAnimeData } from '../../../sites/myanimelist';
 import { $q, $qa } from '../../../utils/domUtils';
 import { formatDate } from '../../../utils/utils';
@@ -31,9 +31,9 @@ export const myanimelistPage: PageConfig = {
     return `https://myanimelist.net/anime/${id}`;
   },
   getSearchResult: searchAnimeData,
-  getScoreInfo: function (): SearchResult {
+  getScoreInfo: function (): SearchSubject {
     let name = $q('h1-title')?.textContent;
-    const info: SearchResult = {
+    const info: SearchSubject = {
       name: name,
       greyName: name,
       score: $q('span[itemprop="ratingValue"]')?.textContent.trim() ?? 0,
@@ -53,7 +53,7 @@ export const myanimelistPage: PageConfig = {
     });
     return info;
   },
-  insertScoreInfo: function (page: PageConfig, info: SearchResult): void {
+  insertScoreInfo: function (page: PageConfig, info: SearchSubject): void {
     const title = this.getScoreInfo().name;
     insertScoreCommon(page, info, {
       title,

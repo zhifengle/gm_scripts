@@ -1,4 +1,4 @@
-import { SearchResult, Subject } from '../interface/subject';
+import { SearchSubject, Subject } from '../interface/subject';
 import { sleep } from '../utils/async/sleep';
 import { $q, $qa } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
@@ -43,12 +43,12 @@ function reviseTitle(title: string) {
   return normalizeQueryVNDB(title);
 }
 
-function getSearchItem($item: HTMLElement): SearchResult {
+function getSearchItem($item: HTMLElement): SearchSubject {
   const $title = $item.querySelector('.tc_title > a');
   const href = new URL($title.getAttribute('href'), 'https://vndb.org/').href;
   const $rating = $item.querySelector('.tc_rating');
   const rawName = $title.getAttribute('title');
-  const info: SearchResult = {
+  const info: SearchSubject = {
     name: reviseTitle(rawName),
     rawName,
     url: href,
@@ -70,7 +70,7 @@ function getSearchItem($item: HTMLElement): SearchResult {
 // 凍京NECRO＜トウキョウ・ネクロ＞
 // https://vndb.org/v5154
 
-export async function searchSubject(subjectInfo: SearchResult): Promise<SearchResult> {
+export async function searchSubject(subjectInfo: SearchSubject): Promise<SearchSubject> {
   let query = normalizeQuery((subjectInfo.name || '').trim());
   if (!query) {
     console.info('Query string is empty');
@@ -89,13 +89,13 @@ export async function searchSubject(subjectInfo: SearchResult): Promise<SearchRe
   // 重定向
   if ($vndetails) {
     window._parsedEl = $doc;
-    const res = getSearchResult();
+    const res = getSearchSubject();
     res.url = $doc.querySelector('head > base').getAttribute('href');
     window._parsedEl = undefined;
     return res;
   }
   const items = $doc.querySelectorAll('.browse.vnbrowse table > tbody > tr');
-  const rawInfoList: SearchResult[] = Array.prototype.slice
+  const rawInfoList: SearchSubject[] = Array.prototype.slice
     .call(items)
     .map(($item: HTMLElement) => getSearchItem($item));
   searchResult = filterResults(
@@ -113,14 +113,14 @@ export async function searchSubject(subjectInfo: SearchResult): Promise<SearchRe
   }
 }
 
-export async function searchGameData(info: SearchResult): Promise<SearchResult> {
+export async function searchGameData(info: SearchSubject): Promise<SearchSubject> {
   const result = await searchSubject(info);
   // when score is empty, try to extract score from page
   if (result && result.url && Number(result.count) > 0 && isNaN(Number(result.score))) {
     await sleep(100);
     const rawText = await fetchText(result.url);
     window._parsedEl = new DOMParser().parseFromString(rawText, 'text/html');
-    const res = getSearchResult();
+    const res = getSearchSubject();
     res.url = result.url;
     window._parsedEl = undefined;
     return res;
@@ -129,12 +129,12 @@ export async function searchGameData(info: SearchResult): Promise<SearchResult> 
   }
 }
 
-export function getSearchResult(): SearchResult {
+export function getSearchSubject(): SearchSubject {
   let name = $q('tr.title span[lang="ja"]')?.textContent;
   if (!name) {
     name = $q('tr.title td:nth-of-type(2) > span').textContent;
   }
-  const info: SearchResult = {
+  const info: SearchSubject = {
     name,
     rawName: name,
     score: $q('.rank-info.control-group .score')?.textContent.trim() ?? 0,

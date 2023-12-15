@@ -1,5 +1,5 @@
 import { KvExpiration, GmEngine } from 'kv-expiration';
-import { SearchResult } from '../../interface/subject';
+import { SearchSubject } from '../../interface/subject';
 import { ScoreMap } from './types';
 
 const USERJS_PREFIX = 'E_SCORE_';
@@ -11,7 +11,7 @@ export function clearInfoStorage() {
   storage.flush();
 }
 
-export function saveInfo(id: string, info: SearchResult, expiration?: number) {
+export function saveInfo(id: string, info: SearchSubject, expiration?: number) {
   expiration = expiration || 7;
   if (id === '') {
     console.error('invalid id:  ', info);

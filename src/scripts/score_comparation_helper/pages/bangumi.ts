@@ -1,4 +1,4 @@
-import { SearchResult, Subject } from '../../../interface/subject';
+import { SearchSubject, Subject } from '../../../interface/subject';
 import { SubjectTypeId } from '../../../interface/wiki';
 import { checkSubjectExist } from '../../../sites/bangumi';
 import { $q, $qa, htmlToElement } from '../../../utils/domUtils';
@@ -77,7 +77,7 @@ export const bangumiAnimePage: PageConfig = {
     return res;
   },
   getScoreInfo: () => {
-    const info: SearchResult = {
+    const info: SearchSubject = {
       name: $q('h1>a').textContent.trim(),
       score: $q('.global_score span[property="v:average"')?.textContent ?? 0,
       count: $q('span[property="v:votes"')?.textContent ?? 0,
@@ -98,7 +98,7 @@ export const bangumiAnimePage: PageConfig = {
     return info;
   },
   // 插入评分信息的 DOM
-  insertScoreInfo(page: PageConfig, info: SearchResult) {
+  insertScoreInfo(page: PageConfig, info: SearchSubject) {
     const title = $q('h1>a').textContent.trim();
     const opts = {
       title,

@@ -1,5 +1,5 @@
 import { SEARCH_RESULT } from '../contants';
-import { AllSubject, SearchResult } from '../interface/subject';
+import { AllSubject, SearchSubject } from '../interface/subject';
 import { InterestType, InterestTypeId, MsgResponse } from '../interface/types';
 import { sleep } from '../utils/async/sleep';
 import { isEqualDate, isEqualMonth } from '../utils/utils';
@@ -11,7 +11,7 @@ import { isEqualDate, isEqualMonth } from '../utils/utils';
  * @param opts
  */
 export function filterResults(
-  items: SearchResult[],
+  items: SearchSubject[],
   subjectInfo: AllSubject,
   opts: { releaseDate?: boolean } & Record<string, any> = {},
   isSearch: boolean = true
@@ -86,7 +86,7 @@ export function filterResults(
     }
   }
 }
-export function filterResultsByMonth(items: SearchResult[], info: AllSubject): SearchResult {
+export function filterResultsByMonth(items: SearchSubject[], info: AllSubject): SearchSubject {
   const list = items
     .filter((item) => isEqualMonth(item.releaseDate, info.releaseDate))
     .sort((a, b) => +b.count - +a.count);
@@ -103,7 +103,7 @@ export function filterResultsByMonth(items: SearchResult[], info: AllSubject): S
   return list[0];
 }
 
-export function filterResultsByDate(items: SearchResult[], info: AllSubject): SearchResult {
+export function filterResultsByDate(items: SearchSubject[], info: AllSubject): SearchSubject {
   const list = items
     .filter((item) => isEqualDate(item.releaseDate, info.releaseDate))
     .sort((a, b) => +b.count - +a.count);
@@ -152,7 +152,7 @@ export function findInterestStatusById(id: InterestTypeId): {
   }
 }
 
-export async function getSearchResultByGM(): Promise<SearchResult[]> {
+export async function getSearchSubjectByGM(): Promise<SearchSubject[]> {
   return new Promise((resolve, reject) => {
     const listenId = window.gm_val_listen_id;
     if (listenId) {
@@ -190,9 +190,9 @@ export async function setSearchResultByGM(data: any) {
  * @returns Promise<SearchResult>
  */
 export async function searchDataByNames(
-  subjectInfo: SearchResult,
-  searchFn: (info: SearchResult) => Promise<SearchResult>
-): Promise<SearchResult> {
+  subjectInfo: SearchSubject,
+  searchFn: (info: SearchSubject) => Promise<SearchSubject>
+): Promise<SearchSubject> {
   let queryList: string[] = [];
   if (subjectInfo.alias) {
     queryList = subjectInfo.alias;

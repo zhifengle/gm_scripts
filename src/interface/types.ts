@@ -1,4 +1,4 @@
-import { SearchResult, Subject } from './subject';
+import { SearchSubject, Subject } from './subject';
 
 export type IFuncPromise = (...args: any) => Promise<any>;
 export type ITiming = 'beforeCreate' | 'afterCreate' | 'afterGetWikiData';
@@ -52,7 +52,7 @@ export interface SiteUtils {
     subjectId: string,
     insterestData: IInterestData
   ) => Promise<void>;
-  checkSubjectExist: (subject: Subject, type?: string) => Promise<SearchResult>;
+  checkSubjectExist: (subject: Subject, type?: string) => Promise<SearchSubject>;
 }
 
 export interface MsgResponse {

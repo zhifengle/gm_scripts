@@ -1,13 +1,13 @@
-import { SearchResult, Subject } from '../interface/subject';
+import { SearchSubject, Subject } from '../interface/subject';
 import { Selector } from '../interface/wiki';
 import { $q, findElement } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { dealDate } from '../utils/utils';
 import { filterResults } from './common';
 
-export function getSearchResult(): SearchResult {
+export function getSearchSubject(): SearchSubject {
   const $title = $q('.body-top_info_title > h2');
-  const info: SearchResult = {
+  const info: SearchSubject = {
     name: $title.textContent.trim(),
     score: 0,
     count: '-',
@@ -29,10 +29,10 @@ export function getSearchResult(): SearchResult {
   return info;
 }
 
-function getSearchItem($item: HTMLElement): SearchResult {
+function getSearchItem($item: HTMLElement): SearchSubject {
   const $title = $item.querySelector('.product-title');
   const href = $item.querySelector('a.product-body').getAttribute('href');
-  const info: SearchResult = {
+  const info: SearchSubject = {
     name: $title.textContent,
     url: href,
     count: '-',
@@ -45,12 +45,12 @@ function getSearchItem($item: HTMLElement): SearchResult {
   return info;
 }
 
-export async function searchGameSubject(info: Subject): Promise<SearchResult> {
+export async function searchGameSubject(info: Subject): Promise<SearchSubject> {
   const url = `https://moepedia.net/search/result/?s=${info.name}&t=on`;
   const rawText = await fetchText(url);
   const $doc = new DOMParser().parseFromString(rawText, 'text/html');
   const items = $doc.querySelectorAll('.sw-Products .sw-Products_Item');
-  const rawInfoList: SearchResult[] = [...items].map(($item: HTMLElement) =>
+  const rawInfoList: SearchSubject[] = [...items].map(($item: HTMLElement) =>
     getSearchItem($item)
   );
   const res = filterResults(

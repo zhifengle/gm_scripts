@@ -12,7 +12,7 @@ export interface BookSubject extends BaseSubject {
   asin?: string;
 }
 
-export interface SearchResult extends BaseSubject {
+export interface SearchSubject extends BaseSubject {
   url: string;
   score?: number | string;
   count?: number | string;

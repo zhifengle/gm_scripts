@@ -1,5 +1,5 @@
-import { SearchResult } from '../../../interface/subject';
-import { getSearchResult, searchGameSubject } from '../../../sites/moepedia';
+import { SearchSubject } from '../../../interface/subject';
+import { getSearchSubject, searchGameSubject } from '../../../sites/moepedia';
 import { $q } from '../../../utils/domUtils';
 import { insertScoreCommon } from '../common';
 import { PageConfig } from '../types';
@@ -31,7 +31,7 @@ export const moepediaPage: PageConfig = {
   genSubjectUrl(id) {
     return `https://moepedia.net/game/${id}/`;
   },
-  insertScoreInfo: function (page: PageConfig, info: SearchResult): void {
+  insertScoreInfo: function (page: PageConfig, info: SearchSubject): void {
     const title = $q('.body-top_info_title > h2').textContent.trim();
     insertScoreCommon(page, info, {
       title,
@@ -39,5 +39,5 @@ export const moepediaPage: PageConfig = {
     });
   },
   getSearchResult: searchGameSubject,
-  getScoreInfo: getSearchResult,
+  getScoreInfo: getSearchSubject,
 };

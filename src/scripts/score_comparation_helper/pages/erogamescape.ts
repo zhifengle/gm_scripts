@@ -1,7 +1,7 @@
-import { SearchResult } from '../../../interface/subject';
+import { SearchSubject } from '../../../interface/subject';
 import {
   favicon,
-  getSearchResult,
+  getSearchSubject,
   normalizeQueryEGS,
   searchGameSubject,
 } from '../../../sites/erogamescape';
@@ -39,8 +39,8 @@ export const erogamescapePage: PageConfig = {
     return `https://erogamescape.org/~ap2/ero/toukei_kaiseki/game.php?game=${id}`;
   },
   getSearchResult: searchGameSubject,
-  getScoreInfo: getSearchResult,
-  insertScoreInfo: function (page: PageConfig, info: SearchResult): void {
+  getScoreInfo: getSearchSubject,
+  insertScoreInfo: function (page: PageConfig, info: SearchSubject): void {
     const title = normalizeQueryEGS(this.getScoreInfo().name);
     insertScoreCommon(page, info, {
       title,

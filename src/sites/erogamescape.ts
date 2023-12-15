@@ -1,5 +1,5 @@
 import TinySegmenter from 'tiny-segmenter';
-import { SearchResult } from '../interface/subject';
+import { SearchSubject } from '../interface/subject';
 import { sleep } from '../utils/async/sleep';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
@@ -42,13 +42,13 @@ function reviseTitle(title: string) {
   return title;
 }
 
-function getSearchItem($item: HTMLElement): SearchResult {
+function getSearchItem($item: HTMLElement): SearchSubject {
   const $title = $item.querySelector('td:nth-child(1) > a');
   const href = $title.getAttribute('href');
   const $name = $item.querySelector<HTMLElement>('td:nth-child(1)');
   // remove tooltip text
   $name.querySelector('div.tooltip')?.remove();
-  const info: SearchResult = {
+  const info: SearchSubject = {
     name: $name.innerText,
     url: href,
     count: $item.querySelector('td:nth-child(6)')?.textContent ?? 0,
@@ -119,10 +119,10 @@ export function normalizeQueryEGS(query: string): string {
 }
 
 export async function searchSubject(
-  subjectInfo: SearchResult,
+  subjectInfo: SearchSubject,
   type: ErogamescapeCategory = ErogamescapeCategory.game,
   uniqueQueryStr: string = ''
-): Promise<SearchResult> {
+): Promise<SearchSubject> {
   let query = uniqueQueryStr || subjectInfo.name;
   const url = `${site_origin}/~ap2/ero/toukei_kaiseki/kensaku.php?category=${type}&word_category=name&word=${encodeURIComponent(
     query
@@ -131,8 +131,8 @@ export async function searchSubject(
   const rawText = await fetchText(url);
   const $doc = new DOMParser().parseFromString(rawText, 'text/html');
   const items = $doc.querySelectorAll('#result table tr:not(:first-child)');
-  const rawInfoList: SearchResult[] = [...items].map(($item: HTMLElement) => getSearchItem($item));
-  let res: SearchResult;
+  const rawInfoList: SearchSubject[] = [...items].map(($item: HTMLElement) => getSearchItem($item));
+  let res: SearchSubject;
   if (uniqueQueryStr) {
     res = filterResultsByMonth(rawInfoList, subjectInfo);
     // no result. try to fuse search by rawName
@@ -159,7 +159,7 @@ export async function searchSubject(
   }
 }
 
-export async function searchGameSubject(info: SearchResult): Promise<SearchResult> {
+export async function searchGameSubject(info: SearchSubject): Promise<SearchSubject> {
   const querySet = new Set();
   let query = normalizeQueryEGS((info.name || '').trim());
   let res = await searchAndFollow({ ...info, name: query });
@@ -212,13 +212,13 @@ export async function searchGameSubject(info: SearchResult): Promise<SearchResul
 }
 
 // search and follow the URL of search result
-export async function searchAndFollow(info: SearchResult, uniqueQueryStr: string = ''): Promise<SearchResult> {
+export async function searchAndFollow(info: SearchSubject, uniqueQueryStr: string = ''): Promise<SearchSubject> {
   const result = await searchSubject(info, ErogamescapeCategory.game, uniqueQueryStr);
   if (result && result.url) {
     // await sleep(50)
     const rawText = await fetchText(result.url);
     window._parsedEl = new DOMParser().parseFromString(rawText, 'text/html');
-    const res = getSearchResult();
+    const res = getSearchSubject();
     res.url = result.url;
     window._parsedEl = undefined;
     return res;
@@ -227,7 +227,7 @@ export async function searchAndFollow(info: SearchResult, uniqueQueryStr: string
   }
 }
 
-export function getSearchResult(): SearchResult {
+export function getSearchSubject(): SearchSubject {
   const $title = $q('#soft-title > .bold');
   const rawName = $title.textContent.trim();
   const title = reviseTitle(rawName);
@@ -237,7 +237,7 @@ export function getSearchResult(): SearchResult {
   } else {
     name = normalizeQuery(rawName);
   }
-  const info: SearchResult = {
+  const info: SearchSubject = {
     name,
     rawName,
     score: $q('#average > td')?.textContent.trim() ?? 0,

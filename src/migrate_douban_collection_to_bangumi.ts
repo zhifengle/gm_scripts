@@ -1,4 +1,4 @@
-import { AllSubject, SearchResult, Subject } from './interface/subject';
+import { AllSubject, SearchSubject, Subject } from './interface/subject';
 import {
   InterestType,
   InterestTypeId,
@@ -15,7 +15,7 @@ import { insertControl } from './ui/migrateTool';
 
 type SubjectItemWithSync = SubjectItem & {
   syncStatus: string;
-  syncSubject?: SearchResult;
+  syncSubject?: SearchSubject;
 };
 type InterestInfos = { [key in InterestType]: SubjectItemWithSync[] };
 

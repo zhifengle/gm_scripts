@@ -18,7 +18,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.20
+// @version     0.1.21
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -30,4 +30,5 @@
 // @grant       GM_deleteValue
 // @grant       GM_addValueChangeListener
 // @require     https://cdn.staticfile.org/fuse.js/6.4.0/fuse.min.js
+// @require     https://registry.npmmirror.com/tiny-segmenter/0.2.0/files/dist/tiny-segmenter-0.2.0.js
 // ==/UserScript==

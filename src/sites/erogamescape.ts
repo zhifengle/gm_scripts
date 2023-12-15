@@ -1,4 +1,3 @@
-import TinySegmenter from 'tiny-segmenter';
 import { SearchSubject } from '../interface/subject';
 import { sleep } from '../utils/async/sleep';
 import { $q } from '../utils/domUtils';

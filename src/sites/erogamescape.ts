@@ -3,7 +3,8 @@ import { sleep } from '../utils/async/sleep';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery, normalizeQuery } from '../utils/utils';
-import { filterResults, filterResultsByMonth } from './common';
+import { filterResults, filterResultsByMonth, fuseFilterSubjects } from './common';
+import { getHiraganaSubTitle } from './utils';
 
 enum ErogamescapeCategory {
   game = 'game',
@@ -58,7 +59,6 @@ function getSearchItem($item: HTMLElement): SearchSubject {
 }
 
 export function normalizeQueryEGS(query: string): string {
-  // let newQuery = query.replace(/([Ａ-Ｚａ-ｚ０-９])([Ａ-Ｚ])/g, '$1 $2');
   let newQuery = query;
   newQuery = newQuery.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function (s) {
     return String.fromCharCode(s.charCodeAt(0) - 65248);
@@ -90,6 +90,12 @@ export function normalizeQueryEGS(query: string): string {
     .replace(/Ⅷ/g, 'VIII')
     .replace(/Ⅸ/g, 'IX')
     .replace(/Ⅹ/g, 'X')
+    // remove parenthesis
+    .replace(/\(.*?\)/g, ' ')
+    .replace(/\（.*?\）/g, ' ')
+    .replace(/＜.+?＞$/, ' ')
+    .replace(/<.+?>/, ' ')
+    .replace(/‐.*?‐/g, ' ')
     .replace(/[-－―～〜━\[\]『』~'…！？。]/g, ' ')
     .replace(/[♥❤☆\/♡★‥○⁉,.【】◆●∽＋‼＿◯※♠×▼％#∞’&!:＇"＊\*＆［］<>＜＞`_「」¨／◇：♪･@＠]/g, ' ')
     .replace(/[、，△《》†〇\/·;^‘“”√≪≫＃→♂?%~■‘〈〉Ω♀⇒≒§♀⇒←∬🕊¡Ι≠±『』♨❄—~Σ⇔↑↓‡▽□』〈〉＾]/g, ' ')
@@ -97,21 +103,16 @@ export function normalizeQueryEGS(query: string): string {
     .replace(/°C/g, '℃')
     .replace(/[①②③④⑤⑥⑦⑧⑨]/g, ' ')
     .replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]/g, ' ')
-    .replace(/‐.*?‐/g, ' ')
-    .replace(/\(.*?\)/g, ' ')
-    .replace(/\（.*?\）/g, ' ')
     .replace(/\.\.\./g, ' ')
-    .replace(/([Ａ-Ｚａ-ｚ０-９])([Ａ-Ｚ])/g, '$1 $2')
-    .replace(/～っ.*/, '')
-    .replace(/\(.*?\)/g, '')
-    .replace(/\（.*?\）/g, ' ')
-    .trim();
+    // @TODO need test
+    // .replace(/([Ａ-Ｚａ-ｚ０-９])([Ａ-Ｚ])/g, '$1 $2')
+    .replace(/～っ.*/, '');
   // 	White x Red --->  	White Red
   newQuery = newQuery.replace(/ x /, ' ');
   newQuery = newQuery.replace(/\s{2,}/g, ' ');
   // カオスQueen遼子4 森山由梨＆郁美姉妹併呑編
   if (/^[^\d]+?\d+[^\d]+$/.test(newQuery)) {
-    newQuery = newQuery.split(/\d+/).join('?')
+    newQuery = newQuery.split(/\d+/).join('?');
   }
   // return getShortenedQuery(newQuery);
   return newQuery;
@@ -145,10 +146,15 @@ export async function searchSubject(
       );
     }
   } else {
-    res = filterResults(rawInfoList, subjectInfo, {
-      releaseDate: true,
-      keys: ['name'],
-    });
+    res = filterResults(
+      rawInfoList,
+      subjectInfo,
+      {
+        releaseDate: true,
+        keys: ['name'],
+      },
+      false
+    );
   }
   console.info(`Search result of ${query} on erogamescape: `, res);
   if (res && res.url) {
@@ -159,15 +165,23 @@ export async function searchSubject(
 }
 
 export async function searchGameSubject(info: SearchSubject): Promise<SearchSubject> {
+  let res: SearchSubject;
   const querySet = new Set();
-  let query = normalizeQueryEGS((info.name || '').trim());
-  let res = await searchAndFollow({ ...info, name: query });
-  querySet.add(query);
+  // fix フィギュア ～奪われた放課後～
+  let query = normalizeQueryEGS(getHiraganaSubTitle(info.name));
+  if (query) {
+    res = await searchAndFollow(info, query);
+    querySet.add(query);
+  } else {
+    query = normalizeQueryEGS((info.name || '').trim());
+    res = await searchAndFollow({ ...info, name: query });
+    querySet.add(query);
+  }
   if (res) {
     return res;
   }
   await sleep(100);
-  query = getShortenedQuery(query);
+  query = getShortenedQuery(normalizeQueryEGS((info.name || '')));
   if (!querySet.has(query)) {
     res = await searchAndFollow(info, query);
     querySet.add(query);
@@ -175,7 +189,7 @@ export async function searchGameSubject(info: SearchSubject): Promise<SearchSubj
       return res;
     }
   }
-  await sleep(100);
+  await sleep(200);
   if (query.length > 3) {
     const segmenter = new TinySegmenter();
     const segs = segmenter.segment(query);
@@ -190,14 +204,14 @@ export async function searchGameSubject(info: SearchSubject): Promise<SearchSubj
       }
     }
   }
-  await sleep(100);
+  await sleep(200);
 
   let queryList: string[] = [];
   if (info.alias) {
     queryList = info.alias;
   }
   for (const s of queryList) {
-    const queryStr = getShortenedQuery(normalizeQueryEGS(s))
+    const queryStr = getShortenedQuery(normalizeQueryEGS(s));
     if (querySet.has(queryStr)) {
       continue;
     }
@@ -206,7 +220,7 @@ export async function searchGameSubject(info: SearchSubject): Promise<SearchSubj
     if (res) {
       return res;
     }
-    await sleep(200);
+    await sleep(500);
   }
 }
 

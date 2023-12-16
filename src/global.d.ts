@@ -1,6 +1,4 @@
 declare var Fuse: any;
-// declare module "tiny-segmenter";
-declare var TinySegmenter: any;
 declare var jschardet: any;
 declare var XLSX: any;
 
@@ -46,3 +44,5 @@ interface Window {
   VNDB_REVISE_TITLE_DICT?: Record<string, string>
   EGS_REVISE_TITLE_DICT?: Record<string, string>
 }
+
+declare module "tiny-segmenter";

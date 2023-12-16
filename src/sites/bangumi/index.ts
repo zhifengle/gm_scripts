@@ -7,7 +7,7 @@ import {
 import { sleep } from '../../utils/async/sleep';
 import { fetchText } from '../../utils/fetchData';
 import { SubjectTypeId } from '../../interface/wiki';
-import { dealDate, normalizeQuery } from '../../utils/utils';
+import { dealDate, getShortenedQuery, normalizeQuery } from '../../utils/utils';
 import { filterResults } from '../common';
 import { SiteUtils } from '../../interface/types';
 import {
@@ -319,7 +319,7 @@ async function checkExist(
     [SubjectTypeId.real]: 'real',
     [SubjectTypeId.all]: 'all',
   };
-  let searchOpts = {};
+  let searchOpts: any = {};
   if (typeof opts === 'object') {
     searchOpts = opts;
   }
@@ -333,6 +333,15 @@ async function checkExist(
   console.info(`First: search result of bangumi: `, searchResult);
   if (searchResult && searchResult.url) {
     return searchResult;
+  }
+  if (searchOpts.shortenQuery) {
+    await sleep(300);
+    let query = normalizeQuery((subjectInfo.name || '').trim());
+    query = getShortenedQuery(query);
+    searchResult = await searchSubject({...subjectInfo, name: query });
+    if (searchResult && searchResult.url) {
+      return searchResult;
+    }
   }
   // disableDate
   if (

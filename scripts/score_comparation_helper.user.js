@@ -1019,6 +1019,15 @@
       if (searchResult && searchResult.url) {
           return searchResult;
       }
+      if (searchOpts.shortenQuery) {
+          await sleep(300);
+          let query = normalizeQuery((subjectInfo.name || '').trim());
+          query = getShortenedQuery(query);
+          searchResult = await searchSubject$2({ ...subjectInfo, name: query });
+          if (searchResult && searchResult.url) {
+              return searchResult;
+          }
+      }
       // disableDate
       if ((typeof opts === 'boolean' && opts) ||
           (typeof opts === 'object' && opts.disableDate)) {
@@ -1176,6 +1185,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       async getSearchResult(subject) {
           const res = await checkSubjectExist(subject, bgm_origin, SubjectTypeId.game, {
               releaseDate: true,
+              shortenQuery: true,
               disableDate: true,
           });
           if (res) {

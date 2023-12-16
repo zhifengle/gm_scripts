@@ -161,13 +161,14 @@ export const bangumiGamePage: PageConfig = {
       selector: 'a.focus.chl[href="/game"]',
     },
   ],
-  async getSearchResult(subject: Subject) {
+  async getSearchResult(subject: SearchSubject) {
     const res = await checkSubjectExist(
       subject,
       bgm_origin,
       SubjectTypeId.game,
       {
         releaseDate: true,
+        shortenQuery: true,
         disableDate: true,
       }
     );

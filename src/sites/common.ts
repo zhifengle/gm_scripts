@@ -14,6 +14,11 @@ type FuseOptions = {
   keys: string[];
 };
 
+export type SearchOptions = {
+  shortenQuery?: boolean;
+  query?: string;
+}
+
 export function fuseFilterSubjects(items: SearchSubject[], info: SearchSubject, opts: FuseOptions): SearchSubject[] {
   let str = info.name;
   if (info.rawName) {
@@ -37,7 +42,7 @@ export function fuseFilterSubjects(items: SearchSubject[], info: SearchSubject, 
 export function filterResults(
   items: SearchSubject[],
   subjectInfo: AllSubject,
-  opts: { releaseDate?: boolean } & Record<string, any> = {},
+  opts: { releaseDate?: boolean; sameName?: boolean } & Record<string, any> = {},
   isSearch: boolean = true
 ) {
   if (!items) return;
@@ -50,6 +55,9 @@ export function filterResults(
     const list = items
       .filter((item) => isEqualDate(item.releaseDate, subjectInfo.releaseDate))
       .sort((a, b) => +b.count - +a.count);
+    if (opts.sameName) {
+      return list.find((item) => item.name === subjectInfo.name);
+    }
     if (list && list.length > 0) {
       return list[0];
     }
@@ -97,17 +105,10 @@ export function filterResults(
     if (sameMonthResults.length) {
       return sameMonthResults[0].item;
     }
-    if (sameYearResults.length) {
-      return sameYearResults[0].item;
-    }
-  }
-  // 比较名称
-  const nameRe = new RegExp(subjectInfo.name.trim());
-  for (const item of results) {
-    const result = item.item;
-    if (nameRe.test(result.name) || nameRe.test(result.greyName) || nameRe.test(result.rawName)) {
-      return result;
-    }
+    // 容易误判。注释掉
+    // if (sameYearResults.length) {
+    //   return sameYearResults[0].item;
+    // }
   }
   return results[0]?.item;
 }

@@ -388,7 +388,6 @@
           .replace(/<.+?>/, '')
           .replace(/\s-[^-]+?-$/, '')
           .trim();
-      // newQuery = replaceCharToSpace(newQuery);
       newQuery = newQuery.replace(/\s{2,}/g, ' ');
       // game: 14 -one & four or the other meaning-
       if (/^\d+$/.test(newQuery)) {
@@ -464,6 +463,9 @@
           const list = items
               .filter((item) => isEqualDate(item.releaseDate, subjectInfo.releaseDate))
               .sort((a, b) => +b.count - +a.count);
+          if (opts.sameName) {
+              return list.find((item) => item.name === subjectInfo.name);
+          }
           if (list && list.length > 0) {
               return list[0];
           }
@@ -482,7 +484,6 @@
       }
       // 有参考的发布时间
       if (subjectInfo.releaseDate) {
-          const sameYearResults = [];
           const sameMonthResults = [];
           for (const obj of results) {
               const result = obj.item;
@@ -502,25 +503,16 @@
                       sameMonthResults.push(obj);
                       continue;
                   }
-                  if (isEqualDate(result.releaseDate, subjectInfo.releaseDate, 'y')) {
-                      sameYearResults.push(obj);
-                  }
+                  if (isEqualDate(result.releaseDate, subjectInfo.releaseDate, 'y')) ;
               }
           }
           if (sameMonthResults.length) {
               return sameMonthResults[0].item;
           }
-          if (sameYearResults.length) {
-              return sameYearResults[0].item;
-          }
-      }
-      // 比较名称
-      const nameRe = new RegExp(subjectInfo.name.trim());
-      for (const item of results) {
-          const result = item.item;
-          if (nameRe.test(result.name) || nameRe.test(result.greyName) || nameRe.test(result.rawName)) {
-              return result;
-          }
+          // 容易误判。注释掉
+          // if (sameYearResults.length) {
+          //   return sameYearResults[0].item;
+          // }
       }
       return results[0]?.item;
   }
@@ -786,6 +778,110 @@
       SubjectTypeId["all"] = "all";
   })(SubjectTypeId || (SubjectTypeId = {}));
 
+  const SUB_TITLE_PAIRS = ['--', '──', '~~', '～～', '－－', '<>', '＜＞'];
+  function getAlias(name) {
+      const opens = SUB_TITLE_PAIRS.map(pair => pair[0]);
+      const closes = SUB_TITLE_PAIRS.map(pair => pair[1]);
+      const len = name.length;
+      if (closes.includes(name[len - 1])) {
+          let i = len - 1;
+          const c = name[len - 1];
+          let idx = closes.indexOf(c);
+          const openChar = opens[idx];
+          const j = name.lastIndexOf(openChar, i - 1);
+          if (j >= 0) {
+              return [name.slice(0, j).trim(), name.slice(j + 1, i)];
+          }
+      }
+      return [];
+  }
+  function getHiraganaSubTitle(name) {
+      let alias = getAlias(name);
+      if (alias.length === 0 && name.split(' ').length === 2) {
+          alias = name.split(' ');
+      }
+      // const jpRe = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
+      const hanAndHiraganaRe = /[\p{Script=Hiragana}\p{Script=Han}]/u;
+      if (alias && alias.length > 0) {
+          if (hanAndHiraganaRe.test(alias[1])) {
+              // 以假名开头的、包含版本号的
+              if (/^\p{Script=Katakana}/u.test(alias[0]) ||
+                  /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}][ａ-ｚＡ-Ｚ0-9０-９]/u.test(alias[0])) {
+                  return alias[1];
+              }
+          }
+      }
+      return '';
+  }
+  function normalizeEditionName(str) {
+      return str.replace(/\s[^ ]*?(スペシャルプライス版|体験版|ダウンロード版|パッケージ版|限定版|通常版|廉価版|復刻版|初回.*?版|描き下ろし|DVDPG.*|DVD.*?版|Windows版|リニューアル|完全版|リメイク版).*?$/g, '').replace(/Memorial Edition$/, '');
+  }
+  function removePairs(str, pairs = []) {
+      for (let i = 0; i < pairs.length; i++) {
+          if (pairs.length < 2) {
+              continue;
+          }
+          const [open, close] = pairs[i];
+          str = str.replace(new RegExp(open + '.+?' + close, 'g'), '');
+      }
+      return str
+          .replace(/\(.*?\)/g, '')
+          .replace(/\（.*?\）/g, '')
+          .replace(/＜.+?＞/, '')
+          .replace(/<.+?>/, '');
+  }
+  function removeSubTitle(str) {
+      return removePairs(str, SUB_TITLE_PAIRS).trim();
+  }
+  function unique(str) {
+      var result = '';
+      for (var i = 0; i < str.length; i++) {
+          if (result.indexOf(str[i]) < 0) {
+              result += str[i];
+          }
+      }
+      return result;
+  }
+  function removeChars(originStr, chars) {
+      return originStr.replace(new RegExp(`[${chars}]`, 'g'), ' ').replace(/\s{2,}/g, ' ');
+  }
+  function replaceSymbolChars(str, excludes = '') {
+      const fullwidthPair = '～－＜＞';
+      var symbolString = '―〜━[]『』~\'…！？。♥☆/♡★‥○,【】◆×▼’&＇"＊?' + '．・　' + fullwidthPair;
+      if (excludes) {
+          symbolString = symbolString.replace(new RegExp(`[${excludes}]`, 'g'), '');
+      }
+      return removeChars(str, unique(symbolString));
+  }
+  function removePairChars(str) {
+      return removeChars(str, unique(SUB_TITLE_PAIRS.join(''))).trim();
+  }
+  function replaceToASCII(str) {
+      return str
+          .replace(/＝|=/g, ' ')
+          .replace(/　/g, ' ')
+          .replace(/０/g, '0')
+          .replace(/１/g, '1')
+          .replace(/２/g, '2')
+          .replace(/３/g, '3')
+          .replace(/４/g, '4')
+          .replace(/５/g, '5')
+          .replace(/６/g, '6')
+          .replace(/７/g, '7')
+          .replace(/８/g, '8')
+          .replace(/９/g, '9')
+          .replace(/Ⅰ/g, 'I')
+          .replace(/Ⅱ/g, 'II')
+          .replace(/Ⅲ/g, 'III')
+          .replace(/Ⅳ/g, 'IV')
+          .replace(/Ⅴ/g, 'V')
+          .replace(/Ⅵ/g, 'VI')
+          .replace(/Ⅶ/g, 'VII')
+          .replace(/Ⅷ/g, 'VIII')
+          .replace(/Ⅸ/g, 'IX')
+          .replace(/Ⅹ/g, 'X');
+  }
+
   var BangumiDomain;
   (function (BangumiDomain) {
       BangumiDomain["chii"] = "chii.in";
@@ -803,13 +899,9 @@
           name: $subjectTitle.textContent.trim(),
           // url 没有协议和域名
           url: $subjectTitle.getAttribute('href'),
-          greyName: $item.querySelector('h3>.grey')
-              ? $item.querySelector('h3>.grey').textContent.trim()
-              : '',
+          greyName: $item.querySelector('h3>.grey') ? $item.querySelector('h3>.grey').textContent.trim() : '',
       };
-      let matchDate = $item
-          .querySelector('.info')
-          .textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
+      let matchDate = $item.querySelector('.info').textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
       if (matchDate) {
           info.releaseDate = dealDate(matchDate[0]);
       }
@@ -817,9 +909,7 @@
       if ($rateInfo) {
           if ($rateInfo.querySelector('.fade')) {
               info.score = $rateInfo.querySelector('.fade').textContent;
-              info.count = $rateInfo
-                  .querySelector('.tip_j')
-                  .textContent.replace(/[^0-9]/g, '');
+              info.count = $rateInfo.querySelector('.tip_j').textContent.replace(/[^0-9]/g, '');
           }
           else {
               info.score = '0';
@@ -833,7 +923,7 @@
       return info;
   }
   function extractInfoList($doc) {
-      return [...$doc.querySelectorAll('#browserItemList>li')].map($item => {
+      return [...$doc.querySelectorAll('#browserItemList>li')].map(($item) => {
           return getSearchItem$4($item);
       });
   }
@@ -860,13 +950,9 @@
                   name: $subjectTitle.textContent.trim(),
                   // url 没有协议和域名
                   url: $subjectTitle.getAttribute('href'),
-                  greyName: item.querySelector('h3>.grey')
-                      ? item.querySelector('h3>.grey').textContent.trim()
-                      : '',
+                  greyName: item.querySelector('h3>.grey') ? item.querySelector('h3>.grey').textContent.trim() : '',
               };
-              let matchDate = item
-                  .querySelector('.info')
-                  .textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
+              let matchDate = item.querySelector('.info').textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
               if (matchDate) {
                   itemSubject.releaseDate = dealDate(matchDate[0]);
               }
@@ -874,9 +960,7 @@
               if ($rateInfo) {
                   if ($rateInfo.querySelector('.fade')) {
                       itemSubject.score = $rateInfo.querySelector('.fade').textContent;
-                      itemSubject.count = $rateInfo
-                          .querySelector('.tip_j')
-                          .textContent.replace(/[^0-9]/g, '');
+                      itemSubject.count = $rateInfo.querySelector('.tip_j').textContent.replace(/[^0-9]/g, '');
                   }
                   else {
                       itemSubject.score = '0';
@@ -895,6 +979,13 @@
       }
       return [results, numOfPage];
   }
+  function normalizeQueryBangumi(query) {
+      query = replaceToASCII(query);
+      query = replaceSymbolChars(query);
+      query = removePairs(query);
+      query = removePairChars(query);
+      return query;
+  }
   /**
    * 搜索条目
    * @param subjectInfo
@@ -902,14 +993,14 @@
    * @param uniqueQueryStr
    */
   async function searchSubject$2(subjectInfo, bgmHost = 'https://bgm.tv', type = SubjectTypeId.all, uniqueQueryStr = '', opts = {}) {
-      if (subjectInfo && subjectInfo.releaseDate) {
-          subjectInfo.releaseDate;
-      }
-      let query = normalizeQuery((subjectInfo.name || '').trim());
+      let query = normalizeQueryBangumi((subjectInfo.name || '').trim());
       if (type === SubjectTypeId.book) {
           // 去掉末尾的括号并加上引号
           query = query.replace(/（[^0-9]+?）|\([^0-9]+?\)$/, '');
           query = `"${query}"`;
+      }
+      if (opts.query) {
+          query = opts.query;
       }
       if (uniqueQueryStr) {
           query = `"${uniqueQueryStr || ''}"`;
@@ -931,6 +1022,9 @@
           releaseDate: opts.releaseDate,
           keys: ['name', 'greyName'],
       };
+      if (opts.shortenQuery && opts.query) {
+          return filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, { ...options, threshold: 0.4 });
+      }
       return filterResults(rawInfoList, subjectInfo, options);
   }
   /**
@@ -1019,18 +1113,21 @@
       if (searchResult && searchResult.url) {
           return searchResult;
       }
-      if (searchOpts.shortenQuery) {
+      if (searchOpts.enableShortenQuery) {
           await sleep(300);
-          let query = normalizeQuery((subjectInfo.name || '').trim());
+          let query = normalizeQueryBangumi((subjectInfo.name || '').trim());
           query = getShortenedQuery(query);
-          searchResult = await searchSubject$2({ ...subjectInfo, name: query });
+          searchResult = await searchSubject$2(subjectInfo, bgmHost, type, '', {
+              ...searchOpts,
+              shortenQuery: true,
+              query,
+          });
           if (searchResult && searchResult.url) {
               return searchResult;
           }
       }
       // disableDate
-      if ((typeof opts === 'boolean' && opts) ||
-          (typeof opts === 'object' && opts.disableDate)) {
+      if ((typeof opts === 'boolean' && opts) || (typeof opts === 'object' && opts.disableDate)) {
           return;
       }
       searchResult = await findSubjectByDate(subjectInfo, bgmHost, 1, subjectTypeDict[type]);
@@ -1185,7 +1282,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       async getSearchResult(subject) {
           const res = await checkSubjectExist(subject, bgm_origin, SubjectTypeId.game, {
               releaseDate: true,
-              shortenQuery: true,
+              enableShortenQuery: true,
               disableDate: true,
           });
           if (res) {
@@ -1778,61 +1875,15 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       },
   };
 
-  function getAlias(name) {
-      const pairs = {
-          '─': '─',
-          '~': '~',
-          '～': '～',
-          '－': '－',
-          '-': '-',
-          '<': '>',
-          '＜': '＞',
-      };
-      const opens = Object.keys(pairs);
-      const closes = Object.values(pairs);
-      const len = name.length;
-      if (closes.includes(name[len - 1])) {
-          let i = len - 1;
-          const c = name[len - 1];
-          let idx = closes.indexOf(c);
-          const openChar = opens[idx];
-          const j = name.lastIndexOf(openChar, i - 1);
-          if (j >= 0) {
-              return [name.slice(0, j).trim(), name.slice(j + 1, i)];
-          }
-      }
-      return [];
-  }
-  function getHiraganaSubTitle(name) {
-      let alias = getAlias(name);
-      if (alias.length === 0 && name.split(' ').length === 2) {
-          alias = name.split(' ');
-      }
-      // const jpRe = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
-      const hanAndHiraganaRe = /[\p{Script=Hiragana}\p{Script=Han}]/u;
-      if (alias && alias.length > 0) {
-          if (hanAndHiraganaRe.test(alias[1])) {
-              // 以假名开头的、包含版本号的
-              if (/^\p{Script=Katakana}/u.test(alias[0]) ||
-                  /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}][ａ-ｚＡ-Ｚ0-9０-９]/u.test(alias[0])) {
-                  return alias[1];
-              }
-          }
-      }
-      return '';
-  }
-  function normalizeEditionName(str) {
-      return str.replace(/\s[^ ]*?(スペシャルプライス版|体験版|ダウンロード版|パッケージ版|限定版|通常版|廉価版|復刻版|初回.*?版|描き下ろし|DVDPG.*|DVD.*?版|Windows版).*?$/g, '');
-  }
-
   const favicon$1 = 'https://vndb.org/favicon.ico';
-  function normalizeQueryVNDB(str) {
+  function reviseQueryVNDB(str) {
       // @TODO: カオスQueen遼子4 森山由梨＆郁美姉妹併呑編
       // fixed: White x Red
       return str.replace(' x ', ' ').replace(/　/g, ' ');
   }
   function reviseTitle$1(title) {
       const titleDict = {
+          'ドキドキ文芸部!': 'Doki Doki Literature Club!',
           // https://vndb.org/v13666
           '凍京NECRO＜トウキョウ・ネクロ＞': '凍京NECRO',
           // https://vndb.org/v4102
@@ -1861,7 +1912,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
               return val;
           }
       }
-      return normalizeQueryVNDB(title);
+      return reviseQueryVNDB(title);
   }
   function getSearchItem$2($item) {
       const $title = $item.querySelector('.tc_title > a');
@@ -1888,8 +1939,8 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   // exception title
   // 凍京NECRO＜トウキョウ・ネクロ＞
   // https://vndb.org/v5154
-  async function searchSubject$1(subjectInfo, uniqueQueryStr = '') {
-      let query = uniqueQueryStr || subjectInfo.name;
+  async function searchSubject$1(subjectInfo, opts = {}) {
+      let query = opts.query || subjectInfo.name;
       if (!query) {
           console.info('Query string is empty');
           return Promise.reject();
@@ -1916,32 +1967,46 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       const rawInfoList = Array.prototype.slice
           .call(items)
           .map(($item) => getSearchItem$2($item));
-      if (subjectInfo.rawName) {
-          res = filterResults(rawInfoList, { ...subjectInfo, name: subjectInfo.rawName }, {
-              releaseDate: true,
-              threshold: 0.4,
-              keys: ['name'],
-          }, false);
+      const filterOpts = {
+          releaseDate: true,
+          threshold: 0.4,
+          keys: ['name'],
+      };
+      // fix: Ib
+      if (/^[a-zA-Z]+$/.test(subjectInfo.name) && rawInfoList.length > 10) {
+          return filterResults(rawInfoList, subjectInfo, { ...filterOpts, sameName: true }, false);
       }
-      if (!res) {
-          res = filterResults(rawInfoList, subjectInfo, {
-              releaseDate: true,
-              threshold: 0.4,
-              keys: ['name'],
-          }, false);
-      }
-      console.info(`Search result of ${query} on vndb: `, res);
+      res = filterResults(rawInfoList, subjectInfo, filterOpts, false);
       if (res && res.url) {
+          console.info(`Search result of ${query} on vndb: `, res);
           return res;
       }
+      if (opts.shortenQuery) {
+          const name = subjectInfo.name;
+          // have sub title
+          if (!res && getAlias(name).length > 0) {
+              const changedName = removeSubTitle(name);
+              // fix: 痕 -きずあと-
+              res = rawInfoList.find((item) => item.name === changedName);
+          }
+          return res;
+      }
+      res = filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, filterOpts, false);
+      return res;
+  }
+  function normalizeQueryVNDB(query) {
+      query = replaceToASCII(query);
+      query = replaceSymbolChars(query, '&');
+      query = removePairs(query);
+      return query;
   }
   async function searchGameData(info) {
-      let query = normalizeQuery((info.name || '').trim());
-      let result = await searchSubject$1({ ...info, name: query });
+      let query = normalizeQueryVNDB(info.name);
+      let result = await searchSubject$1(info, { query });
       if (!result) {
           await sleep(100);
           query = getShortenedQuery(query);
-          result = await searchSubject$1({ ...info, name: query });
+          result = await searchSubject$1(info, { shortenQuery: true, query });
       }
       // when score is empty, try to extract score from page
       if (result && result.url && Number(result.count) > 0 && isNaN(Number(result.score))) {
@@ -2313,35 +2378,8 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       newQuery = newQuery
           .replace(/^(.*?～)(.*)(～[^～]*)$/, function (_, p1, p2, p3) {
           return p1.replace(/～/g, ' ') + p2 + p3.replace(/～/g, ' ');
-      })
-          .replace(/＝|=/g, ' ')
-          .replace(/　/g, ' ')
-          .replace(/０/g, '0')
-          .replace(/１/g, '1')
-          .replace(/２/g, '2')
-          .replace(/３/g, '3')
-          .replace(/４/g, '4')
-          .replace(/５/g, '5')
-          .replace(/６/g, '6')
-          .replace(/７/g, '7')
-          .replace(/８/g, '8')
-          .replace(/９/g, '9')
-          .replace(/Ⅰ/g, 'I')
-          .replace(/Ⅱ/g, 'II')
-          .replace(/Ⅲ/g, 'III')
-          .replace(/Ⅳ/g, 'IV')
-          .replace(/Ⅴ/g, 'V')
-          .replace(/Ⅵ/g, 'VI')
-          .replace(/Ⅶ/g, 'VII')
-          .replace(/Ⅷ/g, 'VIII')
-          .replace(/Ⅸ/g, 'IX')
-          .replace(/Ⅹ/g, 'X')
-          // remove parenthesis
-          .replace(/\(.*?\)/g, ' ')
-          .replace(/\（.*?\）/g, ' ')
-          .replace(/＜.+?＞$/, ' ')
-          .replace(/<.+?>/, ' ')
-          .replace(/‐.*?‐/g, ' ')
+      });
+      newQuery = removePairs(replaceToASCII(newQuery), ['‐‐'])
           .replace(/[-－―～〜━\[\]『』~'…！？。]/g, ' ')
           .replace(/[♥❤☆\/♡★‥○⁉,.【】◆●∽＋‼＿◯※♠×▼％#∞’&!:＇"＊\*＆［］<>＜＞`_「」¨／◇：♪･@＠]/g, ' ')
           .replace(/[、，△《》†〇\/·;^‘“”√≪≫＃→♂?%~■‘〈〉Ω♀⇒≒§♀⇒←∬🕊¡Ι≠±『』♨❄—~Σ⇔↑↓‡▽□』〈〉＾]/g, ' ')
@@ -2350,8 +2388,6 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           .replace(/[①②③④⑤⑥⑦⑧⑨]/g, ' ')
           .replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]/g, ' ')
           .replace(/\.\.\./g, ' ')
-          // @TODO need test
-          // .replace(/([Ａ-Ｚａ-ｚ０-９])([Ａ-Ｚ])/g, '$1 $2')
           .replace(/～っ.*/, '');
       // 	White x Red --->  	White Red
       newQuery = newQuery.replace(/ x /, ' ');
@@ -2473,9 +2509,6 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       let name = rawName;
       if (title !== rawName) {
           name = title;
-      }
-      else {
-          name = normalizeQuery(rawName);
       }
       const info = {
           name,

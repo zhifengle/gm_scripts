@@ -1,4 +1,4 @@
-import { getAlias, getHiraganaSubTitle, normalizeEditionName } from "./str";
+import { getAlias, getHiraganaSubTitle, normalizeEditionName, removePairChars } from "./str";
 
 describe("test str", () => {
   test('test getAlias', () => {
@@ -17,5 +17,8 @@ describe("test str", () => {
     expect(getHiraganaSubTitle('フィギュア ～奪われた放課後～')).toEqual('奪われた放課後');
     expect(getHiraganaSubTitle('巨乳ファンタジー外伝２after -リュート、古代ローマに行く-')).toEqual('リュート、古代ローマに行く');
     expect(getHiraganaSubTitle('凍京NECRO＜トウキョウ・ネクロ＞')).toEqual('');
+  })
+  it('test remove chars', () => {
+    expect(removePairChars('痕 -きずあと-')).toEqual('痕 きずあと');
   })
 })

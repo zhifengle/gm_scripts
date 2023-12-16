@@ -98,25 +98,6 @@ export function roundNum(num: number, len: number = 2) {
   return +(Math.round(num + `e+${len}`) + `e-${len}`);
 }
 
-/**
- * replace special char to space
- * @param str
- * @returns string
- */
-export function replaceCharToSpace(str: string): string {
-  // start U+0080 - U+00FF	Latin-1 Supplement
-  // U+2E00 - U+2E7F	Supplemental Punctuation
-  // Miscellaneous Symbols, U+2600 - U+26FF
-  // Halfwidth and Fullwidth Forms, U+FF00 - U+FFEF
-  // CJK Symbols and Punctuation, U+3000 - U+303F
-  return str.replace(/[\u0080-\u2E7F\u3000-\u303f\uff00-\uffef]/g, function (s) {
-    if (/[Ａ-Ｚａ-ｚ０-９々〆〤]/.test(s)) {
-      return s;
-    }
-    return ' ';
-  });
-}
-
 export function normalizeQuery(query: string): string {
   let newQuery = query
     .replace(/^(.*?～)(.*)(～[^～]*)$/, function (_, p1, p2, p3) {
@@ -155,7 +136,6 @@ export function normalizeQuery(query: string): string {
     .replace(/<.+?>/, '')
     .replace(/\s-[^-]+?-$/, '')
     .trim();
-  // newQuery = replaceCharToSpace(newQuery);
   newQuery = newQuery.replace(/\s{2,}/g, ' ');
   // game: 14 -one & four or the other meaning-
   if (/^\d+$/.test(newQuery)) {

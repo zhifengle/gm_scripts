@@ -4,11 +4,18 @@ import { $q, $qa } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery, normalizeQuery } from '../utils/utils';
 import { filterResults } from './common';
-import { getAlias, normalizeEditionName } from './utils';
+import {
+  getAlias,
+  normalizeEditionName,
+  removePairs,
+  removeSubTitle,
+  replaceSymbolChars,
+  replaceToASCII,
+} from './utils';
 
 export const favicon = 'https://vndb.org/favicon.ico';
 
-function normalizeQueryVNDB(str: string) {
+function reviseQueryVNDB(str: string) {
   // @TODO: カオスQueen遼子4 森山由梨＆郁美姉妹併呑編
 
   // fixed: White x Red
@@ -17,6 +24,7 @@ function normalizeQueryVNDB(str: string) {
 
 function reviseTitle(title: string) {
   const titleDict: Record<string, string> = {
+    'ドキドキ文芸部!': 'Doki Doki Literature Club!',
     // https://vndb.org/v13666
     '凍京NECRO＜トウキョウ・ネクロ＞': '凍京NECRO',
     // https://vndb.org/v4102
@@ -45,7 +53,7 @@ function reviseTitle(title: string) {
       return val;
     }
   }
-  return normalizeQueryVNDB(title);
+  return reviseQueryVNDB(title);
 }
 
 function getSearchItem($item: HTMLElement): SearchSubject {
@@ -75,8 +83,11 @@ function getSearchItem($item: HTMLElement): SearchSubject {
 // 凍京NECRO＜トウキョウ・ネクロ＞
 // https://vndb.org/v5154
 
-export async function searchSubject(subjectInfo: SearchSubject, uniqueQueryStr = ''): Promise<SearchSubject> {
-  let query = uniqueQueryStr || subjectInfo.name;
+export async function searchSubject(
+  subjectInfo: Subject,
+  opts: { query?: string; shortenQuery?: boolean } = {}
+): Promise<SearchSubject> {
+  let query = opts.query || subjectInfo.name;
   if (!query) {
     console.info('Query string is empty');
     return Promise.reject();
@@ -103,43 +114,48 @@ export async function searchSubject(subjectInfo: SearchSubject, uniqueQueryStr =
   const rawInfoList: SearchSubject[] = Array.prototype.slice
     .call(items)
     .map(($item: HTMLElement) => getSearchItem($item));
-  if (subjectInfo.rawName) {
-    res = filterResults(
-      rawInfoList,
-      {...subjectInfo, name: subjectInfo.rawName},
-      {
-        releaseDate: true,
-        threshold: 0.4,
-        keys: ['name'],
-      },
-      false
-    );
+  const filterOpts = {
+    releaseDate: true,
+    threshold: 0.4,
+    keys: ['name'],
+  };
+  // fix: Ib
+  if (/^[a-zA-Z]+$/.test(subjectInfo.name) && rawInfoList.length > 10) {
+    return filterResults(rawInfoList, subjectInfo, { ...filterOpts, sameName: true }, false);
   }
-  if (!res) {
-    res = filterResults(
-      rawInfoList,
-      subjectInfo,
-      {
-        releaseDate: true,
-        threshold: 0.4,
-        keys: ['name'],
-      },
-      false
-    );
-  }
-  console.info(`Search result of ${query} on vndb: `, res);
+  res = filterResults(rawInfoList, subjectInfo, filterOpts, false);
   if (res && res.url) {
+    console.info(`Search result of ${query} on vndb: `, res);
     return res;
   }
+  if (opts.shortenQuery) {
+    const name = subjectInfo.name;
+    // have sub title
+    if (!res && getAlias(name).length > 0) {
+      const changedName = removeSubTitle(name);
+      // fix: 痕 -きずあと-
+      res = rawInfoList.find((item) => item.name === changedName);
+    }
+    return res;
+  }
+  res = filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, filterOpts, false);
+  return res;
+}
+
+function normalizeQueryVNDB(query: string): string {
+  query = replaceToASCII(query);
+  query = replaceSymbolChars(query, '&');
+  query = removePairs(query);
+  return query;
 }
 
 export async function searchGameData(info: SearchSubject): Promise<SearchSubject> {
-  let query = normalizeQuery((info.name || '').trim());
-  let result = await searchSubject({...info, name: query });
+  let query = normalizeQueryVNDB(info.name);
+  let result = await searchSubject(info, { query });
   if (!result) {
     await sleep(100);
     query = getShortenedQuery(query);
-    result = await searchSubject({...info, name: query });
+    result = await searchSubject(info, { shortenQuery: true, query });
   }
   // when score is empty, try to extract score from page
   if (result && result.url && Number(result.count) > 0 && isNaN(Number(result.score))) {

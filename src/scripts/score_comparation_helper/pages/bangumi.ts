@@ -168,7 +168,7 @@ export const bangumiGamePage: PageConfig = {
       SubjectTypeId.game,
       {
         releaseDate: true,
-        shortenQuery: true,
+        enableShortenQuery: true,
         disableDate: true,
       }
     );

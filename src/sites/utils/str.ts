@@ -1,15 +1,8 @@
+const SUB_TITLE_PAIRS = ['--', '──', '~~', '～～', '－－', '<>', '＜＞'];
+
 export function getAlias(name: string) {
-  const pairs = {
-    '─': '─',
-    '~': '~',
-    '～': '～',
-    '－': '－',
-    '-': '-',
-    '<': '>',
-    '＜': '＞',
-  };
-  const opens = Object.keys(pairs);
-  const closes = Object.values(pairs);
+  const opens = SUB_TITLE_PAIRS.map(pair => pair[0]);
+  const closes = SUB_TITLE_PAIRS.map(pair => pair[1]);
   const len = name.length;
   if (closes.includes(name[len - 1])) {
     let i = len - 1;
@@ -47,7 +40,89 @@ export function getHiraganaSubTitle(name: string): string {
 
 export function normalizeEditionName(str: string): string {
   return str.replace(
-    /\s[^ ]*?(スペシャルプライス版|体験版|ダウンロード版|パッケージ版|限定版|通常版|廉価版|復刻版|初回.*?版|描き下ろし|DVDPG.*|DVD.*?版|Windows版).*?$/g,
+    /\s[^ ]*?(スペシャルプライス版|体験版|ダウンロード版|パッケージ版|限定版|通常版|廉価版|復刻版|初回.*?版|描き下ろし|DVDPG.*|DVD.*?版|Windows版|リニューアル|完全版|リメイク版).*?$/g,
     ''
-  );
+  ).replace(/Memorial Edition$/, '');
+}
+
+export function isSimpleStr(str: string): boolean {
+  if (str.length === 1) {
+    return true;
+  }
+  // English word
+  if (/^[A-Za-z]+$/.test(str)) {
+    return true;
+  }
+}
+
+export function removePairs(str: string, pairs: string[] = []) {
+  for (let i = 0; i < pairs.length; i++) {
+    if (pairs.length < 2) {
+      continue;
+    }
+    const [open, close] = pairs[i];
+    str = str.replace(new RegExp(open + '.+?' + close, 'g'), '');
+  }
+  return str
+    .replace(/\(.*?\)/g, '')
+    .replace(/\（.*?\）/g, '')
+    .replace(/＜.+?＞/, '')
+    .replace(/<.+?>/, '');
+}
+
+export function removeSubTitle(str: string): string {
+  return removePairs(str, SUB_TITLE_PAIRS).trim();
+}
+
+function unique(str: string) {
+  var result = '';
+  for(var i = 0; i < str.length; i++) {
+    if(result.indexOf(str[i]) < 0) {
+      result += str[i];
+    }
+  }
+  return result;
+}
+
+export function removeChars(originStr: string, chars: string) {
+  return originStr.replace(new RegExp(`[${chars}]`, 'g'), ' ').replace(/\s{2,}/g, ' ');
+}
+
+export function replaceSymbolChars(str: string, excludes: string = '') {
+  const fullwidthPair = '～－＜＞'
+  var symbolString = '―〜━[]『』~\'…！？。♥☆/♡★‥○,【】◆×▼’&＇"＊?' + '．・　' + fullwidthPair;
+  if (excludes) {
+    symbolString = symbolString.replace(new RegExp(`[${excludes}]`, 'g'), '');
+  }
+  return removeChars(str, unique(symbolString));
+}
+
+export function removePairChars(str: string) {
+  return removeChars(str, unique(SUB_TITLE_PAIRS.join(''))).trim()
+}
+
+export function replaceToASCII(str: string) {
+  return str
+    .replace(/＝|=/g, ' ')
+    .replace(/　/g, ' ')
+    .replace(/０/g, '0')
+    .replace(/１/g, '1')
+    .replace(/２/g, '2')
+    .replace(/３/g, '3')
+    .replace(/４/g, '4')
+    .replace(/５/g, '5')
+    .replace(/６/g, '6')
+    .replace(/７/g, '7')
+    .replace(/８/g, '8')
+    .replace(/９/g, '9')
+    .replace(/Ⅰ/g, 'I')
+    .replace(/Ⅱ/g, 'II')
+    .replace(/Ⅲ/g, 'III')
+    .replace(/Ⅳ/g, 'IV')
+    .replace(/Ⅴ/g, 'V')
+    .replace(/Ⅵ/g, 'VI')
+    .replace(/Ⅶ/g, 'VII')
+    .replace(/Ⅷ/g, 'VIII')
+    .replace(/Ⅸ/g, 'IX')
+    .replace(/Ⅹ/g, 'X');
 }

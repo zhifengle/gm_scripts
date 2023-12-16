@@ -5,7 +5,7 @@ import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery, normalizeQuery } from '../utils/utils';
 import { filterResults, findResultByMonth, fuseFilterSubjects } from './common';
-import { getHiraganaSubTitle, normalizeEditionName } from './utils';
+import { getHiraganaSubTitle, normalizeEditionName, removePairs, replaceToASCII } from './utils';
 
 enum ErogamescapeCategory {
   game = 'game',
@@ -69,34 +69,7 @@ export function normalizeQueryEGS(query: string): string {
     .replace(/^(.*?～)(.*)(～[^～]*)$/, function (_, p1, p2, p3) {
       return p1.replace(/～/g, ' ') + p2 + p3.replace(/～/g, ' ');
     })
-    .replace(/＝|=/g, ' ')
-    .replace(/　/g, ' ')
-    .replace(/０/g, '0')
-    .replace(/１/g, '1')
-    .replace(/２/g, '2')
-    .replace(/３/g, '3')
-    .replace(/４/g, '4')
-    .replace(/５/g, '5')
-    .replace(/６/g, '6')
-    .replace(/７/g, '7')
-    .replace(/８/g, '8')
-    .replace(/９/g, '9')
-    .replace(/Ⅰ/g, 'I')
-    .replace(/Ⅱ/g, 'II')
-    .replace(/Ⅲ/g, 'III')
-    .replace(/Ⅳ/g, 'IV')
-    .replace(/Ⅴ/g, 'V')
-    .replace(/Ⅵ/g, 'VI')
-    .replace(/Ⅶ/g, 'VII')
-    .replace(/Ⅷ/g, 'VIII')
-    .replace(/Ⅸ/g, 'IX')
-    .replace(/Ⅹ/g, 'X')
-    // remove parenthesis
-    .replace(/\(.*?\)/g, ' ')
-    .replace(/\（.*?\）/g, ' ')
-    .replace(/＜.+?＞$/, ' ')
-    .replace(/<.+?>/, ' ')
-    .replace(/‐.*?‐/g, ' ')
+  newQuery = removePairs(replaceToASCII(newQuery), ['‐‐'])
     .replace(/[-－―～〜━\[\]『』~'…！？。]/g, ' ')
     .replace(/[♥❤☆\/♡★‥○⁉,.【】◆●∽＋‼＿◯※♠×▼％#∞’&!:＇"＊\*＆［］<>＜＞`_「」¨／◇：♪･@＠]/g, ' ')
     .replace(/[、，△《》†〇\/·;^‘“”√≪≫＃→♂?%~■‘〈〉Ω♀⇒≒§♀⇒←∬🕊¡Ι≠±『』♨❄—~Σ⇔↑↓‡▽□』〈〉＾]/g, ' ')
@@ -105,8 +78,6 @@ export function normalizeQueryEGS(query: string): string {
     .replace(/[①②③④⑤⑥⑦⑧⑨]/g, ' ')
     .replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]/g, ' ')
     .replace(/\.\.\./g, ' ')
-    // @TODO need test
-    // .replace(/([Ａ-Ｚａ-ｚ０-９])([Ａ-Ｚ])/g, '$1 $2')
     .replace(/～っ.*/, '');
   // 	White x Red --->  	White Red
   newQuery = newQuery.replace(/ x /, ' ');
@@ -246,8 +217,6 @@ export function getSearchSubject(): SearchSubject {
   let name = rawName;
   if (title !== rawName) {
     name = title;
-  } else {
-    name = normalizeQuery(rawName);
   }
   const info: SearchSubject = {
     name,

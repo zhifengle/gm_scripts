@@ -1,22 +1,12 @@
-import {
-  AllSubject,
-  BookSubject,
-  SearchSubject,
-  Subject,
-} from '../../interface/subject';
+import { AllSubject, BookSubject, SearchSubject, Subject } from '../../interface/subject';
 import { sleep } from '../../utils/async/sleep';
 import { fetchText } from '../../utils/fetchData';
 import { SubjectTypeId } from '../../interface/wiki';
-import { dealDate, getShortenedQuery, normalizeQuery } from '../../utils/utils';
+import { dealDate, getShortenedQuery } from '../../utils/utils';
 import { filterResults } from '../common';
 import { SiteUtils } from '../../interface/types';
-import {
-  getAllPageInfo,
-  getBgmHost,
-  getSubjectId,
-  getUserId,
-  updateInterest,
-} from './common';
+import { getAllPageInfo, getBgmHost, getSubjectId, getUserId, updateInterest } from './common';
+import { removePairChars, removePairs, replaceSymbolChars, replaceToASCII } from '../utils';
 
 export const favicon = 'https://bgm.tv/img/favicon.ico';
 
@@ -37,13 +27,9 @@ function getSearchItem($item: HTMLElement): SearchSubject {
     name: $subjectTitle.textContent.trim(),
     // url 没有协议和域名
     url: $subjectTitle.getAttribute('href'),
-    greyName: $item.querySelector('h3>.grey')
-      ? $item.querySelector('h3>.grey').textContent.trim()
-      : '',
+    greyName: $item.querySelector('h3>.grey') ? $item.querySelector('h3>.grey').textContent.trim() : '',
   };
-  let matchDate = $item
-    .querySelector('.info')
-    .textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
+  let matchDate = $item.querySelector('.info').textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
   if (matchDate) {
     info.releaseDate = dealDate(matchDate[0]);
   }
@@ -51,9 +37,7 @@ function getSearchItem($item: HTMLElement): SearchSubject {
   if ($rateInfo) {
     if ($rateInfo.querySelector('.fade')) {
       info.score = $rateInfo.querySelector('.fade').textContent;
-      info.count = $rateInfo
-        .querySelector('.tip_j')
-        .textContent.replace(/[^0-9]/g, '');
+      info.count = $rateInfo.querySelector('.tip_j').textContent.replace(/[^0-9]/g, '');
     } else {
       info.score = '0';
       info.count = '少于10';
@@ -69,21 +53,17 @@ function getTotalPageNum($doc: Document | HTMLElement | Element): number {
   let totalPage = 1;
   let pList = $doc.querySelectorAll('.page_inner>.p');
   if (pList && pList.length) {
-    let tempNum = parseInt(
-      pList[pList.length - 2].getAttribute('href').match(/page=(\d*)/)[1]
-    );
-    totalPage = parseInt(
-      pList[pList.length - 1].getAttribute('href').match(/page=(\d*)/)[1]
-    );
+    let tempNum = parseInt(pList[pList.length - 2].getAttribute('href').match(/page=(\d*)/)[1]);
+    totalPage = parseInt(pList[pList.length - 1].getAttribute('href').match(/page=(\d*)/)[1]);
     totalPage = totalPage > tempNum ? totalPage : tempNum;
   }
-  return totalPage
+  return totalPage;
 }
 
 function extractInfoList($doc: Document | HTMLElement | Element): SearchSubject[] {
-  return [...$doc.querySelectorAll<HTMLElement>('#browserItemList>li')].map($item => {
-    return getSearchItem($item)
-  })
+  return [...$doc.querySelectorAll<HTMLElement>('#browserItemList>li')].map(($item) => {
+    return getSearchItem($item);
+  });
 }
 
 /**
@@ -98,12 +78,8 @@ function dealSearchResults(info: string): [SearchSubject[], number] | [] {
   let numOfPage = 1;
   let pList = $doc.querySelectorAll('.page_inner>.p');
   if (pList && pList.length) {
-    let tempNum = parseInt(
-      pList[pList.length - 2].getAttribute('href').match(/page=(\d*)/)[1]
-    );
-    numOfPage = parseInt(
-      pList[pList.length - 1].getAttribute('href').match(/page=(\d*)/)[1]
-    );
+    let tempNum = parseInt(pList[pList.length - 2].getAttribute('href').match(/page=(\d*)/)[1]);
+    numOfPage = parseInt(pList[pList.length - 1].getAttribute('href').match(/page=(\d*)/)[1]);
     numOfPage = numOfPage > tempNum ? numOfPage : tempNum;
   }
   if (items && items.length) {
@@ -113,13 +89,9 @@ function dealSearchResults(info: string): [SearchSubject[], number] | [] {
         name: $subjectTitle.textContent.trim(),
         // url 没有协议和域名
         url: $subjectTitle.getAttribute('href'),
-        greyName: item.querySelector('h3>.grey')
-          ? item.querySelector('h3>.grey').textContent.trim()
-          : '',
+        greyName: item.querySelector('h3>.grey') ? item.querySelector('h3>.grey').textContent.trim() : '',
       };
-      let matchDate = item
-        .querySelector('.info')
-        .textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
+      let matchDate = item.querySelector('.info').textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
       if (matchDate) {
         itemSubject.releaseDate = dealDate(matchDate[0]);
       }
@@ -127,9 +99,7 @@ function dealSearchResults(info: string): [SearchSubject[], number] | [] {
       if ($rateInfo) {
         if ($rateInfo.querySelector('.fade')) {
           itemSubject.score = $rateInfo.querySelector('.fade').textContent;
-          itemSubject.count = $rateInfo
-            .querySelector('.tip_j')
-            .textContent.replace(/[^0-9]/g, '');
+          itemSubject.count = $rateInfo.querySelector('.tip_j').textContent.replace(/[^0-9]/g, '');
         } else {
           itemSubject.score = '0';
           itemSubject.count = '少于10';
@@ -164,6 +134,14 @@ function reviseQuery(title: string): string {
   return title;
 }
 
+function normalizeQueryBangumi(query: string): string {
+  query = replaceToASCII(query);
+  query = replaceSymbolChars(query);
+  query = removePairs(query);
+  query = removePairChars(query);
+  return query
+}
+
 /**
  * 搜索条目
  * @param subjectInfo
@@ -175,17 +153,16 @@ export async function searchSubject(
   bgmHost: string = 'https://bgm.tv',
   type: SubjectTypeId = SubjectTypeId.all,
   uniqueQueryStr: string = '',
-  opts: { releaseDate?: boolean } = {}
+  opts: { releaseDate?: boolean; query?: string; shortenQuery?: boolean } = {}
 ) {
-  let releaseDate: string;
-  if (subjectInfo && subjectInfo.releaseDate) {
-    releaseDate = subjectInfo.releaseDate;
-  }
-  let query = normalizeQuery((subjectInfo.name || '').trim());
+  let query = normalizeQueryBangumi((subjectInfo.name || '').trim());
   if (type === SubjectTypeId.book) {
     // 去掉末尾的括号并加上引号
     query = query.replace(/（[^0-9]+?）|\([^0-9]+?\)$/, '');
     query = `"${query}"`;
+  }
+  if (opts.query) {
+    query = opts.query;
   }
   if (uniqueQueryStr) {
     query = `"${uniqueQueryStr || ''}"`;
@@ -194,11 +171,9 @@ export async function searchSubject(
     console.info('Query string is empty');
     return;
   }
-  const url = `${bgmHost}/subject_search/${encodeURIComponent(
-    query
-  )}?cat=${type}`;
+  const url = `${bgmHost}/subject_search/${encodeURIComponent(query)}?cat=${type}`;
   console.info('search bangumi subject URL: ', url);
-  const content = await fetchText(url)
+  const content = await fetchText(url);
   const $doc = new DOMParser().parseFromString(content, 'text/html');
   const rawInfoList = extractInfoList($doc);
   // 使用指定搜索字符串如 ISBN 搜索时, 并且结果只有一条时，不再使用名称过滤
@@ -209,6 +184,9 @@ export async function searchSubject(
     releaseDate: opts.releaseDate,
     keys: ['name', 'greyName'],
   };
+  if (opts.shortenQuery && opts.query) {
+    return filterResults(rawInfoList, {...subjectInfo, name: opts.query}, {...options, threshold: 0.4});
+  }
   return filterResults(rawInfoList, subjectInfo, options);
 }
 
@@ -241,9 +219,7 @@ export async function findSubjectByDate(
   } else if (page) {
     query = '?' + page;
   }
-  const url = `${bgmHost}/${type}/browser/airtime/${releaseDate.getFullYear()}-${
-    releaseDate.getMonth() + 1
-  }${query}`;
+  const url = `${bgmHost}/${type}/browser/airtime/${releaseDate.getFullYear()}-${releaseDate.getMonth() + 1}${query}`;
   console.info('find subject by date: ', url);
   const rawText = await fetchText(url);
   let [rawInfoList, numOfPage] = dealSearchResults(rawText);
@@ -255,12 +231,7 @@ export async function findSubjectByDate(
   if (!result) {
     if (pageNumber < numOfPage) {
       await sleep(300);
-      return await findSubjectByDate(
-        subjectInfo,
-        bgmHost,
-        pageNumber + 1,
-        type
-      );
+      return await findSubjectByDate(subjectInfo, bgmHost, pageNumber + 1, type);
     } else {
       throw 'notmatched';
     }
@@ -273,22 +244,12 @@ export async function checkBookSubjectExist(
   bgmHost: string = 'https://bgm.tv',
   type: SubjectTypeId
 ) {
-  let searchResult = await searchSubject(
-    subjectInfo,
-    bgmHost,
-    type,
-    subjectInfo.isbn
-  );
+  let searchResult = await searchSubject(subjectInfo, bgmHost, type, subjectInfo.isbn);
   console.info(`First: search book of bangumi: `, searchResult);
   if (searchResult && searchResult.url) {
     return searchResult;
   }
-  searchResult = await searchSubject(
-    subjectInfo,
-    bgmHost,
-    type,
-    subjectInfo.asin
-  );
+  searchResult = await searchSubject(subjectInfo, bgmHost, type, subjectInfo.asin);
   console.info(`Second: search book by ${subjectInfo.asin}: `, searchResult);
   if (searchResult && searchResult.url) {
     return searchResult;
@@ -323,39 +284,29 @@ async function checkExist(
   if (typeof opts === 'object') {
     searchOpts = opts;
   }
-  let searchResult = await searchSubject(
-    subjectInfo,
-    bgmHost,
-    type,
-    '',
-    searchOpts
-  );
+  let searchResult = await searchSubject(subjectInfo, bgmHost, type, '', searchOpts);
   console.info(`First: search result of bangumi: `, searchResult);
   if (searchResult && searchResult.url) {
     return searchResult;
   }
-  if (searchOpts.shortenQuery) {
+  if (searchOpts.enableShortenQuery) {
     await sleep(300);
-    let query = normalizeQuery((subjectInfo.name || '').trim());
+    let query = normalizeQueryBangumi((subjectInfo.name || '').trim());
     query = getShortenedQuery(query);
-    searchResult = await searchSubject({...subjectInfo, name: query });
+    searchResult = await searchSubject(subjectInfo, bgmHost, type, '', {
+      ...searchOpts,
+      shortenQuery: true,
+      query,
+    });
     if (searchResult && searchResult.url) {
       return searchResult;
     }
   }
   // disableDate
-  if (
-    (typeof opts === 'boolean' && opts) ||
-    (typeof opts === 'object' && opts.disableDate)
-  ) {
+  if ((typeof opts === 'boolean' && opts) || (typeof opts === 'object' && opts.disableDate)) {
     return;
   }
-  searchResult = await findSubjectByDate(
-    subjectInfo,
-    bgmHost,
-    1,
-    subjectTypeDict[type]
-  );
+  searchResult = await findSubjectByDate(subjectInfo, bgmHost, 1, subjectTypeDict[type]);
   console.info(`Second: search result by date: `, searchResult);
   return searchResult;
 }
@@ -369,11 +320,7 @@ export async function checkSubjectExist(
   let result;
   switch (type) {
     case SubjectTypeId.book:
-      result = await checkBookSubjectExist(
-        subjectInfo as BookSubject,
-        bgmHost,
-        type
-      );
+      result = await checkBookSubjectExist(subjectInfo as BookSubject, bgmHost, type);
       break;
     case SubjectTypeId.all:
     case SubjectTypeId.game:
@@ -388,32 +335,15 @@ export async function checkSubjectExist(
   return result;
 }
 
-export function changeDomain(
-  originUrl: string,
-  domain: BangumiDomain,
-  protocol: Protocol = Protocol.https
-): string {
+export function changeDomain(originUrl: string, domain: BangumiDomain, protocol: Protocol = Protocol.https): string {
   let url = originUrl;
   if (url.match(domain)) return url;
-  let domainArr = [
-    BangumiDomain.bangumi,
-    BangumiDomain.chii,
-    BangumiDomain.bgm,
-  ];
+  let domainArr = [BangumiDomain.bangumi, BangumiDomain.chii, BangumiDomain.bgm];
   domainArr.splice(domainArr.indexOf(domain), 1);
-  return url
-    .replace(new RegExp(domainArr.join('|').replace('.', '\\.')), domain)
-    .replace(/https?/, protocol);
+  return url.replace(new RegExp(domainArr.join('|').replace('.', '\\.')), domain).replace(/https?/, protocol);
 }
-async function checkAnimeSubjectExist(
-  subjectInfo: Subject
-): Promise<SearchSubject> {
-  const result = await checkExist(
-    subjectInfo,
-    getBgmHost(),
-    SubjectTypeId.anime,
-    true
-  );
+async function checkAnimeSubjectExist(subjectInfo: Subject): Promise<SearchSubject> {
+  const result = await checkExist(subjectInfo, getBgmHost(), SubjectTypeId.anime, true);
   return result;
 }
 

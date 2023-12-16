@@ -2,7 +2,7 @@ import { SearchSubject, Subject } from '../interface/subject';
 import { sleep } from '../utils/async/sleep';
 import { $q, $qa } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
-import { normalizeQuery } from '../utils/utils';
+import { getShortenedQuery, normalizeQuery } from '../utils/utils';
 import { filterResults } from './common';
 import { getAlias, normalizeEditionName } from './utils';
 
@@ -75,13 +75,13 @@ function getSearchItem($item: HTMLElement): SearchSubject {
 // 凍京NECRO＜トウキョウ・ネクロ＞
 // https://vndb.org/v5154
 
-export async function searchSubject(subjectInfo: SearchSubject): Promise<SearchSubject> {
-  let query = normalizeQuery((subjectInfo.name || '').trim());
+export async function searchSubject(subjectInfo: SearchSubject, uniqueQueryStr = ''): Promise<SearchSubject> {
+  let query = uniqueQueryStr || subjectInfo.name;
   if (!query) {
     console.info('Query string is empty');
     return Promise.reject();
   }
-  let searchResult;
+  let res;
   const url = `https://vndb.org/v?sq=${encodeURIComponent(query)}`;
   console.info('vndb search URL: ', url);
   const rawText = await fetchText(url, {
@@ -103,23 +103,44 @@ export async function searchSubject(subjectInfo: SearchSubject): Promise<SearchS
   const rawInfoList: SearchSubject[] = Array.prototype.slice
     .call(items)
     .map(($item: HTMLElement) => getSearchItem($item));
-  searchResult = filterResults(
-    rawInfoList,
-    subjectInfo,
-    {
-      releaseDate: true,
-      keys: ['name', 'rawName'],
-    },
-    true
-  );
-  console.info(`Search result of ${query} on vndb: `, searchResult);
-  if (searchResult && searchResult.url) {
-    return searchResult;
+  if (subjectInfo.rawName) {
+    res = filterResults(
+      rawInfoList,
+      {...subjectInfo, name: subjectInfo.rawName},
+      {
+        releaseDate: true,
+        threshold: 0.4,
+        keys: ['name'],
+      },
+      false
+    );
+  }
+  if (!res) {
+    res = filterResults(
+      rawInfoList,
+      subjectInfo,
+      {
+        releaseDate: true,
+        threshold: 0.4,
+        keys: ['name'],
+      },
+      false
+    );
+  }
+  console.info(`Search result of ${query} on vndb: `, res);
+  if (res && res.url) {
+    return res;
   }
 }
 
 export async function searchGameData(info: SearchSubject): Promise<SearchSubject> {
-  const result = await searchSubject(info);
+  let query = normalizeQuery((info.name || '').trim());
+  let result = await searchSubject({...info, name: query });
+  if (!result) {
+    await sleep(100);
+    query = getShortenedQuery(query);
+    result = await searchSubject({...info, name: query });
+  }
   // when score is empty, try to extract score from page
   if (result && result.url && Number(result.count) > 0 && isNaN(Number(result.score))) {
     await sleep(100);

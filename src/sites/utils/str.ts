@@ -47,7 +47,7 @@ export function getHiraganaSubTitle(name: string): string {
 
 export function normalizeEditionName(str: string): string {
   return str.replace(
-    /\s[^ ]*?(スペシャルプライス版|体験版|ダウンロード版|パッケージ版|限定版|通常版|廉価版|復刻版|初回.*?版|描き下ろし|DVDPG).*?$/g,
+    /\s[^ ]*?(スペシャルプライス版|体験版|ダウンロード版|パッケージ版|限定版|通常版|廉価版|復刻版|初回.*?版|描き下ろし|DVDPG.*|DVD.*?版|Windows版).*?$/g,
     ''
   );
 }

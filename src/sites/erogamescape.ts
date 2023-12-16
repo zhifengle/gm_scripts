@@ -5,7 +5,7 @@ import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery, normalizeQuery } from '../utils/utils';
 import { filterResults, findResultByMonth, fuseFilterSubjects } from './common';
-import { getHiraganaSubTitle } from './utils';
+import { getHiraganaSubTitle, normalizeEditionName } from './utils';
 
 enum ErogamescapeCategory {
   game = 'game',
@@ -33,7 +33,7 @@ function reviseTitle(title: string) {
     return titleDict[title];
   }
   const shortenTitleDict: Record<string, string> = {
-    // @TODO
+    '姉妹いじり': '姉妹いじり'
   };
   for (const [key, val] of Object.entries(shortenTitleDict)) {
     if (title.includes(key)) {
@@ -111,10 +111,6 @@ export function normalizeQueryEGS(query: string): string {
   // 	White x Red --->  	White Red
   newQuery = newQuery.replace(/ x /, ' ');
   newQuery = newQuery.replace(/\s{2,}/g, ' ');
-  // カオスQueen遼子4 森山由梨＆郁美姉妹併呑編
-  if (/^[^\d]+?\d+[^\d]+$/.test(newQuery)) {
-    newQuery = newQuery.split(/\d+/).join('?');
-  }
   // return getShortenedQuery(newQuery);
   return newQuery;
 }
@@ -135,12 +131,17 @@ export async function searchSubject(
   const rawInfoList: SearchSubject[] = [...items].map(($item: HTMLElement) => getSearchItem($item));
   let res: SearchSubject;
   if (uniqueQueryStr) {
-    const list = fuseFilterSubjects(rawInfoList, subjectInfo, {
-      keys: ['name'],
-    });
-    res = findResultByMonth(list, subjectInfo);
-    if (!res && list.length > 0) {
-      res = list[0];
+    res = findResultByMonth(rawInfoList, subjectInfo);
+    // no result. try to fuse search by rawName
+    if (!res && subjectInfo.rawName) {
+      res = filterResults(
+        rawInfoList,
+        { ...subjectInfo, name: subjectInfo.rawName },
+        {
+          keys: ['name'],
+        },
+        false
+      );
     }
   } else {
     res = filterResults(
@@ -240,7 +241,7 @@ export async function searchAndFollow(info: SearchSubject, uniqueQueryStr: strin
 
 export function getSearchSubject(): SearchSubject {
   const $title = $q('#soft-title > .bold');
-  const rawName = $title.textContent.trim();
+  const rawName = normalizeEditionName($title.textContent.trim());
   const title = reviseTitle(rawName);
   let name = rawName;
   if (title !== rawName) {

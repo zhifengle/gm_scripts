@@ -116,7 +116,7 @@ describe('test filterResults', () => {
     const opts = {
       threshold: 0.1,
       keys: ['name'],
-    }
+    };
     var rawList: SearchSubject[] = [
       {
         name: 'イケメン戦国◆時をかける恋 -新たなる出逢い- for Nintendo Switch(NS)',
@@ -197,7 +197,7 @@ describe('test filterResults', () => {
     expect(fuseFilterSubjects(rawList, info, opts)).toEqual(rawList.slice(5, 6));
   });
   test('test fuse filter', () => {
-    var rawList = [
+    var rawList: SearchSubject[] = [
       {
         name: '月影の鎖 -狂爛モラトリアム-(PSV)',
         url: 'game.php?game=25429#ad',
@@ -229,5 +229,39 @@ describe('test filterResults', () => {
       releaseDate: '2016-12-29',
     };
     expect(fuseFilterSubjects(rawList, info, { keys: ['name'] })).toEqual([]);
+    rawList = [
+      {
+        name: '月影の鎖 -錯乱パラノイア-',
+        rawName: '月影の鎖 -錯乱パラノイア-',
+        url: 'https://vndb.org/v11469',
+        count: '34',
+        releaseDate: '2013-04-18',
+        score: '7.57',
+      },
+      {
+        name: '月影の鎖 ―狂爛モラトリアム―',
+        rawName: '月影の鎖 ―狂爛モラトリアム―',
+        url: 'https://vndb.org/v12928',
+        count: '15',
+        releaseDate: '2013-12-19',
+        score: '7.46',
+      },
+      {
+        name: '月影の鎖～紅に染まる番外編～',
+        rawName: '月影の鎖～紅に染まる番外編～',
+        url: 'https://vndb.org/v21704',
+        count: '0',
+        releaseDate: '2016-12-29',
+      },
+    ];
+    info = {
+      name: '月影の鎖 -狂爛モラトリアム-',
+      rawName: '月影の鎖 -狂爛モラトリアム-',
+      score: '76',
+      count: '5',
+      url: 'https://erogamescape.org/~ap2/ero/toukei_kaiseki/game.php?game=25429#ad',
+      releaseDate: '2016-12-21',
+    };
+    expect(fuseFilterSubjects(rawList, info, { keys: ['name'], threshold: 0.4 })).toEqual(rawList.slice(1, 2));
   });
 });

@@ -890,6 +890,10 @@
   function isEnglishName(name) {
       return /^[a-zA-Z][a-zA-Z\s]*[a-zA-Z]$/.test(name);
   }
+  function isKatakanaName(name) {
+      // ァ-ン
+      return /^[ァ-ヶ][ァ-ヶー・]*[ァ-ヶー]?$/.test(name);
+  }
 
   var BangumiDomain;
   (function (BangumiDomain) {
@@ -1030,12 +1034,9 @@
       }
       const options = {
           releaseDate: opts.releaseDate,
+          threshold: 0.4,
           keys: ['name', 'greyName'],
       };
-      // @TODO 优化过滤错误的问题。也许要使用name
-      if (opts.shortenQuery && opts.query) {
-          return filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, { ...options, threshold: 0.4 });
-      }
       return filterResults(rawInfoList, subjectInfo, options);
   }
   /**
@@ -1101,6 +1102,10 @@
       return searchResult;
   }
   function isUniqueQuery(info) {
+      // fix: ヴァージン・トリガー
+      if (isKatakanaName(info.name)) {
+          return true;
+      }
       // fix EXTRA VA MIZUNA; fix いろとりどりのセカイ
       if (/^[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー々\s]+$/u.test(info.name)
           || /^[a-zA-Z\s]+$/.test(info.name)) {

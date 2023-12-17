@@ -1,4 +1,4 @@
-import { getAlias, getHiraganaSubTitle, normalizeEditionName, pairCharsToSpace, replaceCharsToSpace } from "./str";
+import { getAlias, getHiraganaSubTitle, isKatakanaName, normalizeEditionName, pairCharsToSpace, replaceCharsToSpace } from "./str";
 
 describe("test str", () => {
   test('test getAlias', () => {
@@ -21,5 +21,9 @@ describe("test str", () => {
   it('test remove chars', () => {
     expect(pairCharsToSpace('痕 -きずあと-')).toEqual('痕 きずあと');
     expect(replaceCharsToSpace('いつまでも僕だけのママのままでいて!', '', '!').trim()).toEqual('いつまでも僕だけのママのままでいて')
+  })
+  it('test name type', () => {
+    expect(isKatakanaName('ヴ')).toBe(true);
+    expect(isKatakanaName('ヴァージン・トリガー')).toBe(true);
   })
 })

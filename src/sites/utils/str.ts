@@ -137,3 +137,8 @@ export function replaceToASCII(str: string) {
 export function isEnglishName(name: string) {
   return /^[a-zA-Z][a-zA-Z\s]*[a-zA-Z]$/.test(name);
 }
+
+export function isKatakanaName(name: string) {
+  // ァ-ン
+  return /^[ァ-ヶ][ァ-ヶー・]*[ァ-ヶー]?$/.test(name);
+}

@@ -6,7 +6,7 @@ import { dealDate, getShortenedQuery } from '../../utils/utils';
 import { filterResults } from '../common';
 import { SiteUtils } from '../../interface/types';
 import { getAllPageInfo, getBgmHost, getSubjectId, getUserId, updateInterest } from './common';
-import { pairCharsToSpace, removePairs, replaceCharsToSpace, replaceToASCII } from '../utils';
+import { isKatakanaName, pairCharsToSpace, removePairs, replaceCharsToSpace, replaceToASCII } from '../utils';
 
 export const favicon = 'https://bgm.tv/img/favicon.ico';
 
@@ -183,12 +183,9 @@ export async function searchSubject(
   }
   const options = {
     releaseDate: opts.releaseDate,
+    threshold: 0.4,
     keys: ['name', 'greyName'],
   };
-  // @TODO 优化过滤错误的问题。也许要使用name
-  if (opts.shortenQuery && opts.query) {
-    return filterResults(rawInfoList, {...subjectInfo, name: opts.query}, {...options, threshold: 0.4});
-  }
   return filterResults(rawInfoList, subjectInfo, options);
 }
 
@@ -263,6 +260,10 @@ export async function checkBookSubjectExist(
 }
 
 function isUniqueQuery(info: AllSubject) {
+  // fix: ヴァージン・トリガー
+  if (isKatakanaName(info.name)) {
+    return true
+  }
   // fix EXTRA VA MIZUNA; fix いろとりどりのセカイ
   if (/^[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー々\s]+$/u.test(info.name)
   || /^[a-zA-Z\s]+$/.test(info.name)

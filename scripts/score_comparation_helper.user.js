@@ -814,7 +814,9 @@
       return '';
   }
   function normalizeEditionName(str) {
-      return str.replace(/\s[^ ]*?(スペシャルプライス版|体験版|ダウンロード版|パッケージ版|限定版|通常版|廉価版|復刻版|初回.*?版|描き下ろし|DVDPG.*|DVD.*?版|Windows版|リニューアル|完全版|リメイク版).*?$/g, '').replace(/Memorial Edition$/, '');
+      return str.replace(/\s[^ ]*?(スペシャルプライス版|体験版|ダウンロード版|パッケージ版|限定版|通常版|廉価版|復刻版|初回.*?版|描き下ろし|DVDPG.*|DVD.*?版|Windows版|リニューアル|完全版|リメイク版).*?$/g, '').replace(/Memorial Edition$/, '')
+          // fix いろとりどりのセカイ WORLD'S END COMPLETE
+          .replace(/ WORLD'S END COMPLETE$/, '');
   }
   function removePairs(str, pairs = []) {
       for (let i = 0; i < pairs.length; i++) {
@@ -842,19 +844,23 @@
       }
       return result;
   }
-  function removeChars(originStr, chars) {
+  function charsToSpace(originStr, chars) {
       return originStr.replace(new RegExp(`[${chars}]`, 'g'), ' ').replace(/\s{2,}/g, ' ');
   }
-  function replaceSymbolChars(str, excludes = '') {
+  function replaceCharsToSpace(str, excludes = '', extra = '') {
       const fullwidthPair = '～－＜＞';
-      var symbolString = '―〜━[]『』~\'…！？。♥☆/♡★‥○,【】◆×▼’&＇"＊?' + '．・　' + fullwidthPair;
+      // @TODO 需要更多测试
+      var symbolString = '―〜━『』~\'…！？。♥☆/♡★‥○【】◆×▼’＇"＊?' + '．・　' + fullwidthPair;
       if (excludes) {
           symbolString = symbolString.replace(new RegExp(`[${excludes}]`, 'g'), '');
       }
-      return removeChars(str, unique(symbolString));
+      symbolString = symbolString + extra;
+      let output = charsToSpace(str, unique(symbolString));
+      // output =  output.replace(/[&,\[\]]/g, ' ');
+      return output;
   }
-  function removePairChars(str) {
-      return removeChars(str, unique(SUB_TITLE_PAIRS.join(''))).trim();
+  function pairCharsToSpace(str) {
+      return charsToSpace(str, unique(SUB_TITLE_PAIRS.join(''))).trim();
   }
   function replaceToASCII(str) {
       return str
@@ -880,6 +886,9 @@
           .replace(/Ⅷ/g, 'VIII')
           .replace(/Ⅸ/g, 'IX')
           .replace(/Ⅹ/g, 'X');
+  }
+  function isEnglishName(name) {
+      return /^[a-zA-Z][a-zA-Z\s]*[a-zA-Z]$/.test(name);
   }
 
   var BangumiDomain;
@@ -981,10 +990,11 @@
   }
   function normalizeQueryBangumi(query) {
       query = replaceToASCII(query);
-      query = replaceSymbolChars(query);
       query = removePairs(query);
-      query = removePairChars(query);
-      return query;
+      query = pairCharsToSpace(query);
+      // fix いつまでも僕だけのママのままでいて!
+      query = replaceCharsToSpace(query, '', '!');
+      return query.trim();
   }
   /**
    * 搜索条目
@@ -1022,6 +1032,7 @@
           releaseDate: opts.releaseDate,
           keys: ['name', 'greyName'],
       };
+      // @TODO 优化过滤错误的问题。也许要使用name
       if (opts.shortenQuery && opts.query) {
           return filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, { ...options, threshold: 0.4 });
       }
@@ -1089,6 +1100,13 @@
       console.info('Third: search book of bangumi: ', searchResult);
       return searchResult;
   }
+  function isUniqueQuery(info) {
+      // fix EXTRA VA MIZUNA; fix いろとりどりのセカイ
+      if (/^[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー々\s]+$/u.test(info.name)
+          || /^[a-zA-Z\s]+$/.test(info.name)) {
+          return true;
+      }
+  }
   /**
    * 查找条目是否存在： 通过名称搜索或者日期加上名称的过滤查询
    * @param subjectInfo 条目基本信息
@@ -1107,6 +1125,18 @@
       let searchOpts = {};
       if (typeof opts === 'object') {
           searchOpts = opts;
+      }
+      // fix long name
+      if (subjectInfo.name.length > 50) {
+          let query = normalizeQueryBangumi(subjectInfo.name.split(' ')[0]);
+          return await searchSubject$2(subjectInfo, bgmHost, type, '', {
+              ...searchOpts,
+              shortenQuery: true,
+              query,
+          });
+      }
+      if (isUniqueQuery(subjectInfo)) {
+          return await searchSubject$2(subjectInfo, bgmHost, type, subjectInfo.name.trim(), searchOpts);
       }
       let searchResult = await searchSubject$2(subjectInfo, bgmHost, type, '', searchOpts);
       console.info(`First: search result of bangumi: `, searchResult);
@@ -1883,6 +1913,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   }
   function reviseTitle$1(title) {
       const titleDict = {
+          'カオスヘッド らぶChu☆Chu!': 'CHAOS;HEAD らぶChu☆Chu!',
           'ドキドキ文芸部!': 'Doki Doki Literature Club!',
           // https://vndb.org/v13666
           '凍京NECRO＜トウキョウ・ネクロ＞': '凍京NECRO',
@@ -1996,11 +2027,16 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   }
   function normalizeQueryVNDB(query) {
       query = replaceToASCII(query);
-      query = replaceSymbolChars(query, '&');
       query = removePairs(query);
+      query = replaceCharsToSpace(query);
       return query;
   }
   async function searchGameData(info) {
+      // fix EXTRA VA MIZUNA
+      if (isEnglishName(info.name)) {
+          let result = await searchSubject$1(info);
+          return patchSearchResult(result);
+      }
       let query = normalizeQueryVNDB(info.name);
       let result = await searchSubject$1(info, { query });
       if (!result) {
@@ -2008,9 +2044,11 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           query = getShortenedQuery(query);
           result = await searchSubject$1(info, { shortenQuery: true, query });
       }
+      return patchSearchResult(result);
+  }
+  async function patchSearchResult(result) {
       // when score is empty, try to extract score from page
       if (result && result.url && Number(result.count) > 0 && isNaN(Number(result.score))) {
-          await sleep(100);
           const rawText = await fetchText(result.url);
           window._parsedEl = new DOMParser().parseFromString(rawText, 'text/html');
           const res = getSearchSubject$2();

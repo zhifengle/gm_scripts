@@ -42,7 +42,10 @@ export function normalizeEditionName(str: string): string {
   return str.replace(
     /\s[^ ]*?(スペシャルプライス版|体験版|ダウンロード版|パッケージ版|限定版|通常版|廉価版|復刻版|初回.*?版|描き下ろし|DVDPG.*|DVD.*?版|Windows版|リニューアル|完全版|リメイク版).*?$/g,
     ''
-  ).replace(/Memorial Edition$/, '');
+  ).replace(/Memorial Edition$/, '')
+  // fix いろとりどりのセカイ WORLD'S END COMPLETE
+  .replace(/ WORLD'S END COMPLETE$/,'');
+
 }
 
 export function isSimpleStr(str: string): boolean {
@@ -84,21 +87,25 @@ function unique(str: string) {
   return result;
 }
 
-export function removeChars(originStr: string, chars: string) {
+export function charsToSpace(originStr: string, chars: string) {
   return originStr.replace(new RegExp(`[${chars}]`, 'g'), ' ').replace(/\s{2,}/g, ' ');
 }
 
-export function replaceSymbolChars(str: string, excludes: string = '') {
+export function replaceCharsToSpace(str: string, excludes: string = '', extra: string = '') {
   const fullwidthPair = '～－＜＞'
-  var symbolString = '―〜━[]『』~\'…！？。♥☆/♡★‥○,【】◆×▼’&＇"＊?' + '．・　' + fullwidthPair;
+  // @TODO 需要更多测试
+  var symbolString = '―〜━『』~\'…！？。♥☆/♡★‥○【】◆×▼’＇"＊?' + '．・　' + fullwidthPair;
   if (excludes) {
     symbolString = symbolString.replace(new RegExp(`[${excludes}]`, 'g'), '');
   }
-  return removeChars(str, unique(symbolString));
+  symbolString = symbolString + extra
+  let output = charsToSpace(str, unique(symbolString))
+  // output =  output.replace(/[&,\[\]]/g, ' ');
+  return output
 }
 
-export function removePairChars(str: string) {
-  return removeChars(str, unique(SUB_TITLE_PAIRS.join(''))).trim()
+export function pairCharsToSpace(str: string) {
+  return charsToSpace(str, unique(SUB_TITLE_PAIRS.join(''))).trim()
 }
 
 export function replaceToASCII(str: string) {
@@ -125,4 +132,8 @@ export function replaceToASCII(str: string) {
     .replace(/Ⅷ/g, 'VIII')
     .replace(/Ⅸ/g, 'IX')
     .replace(/Ⅹ/g, 'X');
+}
+
+export function isEnglishName(name: string) {
+  return /^[a-zA-Z][a-zA-Z\s]*[a-zA-Z]$/.test(name);
 }

@@ -6,10 +6,11 @@ import { getShortenedQuery, normalizeQuery } from '../utils/utils';
 import { filterResults } from './common';
 import {
   getAlias,
+  isEnglishName,
   normalizeEditionName,
   removePairs,
   removeSubTitle,
-  replaceSymbolChars,
+  replaceCharsToSpace,
   replaceToASCII,
 } from './utils';
 
@@ -24,6 +25,7 @@ function reviseQueryVNDB(str: string) {
 
 function reviseTitle(title: string) {
   const titleDict: Record<string, string> = {
+    'カオスヘッド らぶChu☆Chu!': 'CHAOS;HEAD らぶChu☆Chu!',
     'ドキドキ文芸部!': 'Doki Doki Literature Club!',
     // https://vndb.org/v13666
     '凍京NECRO＜トウキョウ・ネクロ＞': '凍京NECRO',
@@ -144,12 +146,17 @@ export async function searchSubject(
 
 function normalizeQueryVNDB(query: string): string {
   query = replaceToASCII(query);
-  query = replaceSymbolChars(query, '&');
   query = removePairs(query);
+  query = replaceCharsToSpace(query);
   return query;
 }
 
 export async function searchGameData(info: SearchSubject): Promise<SearchSubject> {
+  // fix EXTRA VA MIZUNA
+  if (isEnglishName(info.name)) {
+    let result = await searchSubject(info);
+    return patchSearchResult(result);
+  }
   let query = normalizeQueryVNDB(info.name);
   let result = await searchSubject(info, { query });
   if (!result) {
@@ -157,9 +164,12 @@ export async function searchGameData(info: SearchSubject): Promise<SearchSubject
     query = getShortenedQuery(query);
     result = await searchSubject(info, { shortenQuery: true, query });
   }
+  return patchSearchResult(result)
+}
+
+async function patchSearchResult(result: SearchSubject) {
   // when score is empty, try to extract score from page
   if (result && result.url && Number(result.count) > 0 && isNaN(Number(result.score))) {
-    await sleep(100);
     const rawText = await fetchText(result.url);
     window._parsedEl = new DOMParser().parseFromString(rawText, 'text/html');
     const res = getSearchSubject();

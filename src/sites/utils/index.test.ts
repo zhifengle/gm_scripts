@@ -1,4 +1,4 @@
-import { getAlias, getHiraganaSubTitle, normalizeEditionName, removePairChars } from "./str";
+import { getAlias, getHiraganaSubTitle, normalizeEditionName, pairCharsToSpace, replaceCharsToSpace } from "./str";
 
 describe("test str", () => {
   test('test getAlias', () => {
@@ -19,6 +19,7 @@ describe("test str", () => {
     expect(getHiraganaSubTitle('凍京NECRO＜トウキョウ・ネクロ＞')).toEqual('');
   })
   it('test remove chars', () => {
-    expect(removePairChars('痕 -きずあと-')).toEqual('痕 きずあと');
+    expect(pairCharsToSpace('痕 -きずあと-')).toEqual('痕 きずあと');
+    expect(replaceCharsToSpace('いつまでも僕だけのママのままでいて!', '', '!').trim()).toEqual('いつまでも僕だけのママのままでいて')
   })
 })

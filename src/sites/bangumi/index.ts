@@ -6,7 +6,7 @@ import { dealDate, getShortenedQuery } from '../../utils/utils';
 import { filterResults } from '../common';
 import { SiteUtils } from '../../interface/types';
 import { getAllPageInfo, getBgmHost, getSubjectId, getUserId, updateInterest } from './common';
-import { removePairChars, removePairs, replaceSymbolChars, replaceToASCII } from '../utils';
+import { pairCharsToSpace, removePairs, replaceCharsToSpace, replaceToASCII } from '../utils';
 
 export const favicon = 'https://bgm.tv/img/favicon.ico';
 
@@ -136,10 +136,11 @@ function reviseQuery(title: string): string {
 
 function normalizeQueryBangumi(query: string): string {
   query = replaceToASCII(query);
-  query = replaceSymbolChars(query);
   query = removePairs(query);
-  query = removePairChars(query);
-  return query
+  query = pairCharsToSpace(query);
+  // fix いつまでも僕だけのママのままでいて!
+  query = replaceCharsToSpace(query, '', '!');
+  return query.trim()
 }
 
 /**
@@ -184,6 +185,7 @@ export async function searchSubject(
     releaseDate: opts.releaseDate,
     keys: ['name', 'greyName'],
   };
+  // @TODO 优化过滤错误的问题。也许要使用name
   if (opts.shortenQuery && opts.query) {
     return filterResults(rawInfoList, {...subjectInfo, name: opts.query}, {...options, threshold: 0.4});
   }
@@ -260,6 +262,15 @@ export async function checkBookSubjectExist(
   return searchResult;
 }
 
+function isUniqueQuery(info: AllSubject) {
+  // fix EXTRA VA MIZUNA; fix いろとりどりのセカイ
+  if (/^[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー々\s]+$/u.test(info.name)
+  || /^[a-zA-Z\s]+$/.test(info.name)
+  ) {
+    return true
+  }
+}
+
 /**
  * 查找条目是否存在： 通过名称搜索或者日期加上名称的过滤查询
  * @param subjectInfo 条目基本信息
@@ -283,6 +294,18 @@ async function checkExist(
   let searchOpts: any = {};
   if (typeof opts === 'object') {
     searchOpts = opts;
+  }
+  // fix long name
+  if (subjectInfo.name.length > 50) {
+    let query = normalizeQueryBangumi(subjectInfo.name.split(' ')[0]);
+    return await searchSubject(subjectInfo, bgmHost, type, '', {
+      ...searchOpts,
+      shortenQuery: true,
+      query,
+    });
+  }
+  if (isUniqueQuery(subjectInfo)) {
+    return await searchSubject(subjectInfo, bgmHost, type, subjectInfo.name.trim(), searchOpts);
   }
   let searchResult = await searchSubject(subjectInfo, bgmHost, type, '', searchOpts);
   console.info(`First: search result of bangumi: `, searchResult);

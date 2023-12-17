@@ -6,7 +6,14 @@ import { dealDate, getShortenedQuery } from '../../utils/utils';
 import { filterResults } from '../common';
 import { SiteUtils } from '../../interface/types';
 import { getAllPageInfo, getBgmHost, getSubjectId, getUserId, updateInterest } from './common';
-import { isKatakanaName, pairCharsToSpace, removePairs, replaceCharsToSpace, replaceToASCII } from '../utils';
+import {
+  isEnglishName,
+  isKatakanaName,
+  pairCharsToSpace,
+  removePairs,
+  replaceCharsToSpace,
+  replaceToASCII,
+} from '../utils';
 
 export const favicon = 'https://bgm.tv/img/favicon.ico';
 
@@ -140,7 +147,7 @@ function normalizeQueryBangumi(query: string): string {
   query = pairCharsToSpace(query);
   // fix いつまでも僕だけのママのままでいて!
   query = replaceCharsToSpace(query, '', '!');
-  return query.trim()
+  return query.trim();
 }
 
 /**
@@ -261,14 +268,12 @@ export async function checkBookSubjectExist(
 
 function isUniqueQuery(info: AllSubject) {
   // fix: ヴァージン・トリガー
-  if (isKatakanaName(info.name)) {
-    return true
+  if (isKatakanaName(info.name) || isEnglishName(info.name)) {
+    return true;
   }
-  // fix EXTRA VA MIZUNA; fix いろとりどりのセカイ
-  if (/^[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー々\s]+$/u.test(info.name)
-  || /^[a-zA-Z\s]+$/.test(info.name)
-  ) {
-    return true
+  // fix いろとりどりのセカイ
+  if (/^[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}ー々\s]+$/u.test(info.name)) {
+    return true;
   }
 }
 

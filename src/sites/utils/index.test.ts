@@ -1,4 +1,4 @@
-import { getAlias, getHiraganaSubTitle, isKatakanaName, normalizeEditionName, pairCharsToSpace, replaceCharsToSpace } from "./str";
+import { getAlias, getHiraganaSubTitle, isEnglishName, isKatakanaName, normalizeEditionName, pairCharsToSpace, replaceCharsToSpace } from "./str";
 
 describe("test str", () => {
   test('test getAlias', () => {
@@ -25,5 +25,6 @@ describe("test str", () => {
   it('test name type', () => {
     expect(isKatakanaName('ヴ')).toBe(true);
     expect(isKatakanaName('ヴァージン・トリガー')).toBe(true);
+    expect(isEnglishName('D.Zone')).toBe(true);
   })
 })

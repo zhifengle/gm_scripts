@@ -25,6 +25,7 @@ function reviseQueryVNDB(str: string) {
 
 function reviseTitle(title: string) {
   const titleDict: Record<string, string> = {
+    'レベル-F': 'Lv-F',
     'カオスヘッド らぶChu☆Chu!': 'CHAOS;HEAD らぶChu☆Chu!',
     'ドキドキ文芸部!': 'Doki Doki Literature Club!',
     // https://vndb.org/v13666
@@ -246,16 +247,14 @@ export function getSearchSubject(): SearchSubject {
   return info;
 }
 
+// 注意使用 alias 时，太短的alias会干扰搜索结果
+// 吸血美人 vol.1 ---->  vol.1 就会干扰搜索结果
+
 function getAliasVNDB(name: string) {
   name = name.replace(/　/g, ' ');
   const alias = getAlias(name) || [];
   if (alias && alias.length > 0) {
     return alias;
-  }
-  let query = normalizeQuery(name);
-  if (query.split(' ').length === 2) {
-    // fix: ギャラクシーエンジェルII 永劫回帰の刻
-    alias.push(...name.split(' '));
   }
   return alias;
 }

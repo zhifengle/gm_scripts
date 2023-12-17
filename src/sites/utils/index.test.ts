@@ -17,6 +17,7 @@ describe("test str", () => {
     expect(getHiraganaSubTitle('フィギュア ～奪われた放課後～')).toEqual('奪われた放課後');
     expect(getHiraganaSubTitle('巨乳ファンタジー外伝２after -リュート、古代ローマに行く-')).toEqual('リュート、古代ローマに行く');
     expect(getHiraganaSubTitle('凍京NECRO＜トウキョウ・ネクロ＞')).toEqual('');
+    expect(getHiraganaSubTitle('ギャラクシーエンジェルII 永劫回帰の刻')).toEqual('永劫回帰の刻');
   })
   it('test remove chars', () => {
     expect(pairCharsToSpace('痕 -きずあと-')).toEqual('痕 きずあと');
@@ -25,6 +26,8 @@ describe("test str", () => {
   it('test name type', () => {
     expect(isKatakanaName('ヴ')).toBe(true);
     expect(isKatakanaName('ヴァージン・トリガー')).toBe(true);
+    expect(isKatakanaName('ディー ゾーン')).toBe(true);
     expect(isEnglishName('D.Zone')).toBe(true);
+    expect(isEnglishName('Lv-F')).toBe(true);
   })
 })

@@ -5,7 +5,19 @@ import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery, normalizeQuery } from '../utils/utils';
 import { filterResults, findResultByMonth, fuseFilterSubjects } from './common';
-import { getHiraganaSubTitle, normalizeEditionName, removePairs, replaceToASCII } from './utils';
+import {
+  getHiraganaSubTitle,
+  isEnglishName,
+  isKatakanaName,
+  normalizeEditionName,
+  removePairs,
+  replaceToASCII,
+} from './utils';
+
+type SearchOptions = {
+  shortenQuery?: boolean;
+  query?: string;
+};
 
 enum ErogamescapeCategory {
   game = 'game',
@@ -33,7 +45,7 @@ function reviseTitle(title: string) {
     return titleDict[title];
   }
   const shortenTitleDict: Record<string, string> = {
-    '姉妹いじり': '姉妹いじり'
+    姉妹いじり: '姉妹いじり',
   };
   for (const [key, val] of Object.entries(shortenTitleDict)) {
     if (title.includes(key)) {
@@ -65,13 +77,13 @@ export function normalizeQueryEGS(query: string): string {
     return String.fromCharCode(s.charCodeAt(0) - 65248);
   });
 
-  newQuery = newQuery
-    .replace(/^(.*?～)(.*)(～[^～]*)$/, function (_, p1, p2, p3) {
-      return p1.replace(/～/g, ' ') + p2 + p3.replace(/～/g, ' ');
-    })
+  newQuery = newQuery.replace(/^(.*?～)(.*)(～[^～]*)$/, function (_, p1, p2, p3) {
+    return p1.replace(/～/g, ' ') + p2 + p3.replace(/～/g, ' ');
+  });
   newQuery = removePairs(replaceToASCII(newQuery), ['‐‐'])
     .replace(/[-－―～〜━\[\]『』~'…！？。]/g, ' ')
-    .replace(/[♥❤☆\/♡★‥○⁉,.【】◆●∽＋‼＿◯※♠×▼％#∞’&!:＇"＊\*＆［］<>＜＞`_「」¨／◇：♪･@＠]/g, ' ')
+    // keep "." or not?
+    .replace(/[♥❤☆\/♡★‥○⁉,【】◆●∽＋‼＿◯※♠×▼％#∞’&!:＇"＊\*＆［］<>＜＞`_「」¨／◇：♪･@＠]/g, ' ')
     .replace(/[、，△《》†〇\/·;^‘“”√≪≫＃→♂?%~■‘〈〉Ω♀⇒≒§♀⇒←∬🕊¡Ι≠±『』♨❄—~Σ⇔↑↓‡▽□』〈〉＾]/g, ' ')
     .replace(/[─|+．・]/g, ' ')
     .replace(/°C/g, '℃')
@@ -89,9 +101,9 @@ export function normalizeQueryEGS(query: string): string {
 export async function searchSubject(
   subjectInfo: SearchSubject,
   type: ErogamescapeCategory = ErogamescapeCategory.game,
-  uniqueQueryStr: string = ''
+  opts: SearchOptions = {}
 ): Promise<SearchSubject> {
-  let query = uniqueQueryStr || subjectInfo.name;
+  let query = opts.query || subjectInfo.name;
   const url = `${site_origin}/~ap2/ero/toukei_kaiseki/kensaku.php?category=${type}&word_category=name&word=${encodeURIComponent(
     query
   )}&mode=normal`;
@@ -101,27 +113,22 @@ export async function searchSubject(
   const items = $doc.querySelectorAll('#result table tr:not(:first-child)');
   const rawInfoList: SearchSubject[] = [...items].map(($item: HTMLElement) => getSearchItem($item));
   let res: SearchSubject;
-  if (uniqueQueryStr) {
+  const fuseOptions = {
+    keys: ['name'],
+  };
+  if (opts.shortenQuery) {
     res = findResultByMonth(rawInfoList, subjectInfo);
-    // no result. try to fuse search by rawName
-    if (!res && subjectInfo.rawName) {
-      res = filterResults(
-        rawInfoList,
-        { ...subjectInfo, name: subjectInfo.rawName },
-        {
-          keys: ['name'],
-        },
-        false
-      );
+    if (!res) {
+      res = filterResults(rawInfoList, subjectInfo, fuseOptions, false);
     }
   } else {
     res = filterResults(
       rawInfoList,
       subjectInfo,
       {
-        releaseDate: true,
+        ...fuseOptions,
         threshold: 0.4,
-        keys: ['name'],
+        releaseDate: true,
       },
       false
     );
@@ -134,39 +141,59 @@ export async function searchSubject(
   }
 }
 
+function canShortenQuery(query: string): boolean {
+  if (isEnglishName(query)) {
+    return false;
+  }
+  if (isKatakanaName(query)) {
+    return false;
+  }
+  return true;
+}
+
 export async function searchGameSubject(info: SearchSubject): Promise<SearchSubject> {
   let res: SearchSubject;
   const querySet = new Set();
+  const normalizedStr = normalizeQueryEGS(info.name);
   // fix フィギュア ～奪われた放課後～
-  let query = normalizeQueryEGS(getHiraganaSubTitle(info.name));
-  if (query) {
-    res = await searchAndFollow(info, query);
-    querySet.add(query);
+  const subTitle = normalizeQueryEGS(getHiraganaSubTitle(info.name));
+  if (subTitle) {
+    res = await searchAndFollow(info, {
+      shortenQuery: true,
+      query: subTitle,
+    });
+    querySet.add(subTitle);
+  } else if (isEnglishName(info.name)) {
+    res = await searchAndFollow(info);
+    querySet.add(normalizedStr);
   } else {
-    query = normalizeQueryEGS((info.name || '').trim());
-    res = await searchAndFollow({ ...info, name: query });
-    querySet.add(query);
+    res = await searchAndFollow(info, { query: normalizedStr });
+    querySet.add(normalizedStr);
   }
   if (res) {
     return res;
   }
   await sleep(100);
-  query = getShortenedQuery(normalizeQueryEGS(info.name || ''));
-  if (!querySet.has(query)) {
-    res = await searchAndFollow(info, query);
-    querySet.add(query);
-    if (res) {
-      return res;
+  let shortenedStr = '';
+  if (canShortenQuery(normalizedStr)) {
+    shortenedStr = getShortenedQuery(normalizedStr);
+    // skip length <= 3 short query
+    if (!querySet.has(shortenedStr) && shortenedStr.length > 3) {
+      res = await searchAndFollow(info, { shortenQuery: true, query: shortenedStr });
+      querySet.add(shortenedStr);
+      if (res) {
+        return res;
+      }
     }
   }
   await sleep(200);
-  if (query.length > 3) {
+  if (shortenedStr.length > 3) {
     const segmenter = new TinySegmenter();
-    const segs = segmenter.segment(query);
+    const segs = segmenter.segment(shortenedStr);
     if (segs && segs.length > 2) {
-      query = segs[0] + '?' + segs[segs.length - 1];
+      const query = segs[0] + '?' + segs[segs.length - 1];
       if (!querySet.has(query)) {
-        res = await searchAndFollow(info, query);
+        res = await searchAndFollow(info, { shortenQuery: true, query });
         querySet.add(query);
         if (res) {
           return res;
@@ -181,11 +208,16 @@ export async function searchGameSubject(info: SearchSubject): Promise<SearchSubj
     queryList = info.alias;
   }
   for (const s of queryList) {
-    const queryStr = getShortenedQuery(normalizeQueryEGS(s));
+    let queryStr = normalizeQueryEGS(s);
+    let shortenQuery = false
+    if (canShortenQuery(queryStr)) {
+      queryStr = getShortenedQuery(queryStr);
+      shortenQuery = true
+    }
     if (querySet.has(queryStr)) {
       continue;
     }
-    const res = await searchAndFollow(info, queryStr);
+    const res = await searchAndFollow(info, { shortenQuery, query: queryStr });
     querySet.add(queryStr);
     if (res) {
       return res;
@@ -195,8 +227,8 @@ export async function searchGameSubject(info: SearchSubject): Promise<SearchSubj
 }
 
 // search and follow the URL of search result
-export async function searchAndFollow(info: SearchSubject, uniqueQueryStr: string = ''): Promise<SearchSubject> {
-  const result = await searchSubject(info, ErogamescapeCategory.game, uniqueQueryStr);
+export async function searchAndFollow(info: SearchSubject, opts: SearchOptions = {}): Promise<SearchSubject> {
+  const result = await searchSubject(info, ErogamescapeCategory.game, opts);
   if (result && result.url) {
     // await sleep(50)
     const rawText = await fetchText(result.url);

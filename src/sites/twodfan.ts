@@ -63,7 +63,7 @@ export async function searchGameData(
   const rawInfoList: SearchSubject[] = Array.prototype.slice
     .call(items)
     .map(($item: HTMLElement) => getSearchItem($item));
-  searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+  searchResult = filterResults(rawInfoList, subjectInfo, options);
   console.info(`Search result of ${query} on 2dfan: `, searchResult);
   if (searchResult && searchResult.url) {
     randomSleep(200, 50);

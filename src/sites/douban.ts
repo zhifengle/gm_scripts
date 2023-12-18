@@ -388,6 +388,7 @@ export async function checkAnimeSubjectExist(
   let rawInfoList;
   let searchResult;
   const options = {
+    sameYear: true,
     keys: ['name', 'greyName'],
   };
   if (type === 'home_search') {
@@ -395,7 +396,7 @@ export async function checkAnimeSubjectExist(
   } else {
     rawInfoList = await getSubjectSearchResults(query);
   }
-  searchResult = filterResults(rawInfoList, subjectInfo, options, true);
+  searchResult = filterResults(rawInfoList, subjectInfo, options);
   console.info(`Search result of ${query} on Douban: `, searchResult);
   if (searchResult && searchResult.url) {
     return searchResult;

@@ -14,23 +14,38 @@ type FuseOptions = {
   keys: string[];
 };
 
+type FilterOptions = {
+  releaseDate?: boolean;
+  sameName?: boolean;
+  // only one result, skip filter
+  uniqueSearch?: boolean;
+  // allow same year result
+  sameYear?: boolean;
+} & FuseOptions;
+
 export type SearchOptions = {
   shortenQuery?: boolean;
   query?: string;
-}
+};
 
 export function fuseFilterSubjects(items: SearchSubject[], info: SearchSubject, opts: FuseOptions): SearchSubject[] {
   let str = info.name;
   if (info.rawName) {
     str = info.rawName;
   }
-  var results = new Fuse(items, Object.assign({
-    threshold: 0.3,
-  }, opts)).search(str);
+  var results = new Fuse(
+    items,
+    Object.assign(
+      {
+        threshold: 0.3,
+      },
+      opts
+    )
+  ).search(str);
   if (!results.length) {
     return [];
   }
-  return results.map((item: { item: SearchSubject; }) => item.item);
+  return results.map((item: { item: SearchSubject }) => item.item);
 }
 
 /**
@@ -39,15 +54,10 @@ export function fuseFilterSubjects(items: SearchSubject[], info: SearchSubject, 
  * @param subjectInfo
  * @param opts
  */
-export function filterResults(
-  items: SearchSubject[],
-  subjectInfo: AllSubject,
-  opts: { releaseDate?: boolean; sameName?: boolean } & Record<string, any> = {},
-  isSearch: boolean = true
-) {
+export function filterResults(items: SearchSubject[], subjectInfo: AllSubject, opts: FilterOptions) {
   if (!items) return;
   // 只有一个结果时直接返回, 不再比较日期
-  if (items.length === 1 && isSearch) {
+  if (items.length === 1 && opts.uniqueSearch) {
     return items[0];
   }
   // 使用发行日期过滤
@@ -105,10 +115,9 @@ export function filterResults(
     if (sameMonthResults.length) {
       return sameMonthResults[0].item;
     }
-    // 容易误判。注释掉
-    // if (sameYearResults.length) {
-    //   return sameYearResults[0].item;
-    // }
+    if (sameYearResults.length && opts.sameYear) {
+      return sameYearResults[0].item;
+    }
   }
   return results[0]?.item;
 }

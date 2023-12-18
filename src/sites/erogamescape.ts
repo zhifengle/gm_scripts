@@ -119,7 +119,7 @@ export async function searchSubject(
   if (opts.shortenQuery) {
     res = findResultByMonth(rawInfoList, subjectInfo);
     if (!res) {
-      res = filterResults(rawInfoList, subjectInfo, fuseOptions, false);
+      res = filterResults(rawInfoList, subjectInfo, fuseOptions);
     }
   } else {
     res = filterResults(
@@ -130,7 +130,6 @@ export async function searchSubject(
         threshold: 0.4,
         releaseDate: true,
       },
-      false
     );
   }
   console.info(`Search result of ${query} on erogamescape: `, res);

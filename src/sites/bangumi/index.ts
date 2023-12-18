@@ -163,6 +163,13 @@ export async function searchSubject(
   uniqueQueryStr: string = '',
   opts: { releaseDate?: boolean; query?: string; shortenQuery?: boolean } = {}
 ) {
+  // fuse options
+  const fuseOptions = {
+    releaseDate: opts.releaseDate,
+    threshold: 0.4,
+    uniqueSearch: false,
+    keys: ['name', 'greyName'],
+  };
   let query = normalizeQueryBangumi((subjectInfo.name || '').trim());
   if (type === SubjectTypeId.book) {
     // 去掉末尾的括号并加上引号
@@ -188,12 +195,7 @@ export async function searchSubject(
   if (uniqueQueryStr && rawInfoList && rawInfoList.length === 1) {
     return rawInfoList[0];
   }
-  const options = {
-    releaseDate: opts.releaseDate,
-    threshold: 0.4,
-    keys: ['name', 'greyName'],
-  };
-  return filterResults(rawInfoList, subjectInfo, options);
+  return filterResults(rawInfoList, subjectInfo, fuseOptions);
 }
 
 /**
@@ -233,7 +235,7 @@ export async function findSubjectByDate(
     threshold: 0.3,
     keys: ['name', 'greyName'],
   };
-  let result = filterResults(rawInfoList, subjectInfo, options, false);
+  let result = filterResults(rawInfoList, subjectInfo, options);
   if (!result) {
     if (pageNumber < numOfPage) {
       await sleep(300);

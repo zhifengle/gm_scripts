@@ -59,7 +59,6 @@ export async function searchGameSubject(info: Subject): Promise<SearchSubject> {
     {
       keys: ['name'],
     },
-    true
   );
   console.info(`Search result of ${info.name} on moepedia: `, res);
   if (res && res.url) {

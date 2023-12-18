@@ -40,11 +40,12 @@ export async function searchAnimeData(
     };
   });
   const options = {
+    uniqueSearch: true,
     keys: ['greyName'],
   };
   let result: SearchSubject;
 
-  result = filterResults(rawInfoList, subjectInfo, options, true);
+  result = filterResults(rawInfoList, subjectInfo, options);
   if (result && result.url) {
     // 转换评分
     const obj: any = result;

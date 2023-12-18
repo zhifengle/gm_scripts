@@ -124,9 +124,9 @@ export async function searchSubject(
   };
   // fix: Ib
   if (/^[a-zA-Z]+$/.test(subjectInfo.name) && rawInfoList.length > 10) {
-    return filterResults(rawInfoList, subjectInfo, { ...filterOpts, sameName: true }, false);
+    return filterResults(rawInfoList, subjectInfo, { ...filterOpts, sameName: true });
   }
-  res = filterResults(rawInfoList, subjectInfo, filterOpts, false);
+  res = filterResults(rawInfoList, subjectInfo, filterOpts);
   if (res && res.url) {
     console.info(`Search result of ${query} on vndb: `, res);
     return res;
@@ -141,7 +141,7 @@ export async function searchSubject(
     }
     return res;
   }
-  res = filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, filterOpts, false);
+  res = filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, filterOpts);
   return res;
 }
 

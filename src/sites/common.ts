@@ -1,10 +1,11 @@
+import TinySegmenter from 'tiny-segmenter';
 import { SEARCH_RESULT } from '../contants';
 import { AllSubject, SearchSubject } from '../interface/subject';
 import { InterestType, InterestTypeId, MsgResponse } from '../interface/types';
 import { sleep } from '../utils/async/sleep';
 import { isEqualDate, isEqualMonth } from '../utils/utils';
 
-type FuseOptions = {
+export type FuseOptions = {
   isCaseSensitive?: boolean;
   shouldSort?: boolean;
   threshold?: number;
@@ -14,8 +15,9 @@ type FuseOptions = {
   keys: string[];
 };
 
-type FilterOptions = {
+export type FilterOptions = {
   releaseDate?: boolean;
+  // check same name; should be used with releaseDate
   sameName?: boolean;
   // only one result, skip filter
   uniqueSearch?: boolean;
@@ -72,10 +74,10 @@ export function filterResults(items: SearchSubject[], subjectInfo: AllSubject, o
       return list[0];
     }
   }
-  var results = new Fuse(items, Object.assign({}, opts)).search(subjectInfo.name);
+  var results = new Fuse(items, { ...opts }).search(subjectInfo.name);
   // 去掉括号包裹的，再次模糊查询
   if (!results.length && /<|＜|\(|（/.test(subjectInfo.name)) {
-    results = new Fuse(items, Object.assign({}, opts)).search(
+    results = new Fuse(items, { ...opts }).search(
       subjectInfo.name
         .replace(/＜.+＞/g, '')
         .replace(/<.+>/g, '')
@@ -243,4 +245,18 @@ export async function searchDataByNames(
     }
     await sleep(200);
   }
+}
+
+export function isSingleJpSegment(name: string) {
+  const segmenter = new TinySegmenter();
+  const segs = segmenter.segment(name);
+  if (segs.length === 1) {
+    if (/^\p{Script=Katakana}+$/u.test(name)) {
+      return true;
+    }
+    if (/^\p{Script=Hiragana}+$/u.test(name)) {
+      return true;
+    }
+  }
+  return false;
 }

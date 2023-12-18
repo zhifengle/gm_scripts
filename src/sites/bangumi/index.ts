@@ -2,8 +2,8 @@ import { AllSubject, BookSubject, SearchSubject, Subject } from '../../interface
 import { sleep } from '../../utils/async/sleep';
 import { fetchText } from '../../utils/fetchData';
 import { SubjectTypeId } from '../../interface/wiki';
-import { dealDate, getShortenedQuery } from '../../utils/utils';
-import { filterResults } from '../common';
+import { dealDate, getShortenedQuery, isEqualDate } from '../../utils/utils';
+import { filterResults, isSingleJpSegment } from '../common';
 import { SiteUtils } from '../../interface/types';
 import { getAllPageInfo, getBgmHost, getSubjectId, getUserId, updateInterest } from './common';
 import {
@@ -150,6 +150,20 @@ function normalizeQueryBangumi(query: string): string {
   return query.trim();
 }
 
+function filterSubjectByNameAndDate(
+  items: SearchSubject[],
+  subjectInfo: AllSubject,
+) {
+  const list = items
+    .filter((item) => isEqualDate(item.releaseDate, subjectInfo.releaseDate))
+  if (list.length === 0) return;
+  let res = list.find(item => item.name === subjectInfo.name)
+  if (res) {
+    return res
+  }
+  return list.find(item => item.greyName === subjectInfo.name)
+}
+
 /**
  * 搜索条目
  * @param subjectInfo
@@ -179,8 +193,10 @@ export async function searchSubject(
   if (opts.query) {
     query = opts.query;
   }
+  // for example: book's ISBN
   if (uniqueQueryStr) {
     query = `"${uniqueQueryStr || ''}"`;
+    fuseOptions.uniqueSearch = true;
   }
   if (!query || query === '""') {
     console.info('Query string is empty');
@@ -194,6 +210,9 @@ export async function searchSubject(
   // 使用指定搜索字符串如 ISBN 搜索时, 并且结果只有一条时，不再使用名称过滤
   if (uniqueQueryStr && rawInfoList && rawInfoList.length === 1) {
     return rawInfoList[0];
+  }
+  if (type === SubjectTypeId.game && isSingleJpSegment(subjectInfo.name) && rawInfoList.length >= 6) {
+    return filterSubjectByNameAndDate(rawInfoList, subjectInfo)
   }
   return filterResults(rawInfoList, subjectInfo, fuseOptions);
 }

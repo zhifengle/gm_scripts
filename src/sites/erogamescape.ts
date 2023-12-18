@@ -3,8 +3,8 @@ import { SearchSubject } from '../interface/subject';
 import { sleep } from '../utils/async/sleep';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
-import { getShortenedQuery, normalizeQuery } from '../utils/utils';
-import { filterResults, findResultByMonth, fuseFilterSubjects } from './common';
+import { getShortenedQuery } from '../utils/utils';
+import { filterResults, findResultByMonth, isSingleJpSegment } from './common';
 import {
   getHiraganaSubTitle,
   isEnglishName,
@@ -122,15 +122,17 @@ export async function searchSubject(
       res = filterResults(rawInfoList, subjectInfo, fuseOptions);
     }
   } else {
-    res = filterResults(
-      rawInfoList,
-      subjectInfo,
-      {
-        ...fuseOptions,
-        threshold: 0.4,
-        releaseDate: true,
-      },
-    );
+    const newOpts = {
+      ...fuseOptions,
+      threshold: 0.4,
+      releaseDate: true,
+      sameName: false,
+    };
+    // fix: なついろ; @TODO need more test
+    if (isSingleJpSegment(subjectInfo.name) && rawInfoList.length > 6) {
+      newOpts.sameName = true;
+    }
+    res = filterResults(rawInfoList, subjectInfo, newOpts);
   }
   console.info(`Search result of ${query} on erogamescape: `, res);
   if (res && res.url) {
@@ -208,10 +210,10 @@ export async function searchGameSubject(info: SearchSubject): Promise<SearchSubj
   }
   for (const s of queryList) {
     let queryStr = normalizeQueryEGS(s);
-    let shortenQuery = false
+    let shortenQuery = false;
     if (canShortenQuery(queryStr)) {
       queryStr = getShortenedQuery(queryStr);
-      shortenQuery = true
+      shortenQuery = true;
     }
     if (querySet.has(queryStr)) {
       continue;

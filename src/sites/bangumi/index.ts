@@ -29,57 +29,6 @@ export enum Protocol {
   https = 'https',
 }
 
-
-/**
- * 处理搜索页面的 html
- * @param info 字符串 html
- */
-function dealSearchResults(info: string): [SearchSubject[], number] | [] {
-  const results: SearchSubject[] = [];
-  let $doc = new DOMParser().parseFromString(info, 'text/html');
-  let items = $doc.querySelectorAll('#browserItemList>li>div.inner');
-  // get number of page
-  let numOfPage = 1;
-  let pList = $doc.querySelectorAll('.page_inner>.p');
-  if (pList && pList.length) {
-    let tempNum = parseInt(pList[pList.length - 2].getAttribute('href').match(/page=(\d*)/)[1]);
-    numOfPage = parseInt(pList[pList.length - 1].getAttribute('href').match(/page=(\d*)/)[1]);
-    numOfPage = numOfPage > tempNum ? numOfPage : tempNum;
-  }
-  if (items && items.length) {
-    for (const item of Array.prototype.slice.call(items)) {
-      let $subjectTitle = item.querySelector('h3>a.l');
-      let itemSubject: SearchSubject = {
-        name: $subjectTitle.textContent.trim(),
-        // url 没有协议和域名
-        url: $subjectTitle.getAttribute('href'),
-        greyName: item.querySelector('h3>.grey') ? item.querySelector('h3>.grey').textContent.trim() : '',
-      };
-      let matchDate = item.querySelector('.info').textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
-      if (matchDate) {
-        itemSubject.releaseDate = dealDate(matchDate[0]);
-      }
-      let $rateInfo = item.querySelector('.rateInfo');
-      if ($rateInfo) {
-        if ($rateInfo.querySelector('.fade')) {
-          itemSubject.score = $rateInfo.querySelector('.fade').textContent;
-          itemSubject.count = $rateInfo.querySelector('.tip_j').textContent.replace(/[^0-9]/g, '');
-        } else {
-          itemSubject.score = '0';
-          itemSubject.count = '少于10';
-        }
-      } else {
-        itemSubject.score = '0';
-        itemSubject.count = '0';
-      }
-      results.push(itemSubject);
-    }
-  } else {
-    return [];
-  }
-  return [results, numOfPage];
-}
-
 function reviseQuery(title: string): string {
   const titleDict: Record<string, string> = {
     // 'グリザイアの果実 -LE FRUIT DE LA GRISAIA-': 'グリザイアの果実',

@@ -42,6 +42,15 @@ export async function searchGameData(
   subjectInfo: Subject
 ): Promise<SearchSubject> {
   let query = normalizeQuery((subjectInfo.name || '').trim());
+  // fix long name
+  if (subjectInfo.name.length > 50) {
+    const arr = query.split(' ');
+    if (arr[0].length > 10) {
+      query = arr[0]
+    } else {
+      query = arr[0] + ' ' + arr[1];
+    }
+  }
   if (!query) {
     console.info('Query string is empty');
     return Promise.reject();

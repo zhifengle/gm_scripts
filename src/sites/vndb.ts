@@ -40,6 +40,8 @@ function reviseTitle(title: string) {
     'ファミコン探偵倶楽部PartII うしろに立つ少女': 'ファミコン探偵倶楽部 うしろに立つ少女',
     'Rance Ⅹ -決戦-': 'ランス10',
     'PARTS ─パーツ─': 'PARTS',
+    // revise for searching
+    'LOVE FOREVER 1 Progress': 'LOVE FOREVER',
   };
   const userTitleDict = window.VNDB_REVISE_TITLE_DICT || {};
   if (userTitleDict[title]) {
@@ -138,8 +140,15 @@ export async function searchSubject(
       const changedName = removeSubTitle(name);
       // fix: 痕 -きずあと-
       res = rawInfoList.find((item) => item.name === changedName);
+      if (res) {
+        return res
+      }
     }
-    return res;
+    // fix: LOVE FOREVER 1 Progress; @TODO filter out wrong name
+    return filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, {
+      ...filterOpts,
+      threshold: 0.1
+    });
   }
   res = filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, filterOpts);
   return res;
@@ -153,6 +162,11 @@ function normalizeQueryVNDB(query: string): string {
 }
 
 export async function searchGameData(info: SearchSubject): Promise<SearchSubject> {
+  const revisedName = reviseTitle(info.name);
+  if (revisedName !== info.name) {
+    let result = await searchSubject(info);
+    return patchSearchResult(result);
+  }
   // fix EXTRA VA MIZUNA
   if (isEnglishName(info.name)) {
     let result = await searchSubject(info);
@@ -236,6 +250,14 @@ export function getSearchSubject(): SearchSubject {
   if (alias.length > 0) {
     const newAlias: string[] = [];
     for (const s of alias) {
+      // skip vol.1  vol1  vol2
+      if (/vol\.?\d+/i.test(s)) {
+        continue;
+      }
+      // skip abbreviation
+      if (/^[A-Z]{1,}$/.test(s)) {
+        continue
+      }
       if (!newAlias.includes(s)) {
         newAlias.push(s);
       }

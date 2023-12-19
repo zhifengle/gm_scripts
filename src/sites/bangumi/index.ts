@@ -1,8 +1,8 @@
 import { AllSubject, BookSubject, SearchSubject, Subject } from '../../interface/subject';
 import { sleep } from '../../utils/async/sleep';
-import { fetchText } from '../../utils/fetchData';
+import { fetchInfo, fetchText } from '../../utils/fetchData';
 import { SubjectTypeId } from '../../interface/wiki';
-import { dealDate, getShortenedQuery, isEqualDate } from '../../utils/utils';
+import { dealDate, getShortenedQuery } from '../../utils/utils';
 import { filterResults, isSingleJpSegment } from '../common';
 import { SiteUtils } from '../../interface/types';
 import { getAllPageInfo, getBgmHost, getSubjectId, getUserId, updateInterest } from './common';
@@ -14,6 +14,7 @@ import {
   replaceCharsToSpace,
   replaceToASCII,
 } from '../utils';
+import { extractInfoList, filterSubjectByNameAndDate, getTotalPageNum } from './extract';
 
 export const favicon = 'https://bgm.tv/img/favicon.ico';
 
@@ -28,50 +29,6 @@ export enum Protocol {
   https = 'https',
 }
 
-function getSearchItem($item: HTMLElement): SearchSubject {
-  let $subjectTitle = $item.querySelector('h3>a.l');
-  let info: SearchSubject = {
-    name: $subjectTitle.textContent.trim(),
-    // url 没有协议和域名
-    url: $subjectTitle.getAttribute('href'),
-    greyName: $item.querySelector('h3>.grey') ? $item.querySelector('h3>.grey').textContent.trim() : '',
-  };
-  let matchDate = $item.querySelector('.info').textContent.match(/\d{4}[\-\/\年]\d{1,2}[\-\/\月]\d{1,2}/);
-  if (matchDate) {
-    info.releaseDate = dealDate(matchDate[0]);
-  }
-  let $rateInfo = $item.querySelector('.rateInfo');
-  if ($rateInfo) {
-    if ($rateInfo.querySelector('.fade')) {
-      info.score = $rateInfo.querySelector('.fade').textContent;
-      info.count = $rateInfo.querySelector('.tip_j').textContent.replace(/[^0-9]/g, '');
-    } else {
-      info.score = '0';
-      info.count = '少于10';
-    }
-  } else {
-    info.score = '0';
-    info.count = '0';
-  }
-  return info;
-}
-
-function getTotalPageNum($doc: Document | HTMLElement | Element): number {
-  let totalPage = 1;
-  let pList = $doc.querySelectorAll('.page_inner>.p');
-  if (pList && pList.length) {
-    let tempNum = parseInt(pList[pList.length - 2].getAttribute('href').match(/page=(\d*)/)[1]);
-    totalPage = parseInt(pList[pList.length - 1].getAttribute('href').match(/page=(\d*)/)[1]);
-    totalPage = totalPage > tempNum ? totalPage : tempNum;
-  }
-  return totalPage;
-}
-
-function extractInfoList($doc: Document | HTMLElement | Element): SearchSubject[] {
-  return [...$doc.querySelectorAll<HTMLElement>('#browserItemList>li')].map(($item) => {
-    return getSearchItem($item);
-  });
-}
 
 /**
  * 处理搜索页面的 html
@@ -148,20 +105,6 @@ function normalizeQueryBangumi(query: string): string {
   // fix いつまでも僕だけのママのままでいて!
   query = replaceCharsToSpace(query, '', '!');
   return query.trim();
-}
-
-function filterSubjectByNameAndDate(
-  items: SearchSubject[],
-  subjectInfo: AllSubject,
-) {
-  const list = items
-    .filter((item) => isEqualDate(item.releaseDate, subjectInfo.releaseDate))
-  if (list.length === 0) return;
-  let res = list.find(item => item.name === subjectInfo.name)
-  if (res) {
-    return res
-  }
-  return list.find(item => item.greyName === subjectInfo.name)
 }
 
 /**
@@ -249,7 +192,9 @@ export async function findSubjectByDate(
   const url = `${bgmHost}/${type}/browser/airtime/${releaseDate.getFullYear()}-${releaseDate.getMonth() + 1}${query}`;
   console.info('find subject by date: ', url);
   const rawText = await fetchText(url);
-  let [rawInfoList, numOfPage] = dealSearchResults(rawText);
+  const $doc = new DOMParser().parseFromString(rawText, 'text/html');
+  const rawInfoList = extractInfoList($doc);
+  const numOfPage = getTotalPageNum($doc)
   const options = {
     threshold: 0.3,
     keys: ['name', 'greyName'],

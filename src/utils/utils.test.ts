@@ -32,6 +32,7 @@ describe('test shortened query', () => {
   })
   it('test shortened version', () => {
     expect(getShortenedQuery('Branmarker 2')).toBe('Branmarker')
+    expect(getShortenedQuery('LOVE FOREVER 1 Progress')).toBe('LOVE FOREVER')
   })
   it('test mixed English and Japanese', () => {
     expect(getShortenedQuery('すてぃーるMyはぁと Rhapsody of moonlight ')).toBe('すてぃーるMyはぁと')

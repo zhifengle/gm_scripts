@@ -1,8 +1,8 @@
 import { SearchSubject, Subject } from '../../../interface/subject';
 import { SubjectTypeId } from '../../../interface/wiki';
 import { checkSubjectExist } from '../../../sites/bangumi';
+import { getSearchSubject } from '../../../sites/bangumi/extract';
 import { $q, $qa, htmlToElement } from '../../../utils/domUtils';
-import { dealDate } from '../../../utils/utils';
 import {
   genScoreRowInfo,
   getFavicon,
@@ -76,27 +76,7 @@ export const bangumiAnimePage: PageConfig = {
     }
     return res;
   },
-  getScoreInfo: () => {
-    const info: SearchSubject = {
-      name: $q('h1>a').textContent.trim(),
-      score: $q('.global_score span[property="v:average"')?.textContent ?? 0,
-      count: $q('span[property="v:votes"')?.textContent ?? 0,
-      url: location.href,
-    };
-    let infoList = $qa('#infobox>li');
-    if (infoList && infoList.length) {
-      for (let i = 0, len = infoList.length; i < len; i++) {
-        let el = infoList[i];
-        if (el.innerHTML.match(/放送开始|上映年度/)) {
-          info.releaseDate = dealDate(el.textContent.split(':')[1].trim());
-        }
-        // if (el.innerHTML.match('播放结束')) {
-        //   info.endDate = dealDate(el.textContent.split(':')[1].trim());
-        // }
-      }
-    }
-    return info;
-  },
+  getScoreInfo: getSearchSubject,
   // 插入评分信息的 DOM
   insertScoreInfo(page: PageConfig, info: SearchSubject) {
     const title = $q('h1>a').textContent.trim();

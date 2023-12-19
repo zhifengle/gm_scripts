@@ -29,5 +29,6 @@ describe("test str", () => {
     expect(isKatakanaName('ディー ゾーン')).toBe(true);
     expect(isEnglishName('D.Zone')).toBe(true);
     expect(isEnglishName('Lv-F')).toBe(true);
+    expect(isEnglishName('LOVE FOREVER 1 Progress')).toBe(false);
   })
 })

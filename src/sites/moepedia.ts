@@ -2,7 +2,7 @@ import { SearchSubject, Subject } from '../interface/subject';
 import { Selector } from '../interface/wiki';
 import { $q, findElement } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
-import { dealDate } from '../utils/utils';
+import { dealDate, normalizeQuery } from '../utils/utils';
 import { filterResults } from './common';
 
 export function getSearchSubject(): SearchSubject {
@@ -46,7 +46,8 @@ function getSearchItem($item: HTMLElement): SearchSubject {
 }
 
 export async function searchGameSubject(info: Subject): Promise<SearchSubject> {
-  const url = `https://moepedia.net/search/result/?s=${info.name}&t=on`;
+  const query = normalizeQuery(info.name);
+  const url = `https://moepedia.net/search/result/?s=${query}&t=on`;
   const rawText = await fetchText(url);
   const $doc = new DOMParser().parseFromString(rawText, 'text/html');
   const items = $doc.querySelectorAll('.sw-Products .sw-Products_Item');

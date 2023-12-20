@@ -1,6 +1,6 @@
 const SUB_TITLE_PAIRS = ['--', '──', '~~', '～～', '－－', '<>', '＜＞'];
 
-export function getAlias(name: string) {
+export function getAliasByName(name: string) {
   const opens = SUB_TITLE_PAIRS.map(pair => pair[0]);
   const closes = SUB_TITLE_PAIRS.map(pair => pair[1]);
   const len = name.length;
@@ -18,7 +18,7 @@ export function getAlias(name: string) {
 }
 
 export function getHiraganaSubTitle(name: string): string {
-  let alias = getAlias(name);
+  let alias = getAliasByName(name);
   if (alias.length === 0 && name.split(' ').length === 2) {
     alias = name.split(' ');
   }

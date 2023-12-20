@@ -64,7 +64,7 @@ describe('test filterResults', () => {
     };
     expect(
       filterResults(rawList, info, {
-        releaseDate: true,
+        dateFirst: true,
         threshold: 0.3,
         keys: ['name'],
       })
@@ -107,7 +107,6 @@ describe('test filterResults', () => {
     };
     expect(
       filterResults(rawList, info, {
-        releaseDate: true,
         keys: ['name'],
       })
     ).toEqual(rawList[1]);
@@ -262,6 +261,6 @@ describe('test filterResults', () => {
       url: 'https://erogamescape.org/~ap2/ero/toukei_kaiseki/game.php?game=25429#ad',
       releaseDate: '2016-12-21',
     };
-    expect(fuseFilterSubjects(rawList, info, { keys: ['name'], threshold: 0.4 })).toEqual(rawList.slice(1, 2));
+    expect(fuseFilterSubjects(rawList, info, { keys: ['name'], threshold: 0.3 })).toEqual(rawList.slice(1, 2));
   });
 });

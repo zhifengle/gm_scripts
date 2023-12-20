@@ -57,7 +57,7 @@ export async function searchGameData(
   }
   let searchResult;
   const options = {
-    releaseDate: true,
+    dateFirst: true,
     keys: ['name'],
   };
   const url = `https://2dfan.org/subjects/search?keyword=${encodeURIComponent(

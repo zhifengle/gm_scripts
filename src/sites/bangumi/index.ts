@@ -7,10 +7,12 @@ import { filterResults, isSingleJpSegment } from '../common';
 import { SiteUtils } from '../../interface/types';
 import { getAllPageInfo, getBgmHost, getSubjectId, getUserId, updateInterest } from './common';
 import {
+  getAliasByName,
   isEnglishName,
   isKatakanaName,
   pairCharsToSpace,
   removePairs,
+  removeSubTitle,
   replaceCharsToSpace,
   replaceToASCII,
 } from '../utils';
@@ -67,12 +69,10 @@ export async function searchSubject(
   bgmHost: string = 'https://bgm.tv',
   type: SubjectTypeId = SubjectTypeId.all,
   uniqueQueryStr: string = '',
-  opts: { releaseDate?: boolean; query?: string; shortenQuery?: boolean } = {}
+  opts: { query?: string; shortenQuery?: boolean } = {}
 ) {
   // fuse options
   const fuseOptions = {
-    releaseDate: opts.releaseDate,
-    threshold: 0.4,
     uniqueSearch: false,
     keys: ['name', 'greyName'],
   };
@@ -103,8 +103,39 @@ export async function searchSubject(
   if (uniqueQueryStr && rawInfoList && rawInfoList.length === 1) {
     return rawInfoList[0];
   }
-  if (type === SubjectTypeId.game && isSingleJpSegment(subjectInfo.name) && rawInfoList.length >= 6) {
-    return filterSubjectByNameAndDate(rawInfoList, subjectInfo)
+  if (type === SubjectTypeId.game) {
+    const name = subjectInfo.name;
+    if (getAliasByName(name).length > 0) {
+      // fix: グリザイアの楽園 -LE EDEN DE LA GRISAIA-
+      const changedName = removeSubTitle(name);
+      const info = { ...subjectInfo, name: changedName };
+      let res = filterResults(rawInfoList, info, {
+        ...fuseOptions,
+        score: 0.1,
+        sameDate: true,
+      });
+      if (res) {
+        return res;
+      }
+    }
+    if (isSingleJpSegment(subjectInfo.name) && rawInfoList.length >= 6) {
+      return filterSubjectByNameAndDate(rawInfoList, subjectInfo);
+    }
+    // fix: "ソード(同人フリー版)"
+    if (name.startsWith(query) && /[)）>＞]$/.test(name)) {
+      return filterResults(
+        rawInfoList,
+        {
+          ...subjectInfo,
+          name: query,
+        },
+        {
+          ...fuseOptions,
+          score: 0.1,
+          sameDate: true,
+        }
+      );
+    }
   }
   return filterResults(rawInfoList, subjectInfo, fuseOptions);
 }
@@ -143,7 +174,7 @@ export async function findSubjectByDate(
   const rawText = await fetchText(url);
   const $doc = new DOMParser().parseFromString(rawText, 'text/html');
   const rawInfoList = extractInfoList($doc);
-  const numOfPage = getTotalPageNum($doc)
+  const numOfPage = getTotalPageNum($doc);
   const options = {
     threshold: 0.3,
     keys: ['name', 'greyName'],
@@ -216,6 +247,7 @@ async function checkExist(
   if (typeof opts === 'object') {
     searchOpts = opts;
   }
+  const normalizedStr = normalizeQueryBangumi((subjectInfo.name || '').trim());
   // fix long name
   if (subjectInfo.name.length > 50) {
     let query = normalizeQueryBangumi(subjectInfo.name.split(' ')[0]);
@@ -235,12 +267,14 @@ async function checkExist(
   }
   if (searchOpts.enableShortenQuery) {
     await sleep(300);
-    let query = normalizeQueryBangumi((subjectInfo.name || '').trim());
-    query = getShortenedQuery(query);
+    const shortenedQuery = getShortenedQuery(normalizedStr);
+    if (shortenedQuery === normalizedStr) {
+      return;
+    }
     searchResult = await searchSubject(subjectInfo, bgmHost, type, '', {
       ...searchOpts,
       shortenQuery: true,
-      query,
+      query: shortenedQuery,
     });
     if (searchResult && searchResult.url) {
       return searchResult;

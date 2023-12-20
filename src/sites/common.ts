@@ -16,34 +16,21 @@ export type FuseOptions = {
 };
 
 export type FilterOptions = {
-  releaseDate?: boolean;
+  dateFirst?: boolean;
+  sortCount?: boolean;
   // check same name; should be used with releaseDate
   sameName?: boolean;
   // only one result, skip filter
   uniqueSearch?: boolean;
   // allow same year result
   sameYear?: boolean;
+  sameDate?: boolean;
+  // 0 indicates a perfect match
+  score?: number;
 } & FuseOptions;
 
-export type SearchOptions = {
-  shortenQuery?: boolean;
-  query?: string;
-};
-
 export function fuseFilterSubjects(items: SearchSubject[], info: SearchSubject, opts: FuseOptions): SearchSubject[] {
-  let str = info.name;
-  if (info.rawName) {
-    str = info.rawName;
-  }
-  var results = new Fuse(
-    items,
-    Object.assign(
-      {
-        threshold: 0.3,
-      },
-      opts
-    )
-  ).search(str);
+  var results = new Fuse(items, opts).search(info.name);
   if (!results.length) {
     return [];
   }
@@ -63,7 +50,7 @@ export function filterResults(items: SearchSubject[], subjectInfo: AllSubject, o
     return items[0];
   }
   // 使用发行日期过滤
-  if (subjectInfo.releaseDate && opts.releaseDate) {
+  if (subjectInfo.releaseDate && opts.dateFirst) {
     const list = items
       .filter((item) => isEqualDate(item.releaseDate, subjectInfo.releaseDate))
       .sort((a, b) => +b.count - +a.count);
@@ -74,10 +61,10 @@ export function filterResults(items: SearchSubject[], subjectInfo: AllSubject, o
       return list[0];
     }
   }
-  var results = new Fuse(items, { ...opts }).search(subjectInfo.name);
+  var results = new Fuse(items, { ...opts, includeScore: true }).search(subjectInfo.name);
   // 去掉括号包裹的，再次模糊查询
   if (!results.length && /<|＜|\(|（/.test(subjectInfo.name)) {
-    results = new Fuse(items, { ...opts }).search(
+    results = new Fuse(items, { ...opts, includeScore: true }).search(
       subjectInfo.name
         .replace(/＜.+＞/g, '')
         .replace(/<.+>/g, '')
@@ -88,8 +75,22 @@ export function filterResults(items: SearchSubject[], subjectInfo: AllSubject, o
   if (!results.length) {
     return;
   }
+  if (opts.score) {
+    results = results.filter((item: { item: SearchSubject, score: number }) => {
+      if (item.score > opts.score) {
+        return false;
+      }
+      return true;
+    })
+  }
+  if (opts.sortCount) {
+    results.sort((a: { item: SearchSubject }, b: { item: SearchSubject }) => {
+      return +b.item.count - +a.item.count;
+    });
+  }
   // 有参考的发布时间
   if (subjectInfo.releaseDate) {
+    const sameDateResults = [];
     const sameYearResults = [];
     const sameMonthResults = [];
     for (const obj of results) {
@@ -100,10 +101,10 @@ export function filterResults(items: SearchSubject[], subjectInfo: AllSubject, o
           if (result.releaseDate === subjectInfo.releaseDate.slice(0, 4)) {
             return result;
           }
-        } else {
-          if (isEqualDate(result.releaseDate, subjectInfo.releaseDate)) {
-            return result;
-          }
+        }
+        if (isEqualDate(result.releaseDate, subjectInfo.releaseDate)) {
+          sameDateResults.push(obj);
+          continue
         }
         if (isEqualDate(result.releaseDate, subjectInfo.releaseDate, 'm')) {
           sameMonthResults.push(obj);
@@ -113,6 +114,12 @@ export function filterResults(items: SearchSubject[], subjectInfo: AllSubject, o
           sameYearResults.push(obj);
         }
       }
+    }
+    if (opts.sameDate) {
+      return sameDateResults[0]?.item;
+    }
+    if (sameDateResults.length) {
+      return sameDateResults[0].item;
     }
     if (sameMonthResults.length) {
       return sameMonthResults[0].item;
@@ -140,13 +147,12 @@ export function findResultByMonth(items: SearchSubject[], info: AllSubject): Sea
   return list[0];
 }
 
-export function findResultByDate(items: SearchSubject[], info: AllSubject): SearchSubject {
-  const list = items
-    .filter((item) => isEqualDate(item.releaseDate, info.releaseDate))
-    .sort((a, b) => +b.count - +a.count);
-  if (list && list.length > 0) {
-    return list[0];
-  }
+export function filterSubjectsByDate(items: SearchSubject[], info: AllSubject): SearchSubject[] {
+  return items.filter((item) => isEqualDate(item.releaseDate, info.releaseDate)).sort((a, b) => +b.count - +a.count);
+}
+
+export function filterSubjectsByMonth(items: SearchSubject[], info: AllSubject): SearchSubject[] {
+  return items.filter((item) => isEqualDate(item.releaseDate, info.releaseDate, 'm')).sort((a, b) => +b.count - +a.count);
 }
 
 export const typeIdDict: {

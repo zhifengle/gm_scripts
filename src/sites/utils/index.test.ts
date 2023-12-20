@@ -1,11 +1,11 @@
-import { getAlias, getHiraganaSubTitle, isEnglishName, isKatakanaName, normalizeEditionName, pairCharsToSpace, replaceCharsToSpace } from "./str";
+import { getAliasByName, getHiraganaSubTitle, isEnglishName, isKatakanaName, normalizeEditionName, pairCharsToSpace, replaceCharsToSpace } from "./str";
 
 describe("test str", () => {
   test('test getAlias', () => {
-    expect(getAlias('グリザイアの果実 -LE FRUIT DE LA GRISAIA-')).toEqual(['グリザイアの果実', 'LE FRUIT DE LA GRISAIA']);
-    expect(getAlias('凍京NECRO＜トウキョウ・ネクロ＞')).toEqual(['凍京NECRO', 'トウキョウ・ネクロ']);
-    expect(getAlias('PARTS ─パーツ─')).toEqual(['PARTS', 'パーツ']);
-    expect(getAlias('ブラック ウルヴス サーガ -ブラッディーナイトメア-')).toEqual(['ブラック ウルヴス サーガ', 'ブラッディーナイトメア']);
+    expect(getAliasByName('グリザイアの果実 -LE FRUIT DE LA GRISAIA-')).toEqual(['グリザイアの果実', 'LE FRUIT DE LA GRISAIA']);
+    expect(getAliasByName('凍京NECRO＜トウキョウ・ネクロ＞')).toEqual(['凍京NECRO', 'トウキョウ・ネクロ']);
+    expect(getAliasByName('PARTS ─パーツ─')).toEqual(['PARTS', 'パーツ']);
+    expect(getAliasByName('ブラック ウルヴス サーガ -ブラッディーナイトメア-')).toEqual(['ブラック ウルヴス サーガ', 'ブラッディーナイトメア']);
   })
   it('test normalize edition query', () => {
     expect(normalizeEditionName('ずっとすきして たくさんすきして パッケージ版')).toBe('ずっとすきして たくさんすきして')

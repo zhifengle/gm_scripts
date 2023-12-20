@@ -4,7 +4,7 @@ import { sleep } from '../utils/async/sleep';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery } from '../utils/utils';
-import { filterResults, findResultByMonth, isSingleJpSegment } from './common';
+import { FilterOptions, filterResults, filterSubjectsByDate, findResultByMonth, isSingleJpSegment } from './common';
 import {
   getHiraganaSubTitle,
   isEnglishName,
@@ -33,6 +33,20 @@ export const favicon = 'https://www.google.com/s2/favicons?domain=erogamescape.o
 // 'http://erogamescape.org',
 const site_origin = 'https://erogamescape.org';
 
+function reviseQuery(name: string) {
+  const titleDict: Record<string, string> = {
+    '月影の鎖～紅に染まる番外編～': '月影の鎖?紅に染まる番外編',
+    // 'Musicus-ムジクス-': 'Musicus-ムジクス-',
+  };
+  const userTitleDict = window.EGS_REVISE_QUERY_DICT || {};
+  if (userTitleDict[name]) {
+    return userTitleDict[name];
+  }
+  if (titleDict[name]) {
+    return titleDict[name];
+  }
+}
+
 function reviseTitle(title: string) {
   const titleDict: Record<string, string> = {
     // @TODO
@@ -45,7 +59,6 @@ function reviseTitle(title: string) {
     return titleDict[title];
   }
   const shortenTitleDict: Record<string, string> = {
-    姉妹いじり: '姉妹いじり',
   };
   for (const [key, val] of Object.entries(shortenTitleDict)) {
     if (title.includes(key)) {
@@ -98,12 +111,10 @@ export function normalizeQueryEGS(query: string): string {
   return newQuery;
 }
 
-export async function searchSubject(
-  subjectInfo: SearchSubject,
-  type: ErogamescapeCategory = ErogamescapeCategory.game,
-  opts: SearchOptions = {}
-): Promise<SearchSubject> {
-  let query = opts.query || subjectInfo.name;
+async function getSubjectListBySearch(
+  query: string,
+  type: ErogamescapeCategory = ErogamescapeCategory.game
+): Promise<SearchSubject[]> {
   const url = `${site_origin}/~ap2/ero/toukei_kaiseki/kensaku.php?category=${type}&word_category=name&word=${encodeURIComponent(
     query
   )}&mode=normal`;
@@ -111,9 +122,38 @@ export async function searchSubject(
   const rawText = await fetchText(url);
   const $doc = new DOMParser().parseFromString(rawText, 'text/html');
   const items = $doc.querySelectorAll('#result table tr:not(:first-child)');
-  const rawInfoList: SearchSubject[] = [...items].map(($item: HTMLElement) => getSearchItem($item));
+  return [...items].map(($item: HTMLElement) => getSearchItem($item));
+}
+
+function patchResultURL(result: SearchSubject) {
+  const site_search_url = `${site_origin}/~ap2/ero/toukei_kaiseki/kensaku.php`
+  // relative url to absolute
+  const url = new URL(result.url, site_search_url).href;
+  result.url = url;
+}
+
+async function followSearchSubject(result: SearchSubject) {
+  if (!result) return;
+  patchResultURL(result);
+  // await sleep(50)
+  const rawText = await fetchText(result.url);
+  window._parsedEl = new DOMParser().parseFromString(rawText, 'text/html');
+  const res = getSearchSubject();
+  res.url = result.url;
+  window._parsedEl = undefined;
+  return res;
+}
+
+export async function searchSubject(
+  subjectInfo: SearchSubject,
+  type: ErogamescapeCategory = ErogamescapeCategory.game,
+  opts: SearchOptions = {}
+): Promise<SearchSubject> {
+  let query = opts.query || subjectInfo.name;
+  const rawInfoList = await getSubjectListBySearch(query, type);
   let res: SearchSubject;
   const fuseOptions = {
+    sortCount: true,
     keys: ['name'],
   };
   if (opts.shortenQuery) {
@@ -122,24 +162,29 @@ export async function searchSubject(
       res = filterResults(rawInfoList, subjectInfo, fuseOptions);
     }
   } else {
-    const newOpts = {
+    const newOpts: FilterOptions = {
       ...fuseOptions,
-      threshold: 0.4,
-      releaseDate: true,
       sameName: false,
+      dateFirst: false,
     };
     // fix: なついろ; @TODO need more test
     if (isSingleJpSegment(subjectInfo.name) && rawInfoList.length > 6) {
+      newOpts.dateFirst = true;
       newOpts.sameName = true;
+    }
+    if (isEnglishName(subjectInfo.name)) {
+      newOpts.score = 0.1;
+    }
+    if (opts.query) {
+      // fix: query is "Musicus" for game "Musicus-ムジクス-"
+      if (/^[a-zA-Z]+$/.test(opts.query)) {
+        newOpts.sameDate = true
+      }
     }
     res = filterResults(rawInfoList, subjectInfo, newOpts);
   }
   console.info(`Search result of ${query} on erogamescape: `, res);
-  if (res && res.url) {
-    // 相对路径需要设置一下
-    res.url = new URL(res.url, url).href;
-    return res;
-  }
+  return res;
 }
 
 function canShortenQuery(query: string): boolean {
@@ -155,6 +200,10 @@ function canShortenQuery(query: string): boolean {
 export async function searchGameSubject(info: SearchSubject): Promise<SearchSubject> {
   let res: SearchSubject;
   const querySet = new Set();
+  const revisedQueryStr = reviseQuery(info.name);
+  if (revisedQueryStr) {
+    return await searchAndFollow(info, { query: revisedQueryStr });
+  }
   const normalizedStr = normalizeQueryEGS(info.name);
   // fix フィギュア ～奪われた放課後～
   const subTitle = normalizeQueryEGS(getHiraganaSubTitle(info.name));
@@ -166,7 +215,7 @@ export async function searchGameSubject(info: SearchSubject): Promise<SearchSubj
     querySet.add(subTitle);
   } else if (isEnglishName(info.name)) {
     res = await searchAndFollow(info);
-    querySet.add(normalizedStr);
+    querySet.add(info.name);
   } else {
     res = await searchAndFollow(info, { query: normalizedStr });
     querySet.add(normalizedStr);
@@ -194,6 +243,7 @@ export async function searchGameSubject(info: SearchSubject): Promise<SearchSubj
     if (segs && segs.length > 2) {
       const query = segs[0] + '?' + segs[segs.length - 1];
       if (!querySet.has(query)) {
+        console.info('start use segment search with query: ', query);
         res = await searchAndFollow(info, { shortenQuery: true, query });
         querySet.add(query);
         if (res) {
@@ -230,17 +280,7 @@ export async function searchGameSubject(info: SearchSubject): Promise<SearchSubj
 // search and follow the URL of search result
 export async function searchAndFollow(info: SearchSubject, opts: SearchOptions = {}): Promise<SearchSubject> {
   const result = await searchSubject(info, ErogamescapeCategory.game, opts);
-  if (result && result.url) {
-    // await sleep(50)
-    const rawText = await fetchText(result.url);
-    window._parsedEl = new DOMParser().parseFromString(rawText, 'text/html');
-    const res = getSearchSubject();
-    res.url = result.url;
-    window._parsedEl = undefined;
-    return res;
-  } else {
-    return result;
-  }
+  return await followSearchSubject(result);
 }
 
 export function getSearchSubject(): SearchSubject {

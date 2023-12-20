@@ -43,6 +43,13 @@ interface Window {
   gm_val_listen_id?: string;
   VNDB_REVISE_TITLE_DICT?: Record<string, string>
   EGS_REVISE_TITLE_DICT?: Record<string, string>
+  BGM_REVISE_TITLE_DICT?: Record<string, string>
+  DOUBAN_REVISE_TITLE_DICT?: Record<string, string>
+  // for revising query
+  VNDB_REVISE_QUERY_DICT?: Record<string, string>
+  EGS_REVISE_QUERY_DICT?: Record<string, string>
+  BGM_REVISE_QUERY_DICT?: Record<string, string>
+  DOUBAN_REVISE_QUERY_DICT?: Record<string, string>
 }
 
 declare module "tiny-segmenter";

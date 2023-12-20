@@ -5,8 +5,9 @@ import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery, normalizeQuery } from '../utils/utils';
 import { filterResults } from './common';
 import {
-  getAlias,
+  getAliasByName,
   isEnglishName,
+  isKatakanaName,
   normalizeEditionName,
   removePairs,
   removeSubTitle,
@@ -25,6 +26,7 @@ function reviseQueryVNDB(str: string) {
 
 function reviseTitle(title: string) {
   const titleDict: Record<string, string> = {
+    'Lost Colors': 'ロストカラーズ',
     'レベル-F': 'Lv-F',
     'カオスヘッド らぶChu☆Chu!': 'CHAOS;HEAD らぶChu☆Chu!',
     'ドキドキ文芸部!': 'Doki Doki Literature Club!',
@@ -84,10 +86,6 @@ function getSearchItem($item: HTMLElement): SearchSubject {
   return info;
 }
 
-// exception title
-// 凍京NECRO＜トウキョウ・ネクロ＞
-// https://vndb.org/v5154
-
 export async function searchSubject(
   subjectInfo: Subject,
   opts: { query?: string; shortenQuery?: boolean } = {}
@@ -120,13 +118,22 @@ export async function searchSubject(
     .call(items)
     .map(($item: HTMLElement) => getSearchItem($item));
   const filterOpts = {
-    releaseDate: true,
-    threshold: 0.4,
     keys: ['name'],
   };
-  // fix: Ib
-  if (/^[a-zA-Z]+$/.test(subjectInfo.name) && rawInfoList.length > 10) {
-    return filterResults(rawInfoList, subjectInfo, { ...filterOpts, sameName: true });
+  if (rawInfoList.length > 20) {
+    // fix: ソード
+    if (isKatakanaName(subjectInfo.name)) {
+      return filterResults(rawInfoList, subjectInfo, {
+        ...filterOpts,
+        score: 0.1,
+        sameDate: true,
+      });
+    }
+    // fix: Ib
+    if (/^[a-zA-Z]+$/.test(subjectInfo.name)) {
+      return filterResults(rawInfoList, subjectInfo, { ...filterOpts, dateFirst: true, sameName: true });
+    }
+    return filterResults(rawInfoList, subjectInfo, { ...filterOpts, sameDate: true });
   }
   res = filterResults(rawInfoList, subjectInfo, filterOpts);
   if (res && res.url) {
@@ -136,19 +143,23 @@ export async function searchSubject(
   if (opts.shortenQuery) {
     const name = subjectInfo.name;
     // have sub title
-    if (!res && getAlias(name).length > 0) {
+    if (!res && getAliasByName(name).length > 0) {
       const changedName = removeSubTitle(name);
       // fix: 痕 -きずあと-
       res = rawInfoList.find((item) => item.name === changedName);
       if (res) {
-        return res
+        return res;
       }
     }
     // fix: LOVE FOREVER 1 Progress; @TODO filter out wrong name
-    return filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, {
-      ...filterOpts,
-      threshold: 0.1
-    });
+    return filterResults(
+      rawInfoList,
+      { ...subjectInfo, name: opts.query },
+      {
+        ...filterOpts,
+        threshold: 0.1,
+      }
+    );
   }
   res = filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, filterOpts);
   return res;
@@ -172,14 +183,19 @@ export async function searchGameData(info: SearchSubject): Promise<SearchSubject
     let result = await searchSubject(info);
     return patchSearchResult(result);
   }
+  const querySet = new Set();
   let query = normalizeQueryVNDB(info.name);
   let result = await searchSubject(info, { query });
+  querySet.add(query)
   if (!result) {
     await sleep(100);
     query = getShortenedQuery(query);
+    if (querySet.has(query)) {
+      return result;
+    }
     result = await searchSubject(info, { shortenQuery: true, query });
   }
-  return patchSearchResult(result)
+  return patchSearchResult(result);
 }
 
 async function patchSearchResult(result: SearchSubject) {
@@ -256,7 +272,7 @@ export function getSearchSubject(): SearchSubject {
       }
       // skip abbreviation
       if (/^[A-Z]{1,}$/.test(s)) {
-        continue
+        continue;
       }
       if (!newAlias.includes(s)) {
         newAlias.push(s);
@@ -274,7 +290,7 @@ export function getSearchSubject(): SearchSubject {
 
 function getAliasVNDB(name: string) {
   name = name.replace(/　/g, ' ');
-  const alias = getAlias(name) || [];
+  const alias = getAliasByName(name) || [];
   if (alias && alias.length > 0) {
     return alias;
   }

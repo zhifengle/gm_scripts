@@ -17,11 +17,18 @@ import {
 
 export const favicon = 'https://vndb.org/favicon.ico';
 
-function reviseQueryVNDB(str: string) {
-  // @TODO: カオスQueen遼子4 森山由梨＆郁美姉妹併呑編
-
-  // fixed: White x Red
-  return str.replace(' x ', ' ').replace(/　/g, ' ');
+function reviseQueryVNDB(name: string) {
+  const titleDict: Record<string, string> = {
+    'D.C.P.C. ～ダ・カーポ プラスコミュニケーション～': 'D.C.～ダ・カーポ～',
+    'LOVE FOREVER 1 Progress': 'LOVE FOREVER',
+  };
+  const userTitleDict = window.VNDB_REVISE_QUERY_DICT || {};
+  if (userTitleDict[name]) {
+    return userTitleDict[name];
+  }
+  if (titleDict[name]) {
+    return titleDict[name];
+  }
 }
 
 function reviseTitle(title: string) {
@@ -42,8 +49,6 @@ function reviseTitle(title: string) {
     'ファミコン探偵倶楽部PartII うしろに立つ少女': 'ファミコン探偵倶楽部 うしろに立つ少女',
     'Rance Ⅹ -決戦-': 'ランス10',
     'PARTS ─パーツ─': 'PARTS',
-    // revise for searching
-    'LOVE FOREVER 1 Progress': 'LOVE FOREVER',
   };
   const userTitleDict = window.VNDB_REVISE_TITLE_DICT || {};
   if (userTitleDict[title]) {
@@ -60,7 +65,7 @@ function reviseTitle(title: string) {
       return val;
     }
   }
-  return reviseQueryVNDB(title);
+  return title.replace(' x ', ' ').replace(/　/g, ' ')
 }
 
 function getSearchItem($item: HTMLElement): SearchSubject {
@@ -151,17 +156,19 @@ export async function searchSubject(
         return res;
       }
     }
-    // fix: LOVE FOREVER 1 Progress; @TODO filter out wrong name
+    // @TODO maybe skip different date
     return filterResults(
       rawInfoList,
       { ...subjectInfo, name: opts.query },
       {
-        ...filterOpts,
-        threshold: 0.1,
+        keys: ['name'],
+        sameDate: true,
       }
     );
   }
-  res = filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, filterOpts);
+  if (opts.query) {
+    res = filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, filterOpts);
+  }
   return res;
 }
 
@@ -173,9 +180,9 @@ function normalizeQueryVNDB(query: string): string {
 }
 
 export async function searchGameData(info: SearchSubject): Promise<SearchSubject> {
-  const revisedName = reviseTitle(info.name);
-  if (revisedName !== info.name) {
-    let result = await searchSubject(info);
+  const revisedName = reviseQueryVNDB(info.name);
+  if (revisedName) {
+    let result = await searchSubject({ ...info, name: revisedName });
     return patchSearchResult(result);
   }
   // fix EXTRA VA MIZUNA

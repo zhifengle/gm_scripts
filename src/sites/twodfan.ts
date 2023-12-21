@@ -3,7 +3,8 @@ import { randomSleep } from '../utils/async/sleep';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { normalizeQuery } from '../utils/utils';
-import { filterResults } from './common';
+import { FilterOptions, filterResults } from './common';
+import { isEnglishName } from './utils';
 
 const site_origin = 'https://2dfan.org/';
 const HEADERS = {
@@ -56,7 +57,7 @@ export async function searchGameData(
     return Promise.reject();
   }
   let searchResult;
-  const options = {
+  const options: FilterOptions = {
     dateFirst: true,
     keys: ['name'],
   };
@@ -72,6 +73,11 @@ export async function searchGameData(
   const rawInfoList: SearchSubject[] = Array.prototype.slice
     .call(items)
     .map(($item: HTMLElement) => getSearchItem($item));
+  if (isEnglishName(subjectInfo.name)) {
+    if (rawInfoList.every(item => item.name.startsWith(query))) {
+      options.sameDate = true
+    }
+  }
   searchResult = filterResults(rawInfoList, subjectInfo, options);
   console.info(`Search result of ${query} on 2dfan: `, searchResult);
   if (searchResult && searchResult.url) {

@@ -36,6 +36,7 @@ const site_origin = 'https://erogamescape.org';
 function reviseQuery(name: string) {
   const titleDict: Record<string, string> = {
     '月影の鎖～紅に染まる番外編～': '月影の鎖?紅に染まる番外編',
+    '異世界転生したら大魔法使いの推しになりました': '異世界転生したら大魔法使いの推しになりました',
     // 'Musicus-ムジクス-': 'Musicus-ムジクス-',
   };
   const userTitleDict = window.EGS_REVISE_QUERY_DICT || {};
@@ -174,6 +175,11 @@ export async function searchSubject(
     }
     if (isEnglishName(subjectInfo.name)) {
       newOpts.score = 0.1;
+      // fix: Little Lover;
+      // @TODO need more test, it would skip right results with different date
+      if (rawInfoList.every(item => item.name.startsWith(subjectInfo.name))) {
+        newOpts.sameDate = true
+      }
     }
     if (opts.query) {
       // fix: query is "Musicus" for game "Musicus-ムジクス-"

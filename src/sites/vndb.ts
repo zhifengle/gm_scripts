@@ -3,7 +3,7 @@ import { sleep } from '../utils/async/sleep';
 import { $q, $qa } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery, normalizeQuery } from '../utils/utils';
-import { filterResults } from './common';
+import { SKIP_SEARCH_KEY, filterResults } from './common';
 import {
   getAliasByName,
   isEnglishName,
@@ -181,6 +181,10 @@ function normalizeQueryVNDB(query: string): string {
 
 export async function searchGameData(info: SearchSubject): Promise<SearchSubject> {
   const revisedName = reviseQueryVNDB(info.name);
+  if (revisedName === SKIP_SEARCH_KEY) {
+    console.log('[vndb] skip search', info.name);
+    return;
+  }
   if (revisedName) {
     let result = await searchSubject({ ...info, name: revisedName });
     return patchSearchResult(result);

@@ -39,15 +39,13 @@ function getSearchItem($item: HTMLElement): SearchSubject {
   };
 }
 
-export async function searchGameData(
-  subjectInfo: Subject
-): Promise<SearchSubject> {
+export async function searchGameData(subjectInfo: Subject): Promise<SearchSubject> {
   let query = normalizeQuery((subjectInfo.name || '').trim());
   // fix long name
   if (subjectInfo.name.length > 50) {
     const arr = query.split(' ');
     if (arr[0].length > 10) {
-      query = arr[0]
+      query = arr[0];
     } else {
       query = arr[0] + ' ' + arr[1];
     }
@@ -61,9 +59,7 @@ export async function searchGameData(
     dateFirst: true,
     keys: ['name'],
   };
-  const url = `https://2dfan.org/subjects/search?keyword=${encodeURIComponent(
-    query
-  )}`;
+  const url = `https://2dfan.org/subjects/search?keyword=${encodeURIComponent(query)}`;
   console.info('2dfan search URL: ', url);
   const rawText = await fetchText(url, {
     headers: HEADERS,
@@ -74,8 +70,8 @@ export async function searchGameData(
     .call(items)
     .map(($item: HTMLElement) => getSearchItem($item));
   if (isEnglishName(subjectInfo.name)) {
-    if (rawInfoList.every(item => item.name.startsWith(query))) {
-      options.sameDate = true
+    if (rawInfoList.every((item) => item.name.toLowerCase().startsWith(query.toLowerCase()))) {
+      options.sameDate = true;
     }
   }
   searchResult = filterResults(rawInfoList, subjectInfo, options);

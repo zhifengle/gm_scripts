@@ -18,7 +18,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.25
+// @version     0.1.26
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -624,6 +624,7 @@
 
   const SEARCH_RESULT = 'search_result';
 
+  const SKIP_SEARCH_KEY = 'SCH_SKIP_SEARCH';
   /**
    * 过滤搜索结果： 通过名称以及日期
    * @param items
@@ -2046,6 +2047,11 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       const rawInfoList = Array.prototype.slice
           .call(items)
           .map(($item) => getSearchItem$3($item));
+      if (isEnglishName(subjectInfo.name)) {
+          if (rawInfoList.every((item) => item.name.toLowerCase().startsWith(query.toLowerCase()))) {
+              options.sameDate = true;
+          }
+      }
       searchResult = filterResults(rawInfoList, subjectInfo, options);
       console.info(`Search result of ${query} on 2dfan: `, searchResult);
       if (searchResult && searchResult.url) {
@@ -2142,10 +2148,18 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   };
 
   const favicon$1 = 'https://vndb.org/favicon.ico';
-  function reviseQueryVNDB(str) {
-      // @TODO: カオスQueen遼子4 森山由梨＆郁美姉妹併呑編
-      // fixed: White x Red
-      return str.replace(' x ', ' ').replace(/　/g, ' ');
+  function reviseQueryVNDB(name) {
+      const titleDict = {
+          'D.C.P.C. ～ダ・カーポ プラスコミュニケーション～': 'D.C.～ダ・カーポ～',
+          'LOVE FOREVER 1 Progress': 'LOVE FOREVER',
+      };
+      const userTitleDict = window.VNDB_REVISE_QUERY_DICT || {};
+      if (userTitleDict[name]) {
+          return userTitleDict[name];
+      }
+      if (titleDict[name]) {
+          return titleDict[name];
+      }
   }
   function reviseTitle$1(title) {
       const titleDict = {
@@ -2165,8 +2179,6 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           'ファミコン探偵倶楽部PartII うしろに立つ少女': 'ファミコン探偵倶楽部 うしろに立つ少女',
           'Rance Ⅹ -決戦-': 'ランス10',
           'PARTS ─パーツ─': 'PARTS',
-          // revise for searching
-          'LOVE FOREVER 1 Progress': 'LOVE FOREVER',
       };
       const userTitleDict = window.VNDB_REVISE_TITLE_DICT || {};
       if (userTitleDict[title]) {
@@ -2183,7 +2195,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
               return val;
           }
       }
-      return reviseQueryVNDB(title);
+      return title.replace(' x ', ' ').replace(/　/g, ' ');
   }
   function getSearchItem$2($item) {
       const $title = $item.querySelector('.tc_title > a');
@@ -2269,13 +2281,15 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
                   return res;
               }
           }
-          // fix: LOVE FOREVER 1 Progress; @TODO filter out wrong name
+          // @TODO maybe skip different date
           return filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, {
-              ...filterOpts,
-              threshold: 0.1,
+              keys: ['name'],
+              sameDate: true,
           });
       }
-      res = filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, filterOpts);
+      if (opts.query) {
+          res = filterResults(rawInfoList, { ...subjectInfo, name: opts.query }, filterOpts);
+      }
       return res;
   }
   function normalizeQueryVNDB(query) {
@@ -2285,9 +2299,13 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       return query;
   }
   async function searchGameData(info) {
-      const revisedName = reviseTitle$1(info.name);
-      if (revisedName !== info.name) {
-          let result = await searchSubject$1(info);
+      const revisedName = reviseQueryVNDB(info.name);
+      if (revisedName === SKIP_SEARCH_KEY) {
+          console.log('[vndb] skip search', info.name);
+          return;
+      }
+      if (revisedName) {
+          let result = await searchSubject$1({ ...info, name: revisedName });
           return patchSearchResult(result);
       }
       // fix EXTRA VA MIZUNA
@@ -2464,6 +2482,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   function reviseQuery(name) {
       const titleDict = {
           '月影の鎖～紅に染まる番外編～': '月影の鎖?紅に染まる番外編',
+          '異世界転生したら大魔法使いの推しになりました': '異世界転生したら大魔法使いの推しになりました',
           // 'Musicus-ムジクス-': 'Musicus-ムジクス-',
       };
       const userTitleDict = window.EGS_REVISE_QUERY_DICT || {};
@@ -2586,6 +2605,11 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           }
           if (isEnglishName(subjectInfo.name)) {
               newOpts.score = 0.1;
+              // fix: Little Lover;
+              // @TODO need more test, it would skip right results with different date
+              if (rawInfoList.every(item => item.name.startsWith(subjectInfo.name))) {
+                  newOpts.sameDate = true;
+              }
           }
           if (opts.query) {
               // fix: query is "Musicus" for game "Musicus-ムジクス-"
@@ -2611,6 +2635,10 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       let res;
       const querySet = new Set();
       const revisedQueryStr = reviseQuery(info.name);
+      if (revisedQueryStr === SKIP_SEARCH_KEY) {
+          console.log('[erogamescape] skip search', info.name);
+          return;
+      }
       if (revisedQueryStr) {
           return await searchAndFollow(info, { query: revisedQueryStr });
       }
@@ -2999,6 +3027,11 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   window.EGS_REVISE_TITLE_DICT = {
   // your config
   };
+  window.VNDB_REVISE_QUERY_DICT = {
+  // for example: skip search with 'does not exist query'
+  // 'does not exist query': 'SCH_SKIP_SEARCH',
+  };
+  window.EGS_REVISE_QUERY_DICT = {};
   initPage(animePages);
   !g_hide_game_score_flag && initPage(gamePages);
 

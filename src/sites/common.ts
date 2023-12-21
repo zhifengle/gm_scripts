@@ -5,6 +5,8 @@ import { InterestType, InterestTypeId, MsgResponse } from '../interface/types';
 import { sleep } from '../utils/async/sleep';
 import { isEqualDate, isEqualMonth } from '../utils/utils';
 
+export const SKIP_SEARCH_KEY = 'SCH_SKIP_SEARCH';
+
 export type FuseOptions = {
   isCaseSensitive?: boolean;
   shouldSort?: boolean;

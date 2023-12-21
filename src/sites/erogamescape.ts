@@ -4,7 +4,7 @@ import { sleep } from '../utils/async/sleep';
 import { $q } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
 import { getShortenedQuery } from '../utils/utils';
-import { FilterOptions, filterResults, filterSubjectsByDate, findResultByMonth, isSingleJpSegment } from './common';
+import { FilterOptions, SKIP_SEARCH_KEY, filterResults, filterSubjectsByDate, findResultByMonth, isSingleJpSegment } from './common';
 import {
   getHiraganaSubTitle,
   isEnglishName,
@@ -207,6 +207,10 @@ export async function searchGameSubject(info: SearchSubject): Promise<SearchSubj
   let res: SearchSubject;
   const querySet = new Set();
   const revisedQueryStr = reviseQuery(info.name);
+  if (revisedQueryStr === SKIP_SEARCH_KEY) {
+    console.log('[erogamescape] skip search', info.name);
+    return;
+  }
   if (revisedQueryStr) {
     return await searchAndFollow(info, { query: revisedQueryStr });
   }

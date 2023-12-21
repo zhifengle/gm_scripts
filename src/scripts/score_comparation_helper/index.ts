@@ -202,6 +202,12 @@ window.VNDB_REVISE_TITLE_DICT = {
 window.EGS_REVISE_TITLE_DICT = {
   // your config
 }
+window.VNDB_REVISE_QUERY_DICT = {
+  // for example: skip search with 'does not exist query'
+  // 'does not exist query': 'SCH_SKIP_SEARCH',
+}
+window.EGS_REVISE_QUERY_DICT = {
+}
 
 initPage(animePages);
 !g_hide_game_score_flag && initPage(gamePages);

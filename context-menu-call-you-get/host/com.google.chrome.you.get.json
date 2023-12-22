@@ -1,9 +1,0 @@
-{
-  "name": "com.google.chrome.you.get",
-  "description": "run you-get",
-  "path": "HOST_PATH",
-  "type": "stdio",
-  "allowed_origins": [
-    "chrome-extension://eckpaeekdfcfcinnhncakaeepjjidmkf/"
-  ]
-}

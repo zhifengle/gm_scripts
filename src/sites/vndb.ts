@@ -2,7 +2,7 @@ import { SearchSubject, Subject } from '../interface/subject';
 import { sleep } from '../utils/async/sleep';
 import { $q, $qa } from '../utils/domUtils';
 import { fetchText } from '../utils/fetchData';
-import { getShortenedQuery, normalizeQuery } from '../utils/utils';
+import { getShortenedQuery, isEqualDate, normalizeQuery } from '../utils/utils';
 import { SKIP_SEARCH_KEY, filterResults } from './common';
 import {
   getAliasByName,
@@ -65,7 +65,7 @@ function reviseTitle(title: string) {
       return val;
     }
   }
-  return title.replace(' x ', ' ').replace(/　/g, ' ')
+  return title.replace(' x ', ' ').replace(/　/g, ' ');
 }
 
 function getSearchItem($item: HTMLElement): SearchSubject {
@@ -138,6 +138,13 @@ export async function searchSubject(
     if (/^[a-zA-Z]+$/.test(subjectInfo.name)) {
       return filterResults(rawInfoList, subjectInfo, { ...filterOpts, dateFirst: true, sameName: true });
     }
+    // fix: "ONE." different date
+    let res = rawInfoList.find(
+      (item) => item.name === subjectInfo.name && isEqualDate(item.releaseDate, subjectInfo.releaseDate, 'm')
+    );
+    if (res) {
+      return res;
+    }
     return filterResults(rawInfoList, subjectInfo, { ...filterOpts, sameDate: true });
   }
   res = filterResults(rawInfoList, subjectInfo, filterOpts);
@@ -197,7 +204,7 @@ export async function searchGameData(info: SearchSubject): Promise<SearchSubject
   const querySet = new Set();
   let query = normalizeQueryVNDB(info.name);
   let result = await searchSubject(info, { query });
-  querySet.add(query)
+  querySet.add(query);
   if (!result) {
     await sleep(100);
     query = getShortenedQuery(query);

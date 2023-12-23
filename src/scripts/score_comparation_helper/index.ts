@@ -125,6 +125,8 @@ async function refreshScore(
   if (!force) {
     const scoreMap = getScoreMap(curPage.name, subjectId);
     map = { ...scoreMap, [curPage.name]: subjectId };
+  }
+  if (force) {
     document
       .querySelectorAll('.e-userjs-score-compare')
       .forEach((el) => el.remove());

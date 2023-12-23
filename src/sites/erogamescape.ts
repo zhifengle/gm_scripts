@@ -35,6 +35,7 @@ const site_origin = 'https://erogamescape.org';
 
 function reviseQuery(name: string) {
   const titleDict: Record<string, string> = {
+    // 'ONE.': 'ONE ～輝く季節へ～',  // ONE. remake
     '月影の鎖～紅に染まる番外編～': '月影の鎖?紅に染まる番外編',
     '異世界転生したら大魔法使いの推しになりました': '異世界転生したら大魔法使いの推しになりました',
     // 'Musicus-ムジクス-': 'Musicus-ムジクス-',
@@ -183,7 +184,8 @@ export async function searchSubject(
     }
     if (opts.query) {
       // fix: query is "Musicus" for game "Musicus-ムジクス-"
-      if (/^[a-zA-Z]+$/.test(opts.query)) {
+      // fix: "ONE."
+      if (/^[a-zA-Z.]+$/.test(opts.query)) {
         newOpts.sameDate = true
       }
     }

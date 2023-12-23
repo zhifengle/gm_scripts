@@ -94,7 +94,7 @@ export function getSearchSubject() {
   if (infoList && infoList.length) {
     for (let i = 0, len = infoList.length; i < len; i++) {
       let el = infoList[i];
-      if (el.innerHTML.match(/放送开始|上映年度/)) {
+      if (el.innerHTML.match(/放送开始|上映年度|发行日期/)) {
         info.releaseDate = dealDate(el.textContent.split(':')[1].trim());
       }
       // if (el.innerHTML.match('播放结束')) {

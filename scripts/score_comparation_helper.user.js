@@ -18,7 +18,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.26
+// @version     0.1.27
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -1176,7 +1176,7 @@
       if (infoList && infoList.length) {
           for (let i = 0, len = infoList.length; i < len; i++) {
               let el = infoList[i];
-              if (el.innerHTML.match(/放送开始|上映年度/)) {
+              if (el.innerHTML.match(/放送开始|上映年度|发行日期/)) {
                   info.releaseDate = dealDate(el.textContent.split(':')[1].trim());
               }
               // if (el.innerHTML.match('播放结束')) {
@@ -2263,6 +2263,11 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           if (/^[a-zA-Z]+$/.test(subjectInfo.name)) {
               return filterResults(rawInfoList, subjectInfo, { ...filterOpts, dateFirst: true, sameName: true });
           }
+          // fix: "ONE." different date
+          let res = rawInfoList.find((item) => item.name === subjectInfo.name && isEqualDate(item.releaseDate, subjectInfo.releaseDate, 'm'));
+          if (res) {
+              return res;
+          }
           return filterResults(rawInfoList, subjectInfo, { ...filterOpts, sameDate: true });
       }
       res = filterResults(rawInfoList, subjectInfo, filterOpts);
@@ -2481,6 +2486,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   const site_origin = 'https://erogamescape.org';
   function reviseQuery(name) {
       const titleDict = {
+          // 'ONE.': 'ONE ～輝く季節へ～',  // ONE. remake
           '月影の鎖～紅に染まる番外編～': '月影の鎖?紅に染まる番外編',
           '異世界転生したら大魔法使いの推しになりました': '異世界転生したら大魔法使いの推しになりました',
           // 'Musicus-ムジクス-': 'Musicus-ムジクス-',
@@ -2613,7 +2619,8 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           }
           if (opts.query) {
               // fix: query is "Musicus" for game "Musicus-ムジクス-"
-              if (/^[a-zA-Z]+$/.test(opts.query)) {
+              // fix: "ONE."
+              if (/^[a-zA-Z.]+$/.test(opts.query)) {
                   newOpts.sameDate = true;
               }
           }
@@ -2951,6 +2958,8 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       if (!force) {
           const scoreMap = getScoreMap(curPage.name, subjectId);
           map = { ...scoreMap, [curPage.name]: subjectId };
+      }
+      if (force) {
           document
               .querySelectorAll('.e-userjs-score-compare')
               .forEach((el) => el.remove());

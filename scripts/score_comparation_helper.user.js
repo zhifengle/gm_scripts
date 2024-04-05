@@ -12,13 +12,13 @@
 // @include     https://myanimelist.net/anime/*
 // @include     https://anidb.net/anime/*
 // @include     https://anidb.net/a*
-// @include     https://2dfan.org/subjects/*
+// @include     https://ddfan.org/subjects/*
 // @include     https://vndb.org/v*
 // @include     https://erogamescape.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.27
+// @version     0.1.28
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -1987,13 +1987,13 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       storage.set('DICT_ID' + id, map, 7);
   }
 
-  const site_origin$2 = 'https://2dfan.org/';
+  const site_origin$2 = 'https://ddfan.org/';
   const HEADERS = {
       accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-      referer: 'https://2dfan.org/',
+      referer: 'https://ddfan.org/',
   };
-  // export const favicon = 'https://2dfan.org/favicon.ico';
-  const favicon$2 = 'https://www.google.com/s2/favicons?domain=2dfan.org';
+  // export const favicon = 'https://ddfan.org/favicon.ico';
+  const favicon$2 = 'https://www.google.com/s2/favicons?domain=ddfan.org';
   function getSearchItem$3($item) {
       const $title = $item.querySelector('h4.media-heading > a');
       const href = new URL($title.getAttribute('href'), site_origin$2).href;
@@ -2037,8 +2037,8 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           dateFirst: true,
           keys: ['name'],
       };
-      const url = `https://2dfan.org/subjects/search?keyword=${encodeURIComponent(query)}`;
-      console.info('2dfan search URL: ', url);
+      const url = `https://ddfan.org/subjects/search?keyword=${encodeURIComponent(query)}`;
+      console.info('ddfan search URL: ', url);
       const rawText = await fetchText(url, {
           headers: HEADERS,
       });
@@ -2053,7 +2053,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           }
       }
       searchResult = filterResults(rawInfoList, subjectInfo, options);
-      console.info(`Search result of ${query} on 2dfan: `, searchResult);
+      console.info(`Search result of ${query} on ddfan: `, searchResult);
       if (searchResult && searchResult.url) {
           randomSleep(200, 50);
           const res = await followSearch(searchResult.url);
@@ -2107,11 +2107,11 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       return info;
   }
 
-  let site_origin$1 = 'https://2dfan.org/';
+  let site_origin$1 = 'https://ddfan.org/';
   const twodfanPage = {
-      name: '2dfan',
+      name: 'ddfan',
       href: [site_origin$1],
-      searchApi: 'https://2dfan.org/subjects/search?keyword={kw}',
+      searchApi: 'https://ddfan.org/subjects/search?keyword={kw}',
       favicon: favicon$2,
       expiration: 21,
       infoSelector: [

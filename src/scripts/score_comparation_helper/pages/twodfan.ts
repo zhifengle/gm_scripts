@@ -8,7 +8,7 @@ import { $q } from '../../../utils/domUtils';
 import { insertScoreCommon } from '../common';
 import { PageConfig } from '../types';
 
-let site_origin = 'https://2dfan.org/';
+let site_origin = 'https://ddfan.org/';
 
 export function setOrigin(url: string) {
   site_origin = url;
@@ -19,9 +19,9 @@ export function getOrigin(): string {
 }
 
 export const twodfanPage: PageConfig = {
-  name: '2dfan',
+  name: 'ddfan',
   href: [site_origin],
-  searchApi: 'https://2dfan.org/subjects/search?keyword={kw}',
+  searchApi: 'https://ddfan.org/subjects/search?keyword={kw}',
   favicon: favicon,
   expiration: 21,
   infoSelector: [

@@ -12,13 +12,15 @@
 // @include     https://myanimelist.net/anime/*
 // @include     https://anidb.net/anime/*
 // @include     https://anidb.net/a*
+// @include     https://2dfan.com/subjects/*
 // @include     https://ddfan.org/subjects/*
 // @include     https://vndb.org/v*
 // @include     https://erogamescape.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.28
+// @version     0.1.29
+// @note        0.1.29 能够设置后台搜索游戏的评分
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand
@@ -1987,16 +1989,15 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       storage.set('DICT_ID' + id, map, 7);
   }
 
-  const site_origin$2 = 'https://ddfan.org/';
+  const site_origin$1 = 'https://ddfan.org/';
   const HEADERS = {
       accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-      referer: 'https://ddfan.org/',
+      referer: site_origin$1,
   };
-  // export const favicon = 'https://ddfan.org/favicon.ico';
   const favicon$2 = 'https://www.google.com/s2/favicons?domain=ddfan.org';
   function getSearchItem$3($item) {
       const $title = $item.querySelector('h4.media-heading > a');
-      const href = new URL($title.getAttribute('href'), site_origin$2).href;
+      const href = new URL($title.getAttribute('href'), site_origin$1).href;
       const infos = $item.querySelectorAll('.tags > span');
       let releaseDate = undefined;
       for (let i = 0; i < infos.length; i++) {
@@ -2037,8 +2038,8 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           dateFirst: true,
           keys: ['name'],
       };
-      const url = `https://ddfan.org/subjects/search?keyword=${encodeURIComponent(query)}`;
-      console.info('ddfan search URL: ', url);
+      const url = `${site_origin$1}subjects/search?keyword=${encodeURIComponent(query)}`;
+      console.info('2dfan search URL: ', url);
       const rawText = await fetchText(url, {
           headers: HEADERS,
       });
@@ -2053,7 +2054,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           }
       }
       searchResult = filterResults(rawInfoList, subjectInfo, options);
-      console.info(`Search result of ${query} on ddfan: `, searchResult);
+      console.info(`Search result of ${query} on 2dfan: `, searchResult);
       if (searchResult && searchResult.url) {
           randomSleep(200, 50);
           const res = await followSearch(searchResult.url);
@@ -2107,11 +2108,10 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       return info;
   }
 
-  let site_origin$1 = 'https://ddfan.org/';
   const twodfanPage = {
-      name: 'ddfan',
+      name: '2dfan',
       href: [site_origin$1],
-      searchApi: 'https://ddfan.org/subjects/search?keyword={kw}',
+      searchApi: `${site_origin$1}subjects/search?keyword={kw}`,
       favicon: favicon$2,
       expiration: 21,
       infoSelector: [
@@ -2895,6 +2895,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   ];
   const BGM_UA = 'e_user_bgm_ua';
   var g_hide_game_score_flag = GM_getValue('e_user_hide_game_score') || '';
+  var g_game_pages_conf = GM_getValue('e_user_game_pages_conf') || {};
   if (GM_registerMenuCommand) {
       GM_registerMenuCommand('clear cache', () => {
           clearInfoStorage();
@@ -2909,9 +2910,67 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           var p = prompt('设置 Bangumi UA', '');
           GM_setValue(BGM_UA, p);
       });
-      GM_registerMenuCommand('显示游戏评分开关', () => {
-          g_hide_game_score_flag = prompt('设置不为空时隐藏游戏评分', g_hide_game_score_flag);
-          GM_setValue('e_user_hide_game_score', g_hide_game_score_flag);
+      GM_registerMenuCommand('设置对话框', () => {
+          // g_hide_game_score_flag = prompt(
+          //   '设置不为空时隐藏游戏评分',
+          //   g_hide_game_score_flag
+          // );
+          // GM_setValue('e_user_hide_game_score', g_hide_game_score_flag);
+          showConfigDialog();
+      });
+  }
+  function showConfigDialog() {
+      const gamePagesFormStr = gamePages.map((page) => {
+          return `<div>
+      <input type="checkbox" id="e-user-game-pages-${page.name}">
+      <label for="e-user-game-pages-${page.name}">${page.name}</label>
+    </div>`;
+      }).join('\n');
+      const $dialog = htmlToElement(`
+<dialog>
+  <div class="game-option-container">
+    <p style="color: #f09199;">游戏评分设置</p>
+    <hr />
+    <div>
+      <input type="checkbox" id="e-user-hide-game-score">
+      <label for="e-user-hide-game-score">隐藏游戏评分</label>
+    </div>
+    <hr />
+    <p style="color: #00B41E;">是否后台搜索评分</p>
+    ${gamePagesFormStr}
+  </div>
+  <div>
+    <button autofocus>Close</button>
+  </div>
+</dialog>
+`);
+      var g_hide_game_score_flag = GM_getValue('e_user_hide_game_score');
+      g_game_pages_conf = GM_getValue('e_user_game_pages_conf') || {};
+      if (g_hide_game_score_flag) {
+          $dialog.querySelector('#e-user-hide-game-score').checked = true;
+      }
+      gamePages.forEach((page) => {
+          const conf = g_game_pages_conf[page.name] || {};
+          $dialog.querySelector(`#e-user-game-pages-${page.name}`).checked = conf.hide ? false : true;
+      });
+      $dialog.querySelector('.game-option-container').addEventListener('change', (e) => {
+          if (e.target.id === 'e-user-hide-game-score') {
+              g_hide_game_score_flag = e.target.checked ? '1' : undefined;
+              GM_setValue('e_user_hide_game_score', g_hide_game_score_flag);
+          }
+          else if (e.target.id.startsWith('e-user-game-pages-')) {
+              const name = e.target.id.replace('e-user-game-pages-', '');
+              const conf = g_game_pages_conf[name] || {};
+              conf.hide = !e.target.checked;
+              g_game_pages_conf[name] = conf;
+              GM_setValue('e_user_game_pages_conf', g_game_pages_conf);
+          }
+      });
+      document.body.appendChild($dialog);
+      $dialog.showModal();
+      $dialog.querySelector('button').addEventListener('click', () => {
+          $dialog.close();
+          $dialog.remove();
       });
   }
   function getPageIdxByHost(pages, host) {
@@ -2933,7 +2992,10 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
           let searchResult = getInfo(map[page.name]);
           if (!searchResult) {
               try {
-                  searchResult = await page.getSearchResult(curInfo);
+                  searchResult = await Promise.race([
+                      page.getSearchResult(curInfo),
+                      new Promise((_, reject) => setTimeout(() => reject(new Error(`${page.name} search timeout`)), 10000)),
+                  ]);
               }
               catch (error) {
                   console.error(error);
@@ -3042,6 +3104,17 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
   };
   window.EGS_REVISE_QUERY_DICT = {};
   initPage(animePages);
-  !g_hide_game_score_flag && initPage(gamePages);
+  if (!g_hide_game_score_flag) {
+      initPage(gamePages.map((p) => {
+          const conf = g_game_pages_conf[p.name] || {};
+          if (conf.hide) {
+              return {
+                  ...p,
+                  type: 'info',
+              };
+          }
+          return p;
+      }));
+  }
 
 })();

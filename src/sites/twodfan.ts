@@ -6,14 +6,13 @@ import { normalizeQuery } from '../utils/utils';
 import { FilterOptions, filterResults } from './common';
 import { isEnglishName } from './utils';
 
-const site_origin = 'https://ddfan.org/';
+export const site_origin = 'https://ddfan.org/';
 const HEADERS = {
   accept:
     'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-  referer: 'https://ddfan.org/',
+  referer: site_origin,
 };
 
-// export const favicon = 'https://ddfan.org/favicon.ico';
 export const favicon = 'https://www.google.com/s2/favicons?domain=ddfan.org';
 
 function getSearchItem($item: HTMLElement): SearchSubject {
@@ -59,8 +58,8 @@ export async function searchGameData(subjectInfo: Subject): Promise<SearchSubjec
     dateFirst: true,
     keys: ['name'],
   };
-  const url = `https://ddfan.org/subjects/search?keyword=${encodeURIComponent(query)}`;
-  console.info('ddfan search URL: ', url);
+  const url = `${site_origin}subjects/search?keyword=${encodeURIComponent(query)}`;
+  console.info('2dfan search URL: ', url);
   const rawText = await fetchText(url, {
     headers: HEADERS,
   });
@@ -75,7 +74,7 @@ export async function searchGameData(subjectInfo: Subject): Promise<SearchSubjec
     }
   }
   searchResult = filterResults(rawInfoList, subjectInfo, options);
-  console.info(`Search result of ${query} on ddfan: `, searchResult);
+  console.info(`Search result of ${query} on 2dfan: `, searchResult);
   if (searchResult && searchResult.url) {
     randomSleep(200, 50);
     const res = await followSearch(searchResult.url);

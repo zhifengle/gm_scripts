@@ -3,25 +3,21 @@ import {
   favicon,
   getSearchSubject,
   searchGameData,
+  site_origin,
 } from '../../../sites/twodfan';
 import { $q } from '../../../utils/domUtils';
 import { insertScoreCommon } from '../common';
 import { PageConfig } from '../types';
 
-let site_origin = 'https://ddfan.org/';
-
-export function setOrigin(url: string) {
-  site_origin = url;
-}
 
 export function getOrigin(): string {
   return site_origin;
 }
 
 export const twodfanPage: PageConfig = {
-  name: 'ddfan',
+  name: '2dfan',
   href: [site_origin],
-  searchApi: 'https://ddfan.org/subjects/search?keyword={kw}',
+  searchApi: `${site_origin}subjects/search?keyword={kw}`,
   favicon: favicon,
   expiration: 21,
   infoSelector: [

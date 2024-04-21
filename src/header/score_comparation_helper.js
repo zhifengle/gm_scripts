@@ -12,13 +12,15 @@
 // @include     https://myanimelist.net/anime/*
 // @include     https://anidb.net/anime/*
 // @include     https://anidb.net/a*
+// @include     https://2dfan.com/subjects/*
 // @include     https://ddfan.org/subjects/*
 // @include     https://vndb.org/v*
 // @include     https://erogamescape.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.28
+// @version     0.1.29
+// @note        0.1.29 能够设置后台搜索游戏的评分
 // @run-at      document-end
 // @grant       GM_addStyle
 // @grant       GM_registerMenuCommand

@@ -115,7 +115,7 @@ function showConfigDialog() {
     if (e.target.id === 'e-user-hide-game-score') {
       g_hide_game_score_flag = e.target.checked ? '1' : undefined;
       GM_setValue('e_user_hide_game_score', g_hide_game_score_flag);
-    } else if (e.target.id.startsWith('e-user-game-pages-')) {
+    } else if (e.target.id?.startsWith('e-user-game-pages-')) {
       const name = e.target.id.replace('e-user-game-pages-', '');
       const conf: any = g_game_pages_conf[name] || {};
       conf.hide = !e.target.checked;

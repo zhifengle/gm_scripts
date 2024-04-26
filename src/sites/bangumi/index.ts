@@ -59,7 +59,7 @@ function normalizeQueryBangumi(query: string): string {
 }
 
 /**
- * 搜索条目
+ * 搜索条目并过滤出搜索结果
  * @param subjectInfo
  * @param type
  * @param uniqueQueryStr
@@ -136,6 +136,9 @@ export async function searchSubject(
         }
       );
     }
+  }
+  if (type === SubjectTypeId.anime) {
+    // @TODO extract.ts
   }
   return filterResults(rawInfoList, subjectInfo, fuseOptions);
 }

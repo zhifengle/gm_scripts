@@ -1,6 +1,8 @@
-import { AllSubject, SearchSubject } from "../../interface/subject";
-import { $q, $qa } from "../../utils/domUtils";
-import { dealDate, isEqualDate } from "../../utils/utils";
+import { AllSubject, SearchSubject } from '../../interface/subject';
+import { $q, $qa } from '../../utils/domUtils';
+import { dealDate, isEqualDate } from '../../utils/utils';
+import { filterResults, isSingleJpSegment } from '../common';
+import { getAliasByName, removeSubTitle } from '../utils';
 
 export function getSearchItem($item: HTMLElement): SearchSubject {
   let $subjectTitle = $item.querySelector('h3>a.l');
@@ -41,12 +43,8 @@ export function getTotalPageNum($doc: Document | Element = document) {
   let totalPageNum = 1;
   const pList = $multipage?.querySelectorAll('.page_inner>.p');
   if (pList && pList.length) {
-    let tempNum = parseInt(
-      pList[pList.length - 2].getAttribute('href').match(/page=(\d*)/)[1]
-    );
-    totalPageNum = parseInt(
-      pList[pList.length - 1].getAttribute('href').match(/page=(\d*)/)[1]
-    );
+    let tempNum = parseInt(pList[pList.length - 2].getAttribute('href').match(/page=(\d*)/)[1]);
+    totalPageNum = parseInt(pList[pList.length - 1].getAttribute('href').match(/page=(\d*)/)[1]);
     totalPageNum = totalPageNum > tempNum ? totalPageNum : tempNum;
   }
   return totalPageNum;
@@ -72,7 +70,6 @@ export function convertInfoToSubject(dataArr: any, bgmHost: string = 'https://bg
   });
 }
 
-
 export function filterSubjectByNameAndDate(items: SearchSubject[], subjectInfo: AllSubject) {
   const list = items.filter((item) => isEqualDate(item.releaseDate, subjectInfo.releaseDate));
   if (list.length === 0) return;
@@ -83,6 +80,10 @@ export function filterSubjectByNameAndDate(items: SearchSubject[], subjectInfo: 
   return list.find((item) => item.greyName === subjectInfo.name);
 }
 
+/**
+ * 获取搜索信息对象
+ * @returns SearchSubject
+ */
 export function getSearchSubject() {
   const info: SearchSubject = {
     name: $q('h1>a').textContent.trim(),
@@ -103,4 +104,60 @@ export function getSearchSubject() {
     }
   }
   return info;
+}
+
+export function filterGameResults(
+  subjectInfo: AllSubject,
+  rawInfoList: SearchSubject[],
+  opts: { query?: string; shortenQuery?: boolean } = {}
+) {
+  const fuseOptions = {
+    uniqueSearch: false,
+    keys: ['name', 'greyName'],
+  };
+  const name = subjectInfo.name;
+  if (getAliasByName(name).length > 0) {
+    // fix: グリザイアの楽園 -LE EDEN DE LA GRISAIA-
+    const changedName = removeSubTitle(name);
+    const info = { ...subjectInfo, name: changedName };
+    let res = filterResults(rawInfoList, info, {
+      ...fuseOptions,
+      score: 0.1,
+      sameDate: true,
+    });
+    if (res) {
+      return res;
+    }
+  }
+  if (isSingleJpSegment(subjectInfo.name) && rawInfoList.length >= 6) {
+    return filterSubjectByNameAndDate(rawInfoList, subjectInfo);
+  }
+  // fix: "ソード(同人フリー版)"
+  if (name.startsWith(opts.query) && /[)）>＞]$/.test(name)) {
+    return filterResults(
+      rawInfoList,
+      {
+        ...subjectInfo,
+        name: opts.query,
+      },
+      {
+        ...fuseOptions,
+        score: 0.1,
+        sameDate: true,
+      }
+    );
+  }
+}
+
+export function filterAnimeResults(
+  subjectInfo: AllSubject,
+  rawInfoList: SearchSubject[],
+  opts: { query?: string; shortenQuery?: boolean } = {}
+) {
+  const fuseOptions = {
+    uniqueSearch: false,
+    keys: ['name', 'greyName'],
+  };
+  const name = subjectInfo.name;
+  // @TODO 过滤Anime的逻辑。替换 index.ts 里面 searchSubject 过滤逻辑
 }

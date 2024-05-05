@@ -19,7 +19,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.29
+// @version     0.1.30
 // @note        0.1.29 能够设置后台搜索游戏的评分
 // @run-at      document-end
 // @grant       GM_addStyle
@@ -1167,6 +1167,10 @@
       }
       return list.find((item) => item.greyName === subjectInfo.name);
   }
+  /**
+   * 获取搜索信息对象
+   * @returns SearchSubject
+   */
   function getSearchSubject$4() {
       const info = {
           name: $q('h1>a').textContent.trim(),
@@ -1209,7 +1213,7 @@
       return query.trim();
   }
   /**
-   * 搜索条目
+   * 搜索条目并过滤出搜索结果
    * @param subjectInfo
    * @param type
    * @param uniqueQueryStr
@@ -1277,6 +1281,7 @@
               });
           }
       }
+      if (type === SubjectTypeId.anime) ;
       return filterResults(rawInfoList, subjectInfo, fuseOptions);
   }
   /**
@@ -2437,7 +2442,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       expiration: 21,
       infoSelector: [
           {
-              selector: '.vnimg > label',
+              selector: '.vnimg > :first-child',
           },
       ],
       pageSelector: [
@@ -2928,8 +2933,8 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
       }).join('\n');
       const $dialog = htmlToElement(`
 <dialog>
-  <div class="game-option-container">
-    <p style="color: #f09199;">游戏评分设置</p>
+  <div class="game-option-container" style="color: #000">
+    <p style="color: #f09199; margin-bottom: 10px">游戏评分设置</p>
     <hr />
     <div>
       <input type="checkbox" id="e-user-hide-game-score">
@@ -2939,11 +2944,12 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
     <p style="color: #00B41E;">是否后台搜索评分</p>
     ${gamePagesFormStr}
   </div>
-  <div>
+  <div style="margin-top: 10px">
     <button autofocus>Close</button>
   </div>
 </dialog>
 `);
+      $dialog.style.cssText = 'width: 300px; padding: 20px; margin: auto;';
       var g_hide_game_score_flag = GM_getValue('e_user_hide_game_score');
       g_game_pages_conf = GM_getValue('e_user_game_pages_conf') || {};
       if (g_hide_game_score_flag) {
@@ -2958,7 +2964,7 @@ style="vertical-align:-3px;margin-right:10px;" title="点击在${rowInfo.name}�
               g_hide_game_score_flag = e.target.checked ? '1' : undefined;
               GM_setValue('e_user_hide_game_score', g_hide_game_score_flag);
           }
-          else if (e.target.id.startsWith('e-user-game-pages-')) {
+          else if (e.target.id?.startsWith('e-user-game-pages-')) {
               const name = e.target.id.replace('e-user-game-pages-', '');
               const conf = g_game_pages_conf[name] || {};
               conf.hide = !e.target.checked;

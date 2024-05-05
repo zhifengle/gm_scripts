@@ -86,8 +86,8 @@ function showConfigDialog() {
   }).join('\n');
   const $dialog = htmlToElement(`
 <dialog>
-  <div class="game-option-container">
-    <p style="color: #f09199;">游戏评分设置</p>
+  <div class="game-option-container" style="color: #000">
+    <p style="color: #f09199; margin-bottom: 10px">游戏评分设置</p>
     <hr />
     <div>
       <input type="checkbox" id="e-user-hide-game-score">
@@ -97,11 +97,12 @@ function showConfigDialog() {
     <p style="color: #00B41E;">是否后台搜索评分</p>
     ${gamePagesFormStr}
   </div>
-  <div>
+  <div style="margin-top: 10px">
     <button autofocus>Close</button>
   </div>
 </dialog>
 `) as HTMLDialogElement;
+  $dialog.style.cssText = 'width: 300px; padding: 20px; margin: auto;';
   var g_hide_game_score_flag = GM_getValue('e_user_hide_game_score');
   g_game_pages_conf = GM_getValue('e_user_game_pages_conf') || {};
   if (g_hide_game_score_flag) {

@@ -16,7 +16,7 @@ export const vndbPage: PageConfig = {
   expiration: 21,
   infoSelector: [
     {
-      selector: '.vnimg > label',
+      selector: '.vnimg > :first-child',
     },
   ],
   pageSelector: [

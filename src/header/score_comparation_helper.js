@@ -31,5 +31,5 @@
 // @grant       GM_listValues
 // @grant       GM_deleteValue
 // @grant       GM_addValueChangeListener
-// @require     https://cdn.staticfile.org/fuse.js/6.4.0/fuse.min.js
+// @require     https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.0/fuse.min.js
 // ==/UserScript==

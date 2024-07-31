@@ -9,11 +9,11 @@
 // @homepage    https://github.com/22earth/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/\w+\/list\/.*$/
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/index\/\d+/
-// @version     0.0.6
+// @version     0.0.7
 // @note        0.0.6 导出格式改为 excel 和支持 excel 的导入。
 // @note        0.0.4 添加导入功能。注意：不支持是否对自己可见的导入
 // @grant       GM_xmlhttpRequest
-// @require     https://cdn.staticfile.org/jschardet/1.4.1/jschardet.min.js
-// @require     https://cdn.staticfile.org/xlsx/0.18.5/xlsx.full.min.js
+// @require     https://cdnjs.cloudflare.com/ajax/libs/jschardet/1.4.1/jschardet.min.js
+// @require     https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
 // @run-at      document-end
 // ==/UserScript==

@@ -9,7 +9,7 @@
 // @include     https://search.douban.com/movie/subject_search*
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
-// @version     0.0.7
+// @version     0.0.8
 // @run-at      document-end
 // @grant       GM_registerMenuCommand
 // @grant       GM_xmlhttpRequest
@@ -17,6 +17,6 @@
 // @grant       GM_setValue
 // @grant       GM_getValue
 // @grant       GM_getResourceText
-// @require     https://cdn.staticfile.org/fuse.js/6.4.0/fuse.min.js
-// @resource    bangumiDataURL https://registry.npmmirror.com/bangumi-data/latest/files/dist/data.json
+// @require     https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.0/fuse.min.js
+// @resource    bangumiDataURL https://unpkg.com/bangumi-data@0.3/dist/data.json
 // ==/UserScript==

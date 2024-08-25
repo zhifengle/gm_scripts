@@ -1,3 +1,4 @@
+import { sleep } from './utils/async/sleep';
 import { loadIframe } from './utils/domUtils';
 import { fetchInfo, fetchText } from './utils/fetchData';
 import { logger } from './utils/logger';
@@ -20,7 +21,8 @@ async function loadSignInIframe(url: string) {
   let $iframe = document.querySelector(`#${iframeId}`) as HTMLIFrameElement;
   if (!$iframe) {
     $iframe = document.createElement('iframe');
-    $iframe.style.display = 'none';
+    $iframe.style.position = 'absolute';
+    $iframe.style.left = '-9999px';
     $iframe.id = iframeId;
     document.body.appendChild($iframe);
   }
@@ -140,6 +142,38 @@ const siteDict: SiteConfig[] = [
           `a[href^="${pathname}"`
         ) as HTMLElement;
         $signBtn.click();
+      }
+      setSignResult(this.name, true);
+    },
+  },
+  {
+    name: '2dfan',
+    href: 'https://ddfan.org/',
+    async signFn() {
+      if (window.top !== window.self) {
+        return;
+      }
+      if (getSignResult(this.name)) {
+        logger.info(`${this.name} 已签到`);
+        return;
+      }
+      if (!globalThis?.location?.href) {
+        logger.error(`${this.name} 只支持在浏览器上签到`);
+        return;
+      }
+      const pathname = document.querySelector('.checkin-info a[href*="recheckin"]');
+      if (!pathname) {
+        logger.error(`${this.name} 需要登录`);
+        return;
+      }
+      const $btn = document.querySelector('#do_checkin') as HTMLAnchorElement;
+      if ($btn) {
+        const $iframe = await loadSignInIframe($btn.href);
+        await sleep(2000);
+        const $signBtn = $iframe.contentDocument.querySelector(
+          '#do_checkin[type="submit"]'
+        ) as HTMLElement;
+        $signBtn?.click();
       }
       setSignResult(this.name, true);
     },

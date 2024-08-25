@@ -10,6 +10,7 @@
 // @include     /https:\/\/www\.52pojie\.cn\/(forum\.php)?$/
 // @include     https://bbs4.2djgame.net/home/forum.php
 // @include     https://zodgame.xyz/
+// @include     https://ddfan.org/
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
 // @version     0.0.8

@@ -7,10 +7,14 @@
 // @include     https://www.v2ex.com/
 // @include     https://v2ex.com/
 // @include     https://www.south-plus.net/
+// @include     https://www.south-plus.net/index.php
+// @include     https://www.south-plus.net/thread.php?fid-6.html
 // @include     /https:\/\/www\.52pojie\.cn\/(forum\.php)?$/
 // @include     https://bbs4.2djgame.net/home/forum.php
 // @include     https://zodgame.xyz/
+// @match       https://zodgame.xyz/forum.php?mod=forumdisplay&fid=13*
 // @include     https://ddfan.org/
+// @match       https://ddfan.org/subjects/incoming/*
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
 // @version     0.0.8
@@ -279,19 +283,26 @@
                   logger.error(`${this.name} 只支持在浏览器上签到`);
                   return;
               }
-              const pathname = document.querySelector('.checkin-info a[href*="recheckin"]');
-              if (!pathname) {
+              const $profile = document.querySelector('ul.nav.pull-right > li.dropdown > a');
+              if (!$profile) {
                   logger.error(`${this.name} 需要登录`);
                   return;
               }
-              const $btn = document.querySelector('#do_checkin');
-              if ($btn) {
-                  const $iframe = await loadSignInIframe($btn.href);
-                  await sleep(2000);
-                  const $signBtn = $iframe.contentDocument.querySelector('#do_checkin[type="submit"]');
-                  $signBtn?.click();
+              const checkinUrl = `${$profile.href}/recheckin`;
+              const $iframe = await loadSignInIframe(checkinUrl);
+              await sleep(3000);
+              let $signBtn = $iframe.contentDocument.querySelector('#do_checkin[type="submit"]');
+              let count = 5;
+              while (count > 0 && !$signBtn) {
+                  $signBtn = $iframe.contentDocument.querySelector('#do_checkin[type="submit"]');
+                  count--;
+                  await sleep(1000);
               }
-              setSignResult(this.name, true);
+              if ($signBtn) {
+                  $signBtn.click();
+                  setSignResult(this.name, true);
+              }
+              logger.info(`${this.name} 获取签到按钮失败`);
           },
       },
       {
@@ -413,7 +424,8 @@
               return obj.href.includes(location.host);
           }
       });
-      if (site) {
+      const skipSites = ['south-plus', '2dfan', '2djgame'];
+      if (site && !skipSites.includes(site.name)) {
           site.signFn();
       }
   }

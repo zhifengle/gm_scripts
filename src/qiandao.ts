@@ -161,21 +161,30 @@ const siteDict: SiteConfig[] = [
         logger.error(`${this.name} 只支持在浏览器上签到`);
         return;
       }
-      const pathname = document.querySelector('.checkin-info a[href*="recheckin"]');
-      if (!pathname) {
+      const $profile = document.querySelector('ul.nav.pull-right > li.dropdown > a') as HTMLAnchorElement;
+      if (!$profile) {
         logger.error(`${this.name} 需要登录`);
         return;
       }
-      const $btn = document.querySelector('#do_checkin') as HTMLAnchorElement;
-      if ($btn) {
-        const $iframe = await loadSignInIframe($btn.href);
-        await sleep(2000);
-        const $signBtn = $iframe.contentDocument.querySelector(
+      const checkinUrl = `${$profile.href}/recheckin`;
+      const $iframe = await loadSignInIframe(checkinUrl);
+      await sleep(3000);
+      let $signBtn = $iframe.contentDocument.querySelector(
+        '#do_checkin[type="submit"]'
+      ) as HTMLElement;
+      let count = 5;
+      while (count > 0 && !$signBtn) {
+        $signBtn = $iframe.contentDocument.querySelector(
           '#do_checkin[type="submit"]'
-        ) as HTMLElement;
-        $signBtn?.click();
+        )
+        count--;
+        await sleep(1000);
       }
-      setSignResult(this.name, true);
+      if ($signBtn) {
+        $signBtn.click();
+        setSignResult(this.name, true);
+      }
+      logger.info(`${this.name} 获取签到按钮失败`);
     },
   },
   {
@@ -305,7 +314,8 @@ async function main() {
       return obj.href.includes(location.host);
     }
   });
-  if (site) {
+  const skipSites = ['south-plus', '2dfan', '2djgame'];
+  if (site && !skipSites.includes(site.name)) {
     site.signFn();
   }
 }

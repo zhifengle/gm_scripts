@@ -6,11 +6,30 @@
 // @author      zhifengle
 // @description add offline tasks to rss2cloud server
 // @grant       GM_xmlhttpRequest
+// @grant       GM_addStyle
 // @run-at      document-end
 // ==/UserScript==
 
 // 配置
-const FOLDER_CID = ''
+const FOLDER_CID = '';
+const RSS2CLOUD_URL = 'http://localhost:8115';
+
+GM_addStyle(`
+.offline115-icon {
+  z-index: 9;
+  display: inline-block;
+  cursor: pointer;
+  margin: 0 5px 2px;
+  border-radius: 50%;
+  border: 0;
+  vertical-align: middle;
+  outline: none;
+  padding: 0;
+  height: 20px;
+  width: 20px;
+  position: static;
+}
+`);
 
 // 节流函数
 function throttle(func, delay) {
@@ -150,22 +169,8 @@ class MagnetLinkProcessor {
   addDownloadIcon(element, link) {
     const icon = document.createElement('img');
     icon.src = 'https://115.com/favicon.ico';
-    icon.className = '115offline';
+    icon.className = 'offline115-icon';
     icon.dataset.href = link;
-    Object.assign(icon.style, {
-      zIndex: '9',
-      display: 'inline-block',
-      cursor: 'pointer',
-      margin: '0 5px 2px',
-      borderRadius: '50%',
-      border: '0',
-      verticalAlign: 'middle',
-      outline: 'none',
-      padding: '0',
-      height: '20px',
-      width: '20px',
-      position: 'static',
-    });
     icon.title = `使用rss2cloud离线下载\n${link}`;
     element.after(icon);
   }
@@ -184,7 +189,7 @@ class MagnetLinkProcessor {
 }
 
 function handleOfflineClick(e) {
-  if (e.target.classList.contains('115offline')) {
+  if (e.target.classList.contains('offline115-icon')) {
     const el = e.target;
     var link = el.dataset.href;
     if (!link) {
@@ -197,7 +202,7 @@ function handleOfflineClick(e) {
     // 本地开始
     GM_xmlhttpRequest({
       method: 'POST',
-      url: 'http://localhost:8115/add',
+      url: `${RSS2CLOUD_URL}/add`,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -206,7 +211,7 @@ function handleOfflineClick(e) {
         cid: FOLDER_CID,
       }),
       onerror: function (response) {
-        console.log('请求失败');
+        console.error('请求失败:\n', response);
       },
     });
   }

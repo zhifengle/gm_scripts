@@ -7,19 +7,35 @@
 // @description add offline tasks to rss2cloud server
 // @grant       GM_xmlhttpRequest
 // @grant       GM_addStyle
+// @grant       GM_setValue
+// @grant       GM_getValue
+// @grant       GM_registerMenuCommand
 // @run-at      document-end
 // ==/UserScript==
 
 // 配置
-const FOLDER_CID = '';
+var folder_cid = GM_getValue('folder_cid', '');
+function setCid() {
+  folder_cid = prompt('设置cid', '');
+  GM_setValue('folder_cid', folder_cid);
+}
+if (GM_registerMenuCommand) {
+  GM_registerMenuCommand('设置cid', setCid, 's');
+}
 const RSS2CLOUD_URL = 'http://localhost:8115';
 
 GM_addStyle(`
+.offline115-anchor {
+  display: inline-block;
+}
+.offline115-anchor:focus,
+.offline115-anchor:hover {
+  outline: none;
+}
 .offline115-icon {
-  z-index: 9;
   display: inline-block;
   cursor: pointer;
-  margin: 0 5px 2px;
+  margin: 0 5px;
   border-radius: 50%;
   border: 0;
   vertical-align: middle;
@@ -167,12 +183,16 @@ class MagnetLinkProcessor {
    * 添加下载图标
    */
   addDownloadIcon(element, link) {
+    const anchor = document.createElement('a');
+    anchor.href = 'javascript:void(0)';
+    anchor.className = 'offline115-anchor';
     const icon = document.createElement('img');
-    icon.src = 'https://115.com/favicon.ico';
     icon.className = 'offline115-icon';
-    icon.dataset.href = link;
     icon.title = `使用rss2cloud离线下载\n${link}`;
-    element.after(icon);
+    icon.dataset.link = link;
+    icon.src = 'https://115.com/favicon.ico';
+    anchor.appendChild(icon);
+    element.after(anchor);
   }
 
   reviseUrl(url) {
@@ -189,32 +209,42 @@ class MagnetLinkProcessor {
 }
 
 function handleOfflineClick(e) {
+  let el = null;
   if (e.target.classList.contains('offline115-icon')) {
-    const el = e.target;
-    var link = el.dataset.href;
-    if (!link) {
-      return;
-    }
-    el.style.opacity = '0.2';
-    setTimeout(() => {
-      el.style.opacity = '0.7';
-    }, 310);
-    // 本地开始
-    GM_xmlhttpRequest({
-      method: 'POST',
-      url: `${RSS2CLOUD_URL}/add`,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      data: JSON.stringify({
-        tasks: [link],
-        cid: FOLDER_CID,
-      }),
-      onerror: function (response) {
-        console.error('请求失败:\n', response);
-      },
-    });
+    el = e.target;
   }
+  if (e.target.classList.contains('offline115-anchor')) {
+    el = e.target.querySelector('.offline115-icon');
+  }
+  if (!el) {
+    return;
+  }
+  var link = el.dataset.link;
+  if (!link) {
+    return;
+  }
+  if (el.style.opacity === '0.7') {
+    return;
+  }
+  el.style.opacity = '0.2';
+  setTimeout(() => {
+    el.style.opacity = '0.7';
+  }, 310);
+  // 本地开始
+  GM_xmlhttpRequest({
+    method: 'POST',
+    url: `${RSS2CLOUD_URL}/add`,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: JSON.stringify({
+      tasks: [link],
+      cid: folder_cid,
+    }),
+    onerror: function (response) {
+      console.error('请求失败:\n', response);
+    },
+  });
 }
 
 // 使用示例

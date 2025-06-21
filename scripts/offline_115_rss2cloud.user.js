@@ -242,6 +242,7 @@ function handleOfflineClick(e) {
       cid: folder_cid,
     }),
     onerror: function (response) {
+      el.style.opacity = '1'
       console.error('请求失败:\n', response);
     },
   });

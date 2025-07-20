@@ -2,15 +2,11 @@
 // @name        openlist external player
 // @namespace   https://github.com/zhifengle
 // @include     http://localhost:5244/*
-// @version     0.1
+// @version     0.2
 // @note        按照实际情况修改 include
 // @author      zhifengle
 // @description open external player for openlist
-// @grant       unsafeWindow
-// @run-at      document-start
 // ==/UserScript==
-
-var currentHref = window.location.href;
 
 // (function () {
 //   const items = []
@@ -66,8 +62,22 @@ function detectListRenderComplete(fileList) {
     }
   };
   const observer = new MutationObserver(callback);
-  const config = { childList: true, subtree: true };
+  // 不需要 subtree: true
+  const config = { childList: true };
   observer.observe(document.body, config);
+}
+
+function openByIframe(url) {
+  const iframeId = 'e-userjs-open-iframe';
+  let $iframe = document.querySelector(`#${iframeId}`);
+  if (!$iframe) {
+    $iframe = document.createElement('iframe');
+    $iframe.style.display = 'none';
+    $iframe.id = iframeId;
+    document.body.appendChild($iframe);
+  }
+  $iframe.src = url;
+  return $iframe;
 }
 
 function patchItemClick(item, file) {
@@ -81,11 +91,24 @@ function patchItemClick(item, file) {
       const href = el.getAttribute('href');
       const dUrl = `${location.origin}/d/${href}?sign=${file.sign}`;
       const url = `mpv://${encodeURIComponent(dUrl)}`;
-      copyTextToClipboard(url);
-      window.open(url, '_self');
+      // copyTextToClipboard(url);
+      console.log(url);
+      openByIframe(url);
+      removeActiveClass();
+      newElement.style.textDecoration = 'underline';
+      newElement.style.transform = 'scale(1.01)';
+      newElement.style.backgroundColor = 'rgba(236, 245, 255)';
     };
     el.parentElement.replaceChild(newElement, el);
   }
+}
+function removeActiveClass() {
+  const items = document.querySelectorAll('.nav + .obj-box a.list-item');
+  items.forEach((item) => {
+    item.style.textDecoration = '';
+    item.style.transform = '';
+    item.style.backgroundColor = '';
+  });
 }
 
 function copyTextToClipboard(text) {

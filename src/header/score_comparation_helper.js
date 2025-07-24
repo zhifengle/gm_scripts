@@ -19,7 +19,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.30
+// @version     0.1.31
 // @note        0.1.29 能够设置后台搜索游戏的评分
 // @run-at      document-end
 // @grant       GM_addStyle

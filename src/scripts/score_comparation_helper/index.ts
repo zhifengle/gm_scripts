@@ -39,12 +39,48 @@ const gamePages: PageConfig[] = [
   moepediaPage,
 ];
 const BGM_UA = 'e_user_bgm_ua';
-var g_hide_game_score_flag = GM_getValue('e_user_hide_game_score') || '';
-var g_game_pages_conf: {
-  [key: string]: {
-    hide: boolean;
-  };
-} = GM_getValue('e_user_game_pages_conf') || {};
+const HIDE_GAME_SCORE_KEY = 'e_user_hide_game_score';
+const GAME_PAGES_CONF_KEY = 'e_user_game_pages_conf';
+
+type GamePagesConf = Record<string, { hide?: boolean }>;
+
+function isGameScoreHidden(): boolean {
+  return Boolean(GM_getValue(HIDE_GAME_SCORE_KEY));
+}
+
+function setGameScoreHidden(hidden: boolean) {
+  GM_setValue(HIDE_GAME_SCORE_KEY, hidden ? '1' : '');
+}
+
+function getGamePagesConf(): GamePagesConf {
+  return GM_getValue(GAME_PAGES_CONF_KEY) || {};
+}
+
+function setGamePagesConf(conf: GamePagesConf) {
+  GM_setValue(GAME_PAGES_CONF_KEY, conf);
+}
+
+function getRuntimeGamePages(): PageConfig[] {
+  const gamePagesConf = getGamePagesConf();
+  return gamePages.map((p) => {
+    const conf = gamePagesConf[p.name] || {};
+    if (conf.hide) {
+      return {
+        ...p,
+        type: 'info',
+      };
+    }
+    return p;
+  });
+}
+
+function getRuntimePages(pages: PageConfig[]): PageConfig[] {
+  const isGamePages = pages.some((page) =>
+    gamePages.some((gamePage) => gamePage.name === page.name)
+  );
+  return isGamePages ? getRuntimeGamePages() : pages;
+}
+
 if (GM_registerMenuCommand) {
   GM_registerMenuCommand(
     'clear cache',
@@ -59,7 +95,7 @@ if (GM_registerMenuCommand) {
     () => {
       document.querySelector('.e-userjs-score-compare')?.remove()
       initPage(animePages, true);
-      !g_hide_game_score_flag && initPage(gamePages, true);
+      !isGameScoreHidden() && initPage(getRuntimeGamePages(), true);
     },
     'c'
   );
@@ -68,11 +104,6 @@ if (GM_registerMenuCommand) {
     GM_setValue(BGM_UA, p);
   });
   GM_registerMenuCommand('设置对话框', () => {
-    // g_hide_game_score_flag = prompt(
-    //   '设置不为空时隐藏游戏评分',
-    //   g_hide_game_score_flag
-    // );
-    // GM_setValue('e_user_hide_game_score', g_hide_game_score_flag);
     showConfigDialog();
   });
 }
@@ -103,25 +134,26 @@ function showConfigDialog() {
 </dialog>
 `) as HTMLDialogElement;
   $dialog.style.cssText = 'width: 300px; padding: 20px; margin: auto;';
-  var g_hide_game_score_flag = GM_getValue('e_user_hide_game_score');
-  g_game_pages_conf = GM_getValue('e_user_game_pages_conf') || {};
-  if (g_hide_game_score_flag) {
+  let gamePagesConf = getGamePagesConf();
+  if (isGameScoreHidden()) {
     ($dialog.querySelector('#e-user-hide-game-score') as HTMLInputElement).checked = true;
   }
   gamePages.forEach((page) => {
-    const conf: any = g_game_pages_conf[page.name] || {};
+    const conf = gamePagesConf[page.name] || {};
     ($dialog.querySelector(`#e-user-game-pages-${page.name}`) as HTMLInputElement).checked = conf.hide ? false : true;
   })
   $dialog.querySelector('.game-option-container').addEventListener('change', (e: any) => {
     if (e.target.id === 'e-user-hide-game-score') {
-      g_hide_game_score_flag = e.target.checked ? '1' : undefined;
-      GM_setValue('e_user_hide_game_score', g_hide_game_score_flag);
+      setGameScoreHidden(e.target.checked);
     } else if (e.target.id?.startsWith('e-user-game-pages-')) {
       const name = e.target.id.replace('e-user-game-pages-', '');
-      const conf: any = g_game_pages_conf[name] || {};
+      const conf = gamePagesConf[name] || {};
       conf.hide = !e.target.checked;
-      g_game_pages_conf[name] = conf;
-      GM_setValue('e_user_game_pages_conf', g_game_pages_conf);
+      gamePagesConf = {
+        ...gamePagesConf,
+        [name]: conf,
+      };
+      setGamePagesConf(gamePagesConf);
     }
   })
   document.body.appendChild($dialog);
@@ -227,7 +259,7 @@ function insertControlDOM(curPage: PageConfig, pages: PageConfig[]) {
     const $ctrl = findElement(curPage.controlSelector);
     curPage?.insertControlDOM?.($ctrl, {
       clear: clearInfoStorage,
-      refresh: () => refreshScore(curPage, pages, true),
+      refresh: () => refreshScore(curPage, getRuntimePages(pages), true),
     });
   }
 }
@@ -278,15 +310,6 @@ window.EGS_REVISE_QUERY_DICT = {
 }
 
 initPage(animePages);
-if (!g_hide_game_score_flag) {
-  initPage(gamePages.map((p) => {
-    const conf: any = g_game_pages_conf[p.name] || {};
-    if (conf.hide) {
-      return {
-        ...p,
-        type: 'info',
-      };
-    }
-    return p;
-  }));
+if (!isGameScoreHidden()) {
+  initPage(getRuntimeGamePages());
 }

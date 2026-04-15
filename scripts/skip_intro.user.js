@@ -14,7 +14,6 @@
 // @license     MIT
 // ==/UserScript==
 
-
 const SKIP_START_CONFIG = 'e_user_skip_start_config';
 const SKIP_END_CONFIG = 'e_user_skip_end_config';
 function setStart() {

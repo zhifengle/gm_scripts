@@ -9,25 +9,24 @@
 // @homepage    https://github.com/22earth/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/\w+\/list\/.*$/
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/index\/\d+/
-// @version     0.0.6
+// @version     0.0.7
 // @note        0.0.6 导出格式改为 excel 和支持 excel 的导入。
 // @note        0.0.4 添加导入功能。注意：不支持是否对自己可见的导入
 // @grant       GM_xmlhttpRequest
-// @require     https://cdn.staticfile.org/jschardet/1.4.1/jschardet.min.js
-// @require     https://cdn.staticfile.org/xlsx/0.18.5/xlsx.full.min.js
+// @require     https://cdnjs.cloudflare.com/ajax/libs/jschardet/1.4.1/jschardet.min.js
+// @require     https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
 // @run-at      document-end
 // ==/UserScript==
-
 
 function formatDate(time, fmt = 'yyyy-MM-dd') {
     const date = new Date(time);
     var o = {
-        'M+': date.getMonth() + 1,
-        'd+': date.getDate(),
-        'h+': date.getHours(),
-        'm+': date.getMinutes(),
-        's+': date.getSeconds(),
-        'q+': Math.floor((date.getMonth() + 3) / 3),
+        'M+': date.getMonth() + 1, //月份
+        'd+': date.getDate(), //日
+        'h+': date.getHours(), //小时
+        'm+': date.getMinutes(), //分
+        's+': date.getSeconds(), //秒
+        'q+': Math.floor((date.getMonth() + 3) / 3), //季度
         S: date.getMilliseconds(), //毫秒
     };
     if (/(y+)/i.test(fmt)) {
@@ -70,12 +69,31 @@ function dealDate(dataStr) {
 
 // support GM_XMLHttpRequest
 let retryCounter = 0;
+let USER_SITE_CONFIG = {};
+function getSiteConfg(url, host) {
+    let hostname = host;
+    {
+        hostname = new URL(url)?.hostname;
+    }
+    const config = USER_SITE_CONFIG[hostname] || {};
+    return config;
+}
+function mergeOpts(opts, config) {
+    return {
+        ...opts,
+        ...config,
+        headers: {
+            ...opts?.headers,
+            ...config?.headers,
+        },
+    };
+}
 function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
-    var _a;
-    const method = ((_a = opts === null || opts === void 0 ? void 0 : opts.method) === null || _a === void 0 ? void 0 : _a.toUpperCase()) || 'GET';
+    const method = opts?.method?.toUpperCase() || 'GET';
+    opts = mergeOpts(opts, getSiteConfg(url));
     // @ts-ignore
     {
-        const gmXhrOpts = Object.assign({}, opts);
+        const gmXhrOpts = { ...opts };
         if (method === 'POST' && gmXhrOpts.body) {
             gmXhrOpts.data = gmXhrOpts.body;
         }
@@ -84,7 +102,12 @@ function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
         }
         return new Promise((resolve, reject) => {
             // @ts-ignore
-            GM_xmlhttpRequest(Object.assign({ method, timeout: TIMEOUT, url, responseType: type, onload: function (res) {
+            GM_xmlhttpRequest({
+                method,
+                timeout: TIMEOUT,
+                url,
+                responseType: type,
+                onload: function (res) {
                     if (res.status === 404) {
                         retryCounter = 0;
                         reject(404);
@@ -102,10 +125,13 @@ function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
                         retryCounter = 0;
                         resolve(res.response);
                     }
-                }, onerror: (e) => {
+                },
+                onerror: (e) => {
                     retryCounter = 0;
                     reject(e);
-                } }, gmXhrOpts));
+                },
+                ...gmXhrOpts,
+            });
         });
     }
 }
@@ -239,6 +265,8 @@ function convertItemInfo($item) {
         }
     }
     if (Object.keys(collectInfo).length) {
+        collectInfo.tags = collectInfo.tags || '';
+        collectInfo.comment = collectInfo.comment || '';
         itemSubject.collectInfo = collectInfo;
     }
     const $cover = $item.querySelector('.subjectCover img');
@@ -262,7 +290,7 @@ function getItemInfos($doc = document) {
 function getTotalPageNum($doc = document) {
     const $multipage = $doc.querySelector('#multipage');
     let totalPageNum = 1;
-    const pList = $multipage === null || $multipage === void 0 ? void 0 : $multipage.querySelectorAll('.page_inner>.p');
+    const pList = $multipage?.querySelectorAll('.page_inner>.p');
     if (pList && pList.length) {
         let tempNum = parseInt(pList[pList.length - 2].getAttribute('href').match(/page=(\d*)/)[1]);
         totalPageNum = parseInt(pList[pList.length - 1].getAttribute('href').match(/page=(\d*)/)[1]);
@@ -581,11 +609,10 @@ function genImportControl() {
     return $node;
 }
 function addExportBtn(ext = 'xlsx') {
-    var _a;
     const $nav = $q('#headerProfile .navSubTabs');
     if (!$nav)
         return;
-    const type = ((_a = $nav.querySelector('.focus')) === null || _a === void 0 ? void 0 : _a.textContent) || '';
+    const type = $nav.querySelector('.focus')?.textContent || '';
     const $username = $q('.nameSingle .inner>a');
     let name = '导出收藏';
     if ($username) {

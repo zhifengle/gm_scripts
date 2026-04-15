@@ -32,7 +32,8 @@ export type FilterOptions = {
 } & FuseOptions;
 
 export function fuseFilterSubjects(items: SearchSubject[], info: SearchSubject, opts: FuseOptions): SearchSubject[] {
-  var results = new Fuse(items, opts).search(info.name);
+  const query = info.rawName || info.name;
+  var results = new Fuse(items, opts).search(query);
   if (!results.length) {
     return [];
   }
@@ -75,6 +76,11 @@ export function filterResults(items: SearchSubject[], subjectInfo: AllSubject, o
     );
   }
   if (!results.length) {
+    if (subjectInfo.releaseDate) {
+      return items.find((item) =>
+        Boolean(item.releaseDate) && isEqualDate(item.releaseDate, subjectInfo.releaseDate)
+      );
+    }
     return;
   }
   if (opts.score) {

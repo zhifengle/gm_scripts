@@ -28,16 +28,17 @@ export function getInfo(id: string) {
 
 export function getScoreMap(site: string, id: string): ScoreMap {
   const currentDict = storage.get(CURRENT_ID_DICT) || {};
+
+  const scoreMap = storage.get('DICT_ID' + id);
+  if (scoreMap) {
+    return scoreMap;
+  }
+
   if (
     currentDict[site] === id ||
     Object.values(currentDict).includes(id)
   ) {
     return currentDict;
-  }
-
-  const scoreMap = storage.get('DICT_ID' + id);
-  if (scoreMap) {
-    return scoreMap;
   }
 
   return {};

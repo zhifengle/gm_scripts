@@ -6,14 +6,14 @@ import { normalizeQuery } from '../utils/utils';
 import { FilterOptions, filterResults } from './common';
 import { isEnglishName } from './utils';
 
-export const site_origin = 'https://ddfan.org/';
+export const site_origin = 'https://2dfan.com/';
 const HEADERS = {
   accept:
     'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
   referer: site_origin,
 };
 
-export const favicon = 'https://www.google.com/s2/favicons?domain=ddfan.org';
+export const favicon = 'https://www.google.com/s2/favicons?domain=2dfan.com';
 
 function getSearchItem($item: HTMLElement): SearchSubject {
   const $title = $item.querySelector('h4.media-heading > a');

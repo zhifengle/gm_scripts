@@ -18,15 +18,6 @@ import { erogamescapePage } from './pages/erogamescape';
 import { moepediaPage } from './pages/moepedia';
 import { addSiteOption } from '../../utils/fetchData';
 
-// 也许使用索引更快?
-type SaveTask = {
-  page: PageConfig;
-  info: SearchSubject;
-};
-type ScoreRowTask = SaveTask & {
-  shouldSave: boolean;
-};
-
 const animePages: PageConfig[] = [
   bangumiAnimePage,
   doubanAnimePage,
@@ -48,6 +39,7 @@ const SEARCH_TIMEOUT = 10000;
 
 type GamePagesConf = Record<string, { hide?: boolean }>;
 const siteSearchQueues: Record<string, Promise<void>> = {};
+let activeRefreshToken = 0;
 
 function isGameScoreHidden(): boolean {
   return Boolean(GM_getValue(HIDE_GAME_SCORE_KEY));
@@ -146,6 +138,50 @@ function getNoMatchInfo(curInfo: SearchSubject): SearchSubject {
   };
 }
 
+function isActiveRefresh(token: number): boolean {
+  return token === activeRefreshToken;
+}
+
+function getMapExpiration(pages: PageConfig[]): number {
+  return pages.reduce((max, page) => Math.max(max, page.expiration || 7), 7);
+}
+
+function getInfoStorageKey(page: PageConfig, info: SearchSubject): string {
+  if (info?.url) {
+    return page.getSubjectId(info.url);
+  }
+  return `${page.name}_${info.name}`;
+}
+
+function saveScoreInfo(
+  page: PageConfig,
+  info: SearchSubject,
+  map: ScoreMap
+): string | undefined {
+  const key = getInfoStorageKey(page, info);
+  if (!key) return;
+
+  if (info.url) {
+    saveInfo(key, info, page.expiration);
+  } else if (!info.url) {
+    saveInfo(key, { url: '', name: '' }, page.expiration);
+  }
+  map[page.name] = key;
+  return key;
+}
+
+function insertScoreInfo(
+  curPage: PageConfig,
+  page: PageConfig,
+  info: SearchSubject
+): void {
+  try {
+    curPage.insertScoreInfo(page, info);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 async function getPageSearchResult(
   page: PageConfig,
   curInfo: SearchSubject
@@ -165,13 +201,13 @@ function logRefreshError(error: unknown) {
   console.error('[score_comparation_helper] refresh failed', error);
 }
 
-function refreshVisibleScores() {
+function refreshVisibleScores(force = true) {
   document
     .querySelectorAll('.e-userjs-score-compare')
     .forEach((el) => el.remove());
-  initPage(animePages, true);
+  initPage(animePages, force);
   if (!isGameScoreHidden()) {
-    initPage(getRuntimeGamePages(), true);
+    initPage(getRuntimeGamePages(), force);
   }
 }
 
@@ -554,40 +590,34 @@ async function insertScoreRows(
   pages: PageConfig[],
   curInfo: SearchSubject,
   map: ScoreMap,
-  tasks: SaveTask[]
+  refreshToken: number,
+  subjectId: string,
+  mapExpiration: number
 ) {
-  const targetPages = pages.filter((page) => page.name !== curPage.name && page.type !== 'info');
-  const rowTasks = await Promise.all(
-    targetPages.map(async (page): Promise<ScoreRowTask> => {
+  const targetPages = pages.filter(
+    (page) => page.name !== curPage.name && page.type !== 'info'
+  );
+  await Promise.all(
+    targetPages.map(async (page): Promise<void> => {
       const cachedInfo = getInfo(map[page.name]) as SearchSubject | undefined;
       if (cachedInfo) {
-        return {
-          page,
-          info: cachedInfo,
-          shouldSave: false,
-        };
+        if (isActiveRefresh(refreshToken)) {
+          insertScoreInfo(curPage, page, cachedInfo);
+        }
+        return;
       }
 
       const searchResult = await getPageSearchResult(page, curInfo);
-      return {
-        page,
-        info: searchResult || getNoMatchInfo(curInfo),
-        shouldSave: true,
-      };
+      if (!isActiveRefresh(refreshToken)) return;
+
+      const info = searchResult || getNoMatchInfo(curInfo);
+      saveScoreInfo(page, info, map);
+      if (subjectId) {
+        setScoreMap(subjectId, map, mapExpiration);
+      }
+      insertScoreInfo(curPage, page, info);
     })
   );
-
-  for (const rowTask of rowTasks) {
-    const { page, info, shouldSave } = rowTask;
-    if (shouldSave) {
-      tasks.push({ page, info });
-    }
-    try {
-      curPage.insertScoreInfo(page, info);
-    } catch (error) {
-      console.error(error);
-    }
-  }
 }
 
 async function refreshScore(
@@ -595,38 +625,37 @@ async function refreshScore(
   pages: PageConfig[],
   force: boolean = false
 ) {
-  const saveTask: SaveTask[] = [];
+  const refreshToken = ++activeRefreshToken;
   const curInfo = curPage.getScoreInfo();
-  saveTask.push({
-    page: curPage,
-    info: curInfo,
-  });
   const subjectId = curPage.getSubjectId(curInfo.url);
-  let map = { [curPage.name]: subjectId };
-  if (!force) {
+  let map: ScoreMap = subjectId ? { [curPage.name]: subjectId } : {};
+  if (!force && subjectId) {
     const scoreMap = getScoreMap(curPage.name, subjectId);
     map = { ...scoreMap, [curPage.name]: subjectId };
+  }
+  const mapExpiration = getMapExpiration(pages);
+  saveScoreInfo(curPage, curInfo, map);
+  if (subjectId) {
+    setScoreMap(subjectId, map, mapExpiration);
   }
   if (force) {
     document
       .querySelectorAll('.e-userjs-score-compare')
       .forEach((el) => el.remove());
   }
-  await insertScoreRows(curPage, pages, curInfo, map, saveTask);
+  await insertScoreRows(
+    curPage,
+    pages,
+    curInfo,
+    map,
+    refreshToken,
+    subjectId,
+    mapExpiration
+  );
 
-  saveTask.forEach((t) => {
-    const { page, info } = t;
-    if (info && info.url) {
-      const key = page.getSubjectId(info.url);
-      saveInfo(key, info, page.expiration);
-      map[page.name] = key;
-    } else {
-      const key = `${page.name}_${info.name}`;
-      saveInfo(key, { url: '', name: '' }, page.expiration);
-      map[page.name] = key;
-    }
-  });
-  setScoreMap(subjectId, map);
+  if (isActiveRefresh(refreshToken) && subjectId) {
+    setScoreMap(subjectId, map, mapExpiration);
+  }
 }
 
 function isValidPage(curPage: PageConfig): boolean {

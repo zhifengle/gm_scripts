@@ -1997,14 +1997,26 @@ function getInfo(id) {
 }
 function getScoreMap(site, id) {
     const currentDict = storage.get(CURRENT_ID_DICT) || {};
-    if (currentDict[site] === id) {
+    if (currentDict[site] === id ||
+        Object.values(currentDict).includes(id)) {
         return currentDict;
     }
-    return storage.get('DICT_ID' + id) || {};
+    const scoreMap = storage.get('DICT_ID' + id);
+    if (scoreMap) {
+        return scoreMap;
+    }
+    return {};
 }
-function setScoreMap(id, map) {
+function setScoreMap(id, map, expiration) {
+    if (!id) {
+        console.error('invalid score map id: ', map);
+        return;
+    }
     storage.set(CURRENT_ID_DICT, map);
-    storage.set('DICT_ID' + id, map, 7);
+    const ids = new Set([id, ...Object.values(map)].filter(Boolean));
+    ids.forEach((mapId) => {
+        storage.set('DICT_ID' + mapId, map, expiration || 7);
+    });
 }
 
 const site_origin$1 = 'https://2dfan.com/';
@@ -2916,6 +2928,7 @@ const HIDE_GAME_SCORE_KEY = 'e_user_hide_game_score';
 const GAME_PAGES_CONF_KEY = 'e_user_game_pages_conf';
 const SEARCH_TIMEOUT = 10000;
 const siteSearchQueues = {};
+let activeRefreshToken = 0;
 function isGameScoreHidden() {
     return Boolean(GM_getValue(HIDE_GAME_SCORE_KEY));
 }
@@ -3000,6 +3013,39 @@ function getNoMatchInfo(curInfo) {
         url: '',
     };
 }
+function isActiveRefresh(token) {
+    return token === activeRefreshToken;
+}
+function getMapExpiration(pages) {
+    return pages.reduce((max, page) => Math.max(max, page.expiration || 7), 7);
+}
+function getInfoStorageKey(page, info) {
+    if (info?.url) {
+        return page.getSubjectId(info.url);
+    }
+    return `${page.name}_${info.name}`;
+}
+function saveScoreInfo(page, info, map) {
+    const key = getInfoStorageKey(page, info);
+    if (!key)
+        return;
+    if (info.url) {
+        saveInfo(key, info, page.expiration);
+    }
+    else if (!info.url) {
+        saveInfo(key, { url: '', name: '' }, page.expiration);
+    }
+    map[page.name] = key;
+    return key;
+}
+function insertScoreInfo(curPage, page, info) {
+    try {
+        curPage.insertScoreInfo(page, info);
+    }
+    catch (error) {
+        console.error(error);
+    }
+}
 async function getPageSearchResult(page, curInfo) {
     try {
         return await withTimeout(runInSiteSearchQueue(page, () => page.getSearchResult(curInfo)), SEARCH_TIMEOUT, `${page.name} search timeout`);
@@ -3011,13 +3057,13 @@ async function getPageSearchResult(page, curInfo) {
 function logRefreshError(error) {
     console.error('[score_comparation_helper] refresh failed', error);
 }
-function refreshVisibleScores() {
+function refreshVisibleScores(force = true) {
     document
         .querySelectorAll('.e-userjs-score-compare')
         .forEach((el) => el.remove());
-    initPage(animePages, true);
+    initPage(animePages, force);
     if (!isGameScoreHidden()) {
-        initPage(getRuntimeGamePages(), true);
+        initPage(getRuntimeGamePages(), force);
     }
 }
 function escapeHtml(text) {
@@ -3390,70 +3436,50 @@ function getPageIdxByHost(pages, host) {
     });
     return idx;
 }
-async function insertScoreRows(curPage, pages, curInfo, map, tasks) {
+async function insertScoreRows(curPage, pages, curInfo, map, refreshToken, subjectId, mapExpiration) {
     const targetPages = pages.filter((page) => page.name !== curPage.name && page.type !== 'info');
-    const rowTasks = await Promise.all(targetPages.map(async (page) => {
+    await Promise.all(targetPages.map(async (page) => {
         const cachedInfo = getInfo(map[page.name]);
         if (cachedInfo) {
-            return {
-                page,
-                info: cachedInfo,
-                shouldSave: false,
-            };
+            if (isActiveRefresh(refreshToken)) {
+                insertScoreInfo(curPage, page, cachedInfo);
+            }
+            return;
         }
         const searchResult = await getPageSearchResult(page, curInfo);
-        return {
-            page,
-            info: searchResult || getNoMatchInfo(curInfo),
-            shouldSave: true,
-        };
+        if (!isActiveRefresh(refreshToken))
+            return;
+        const info = searchResult || getNoMatchInfo(curInfo);
+        saveScoreInfo(page, info, map);
+        if (subjectId) {
+            setScoreMap(subjectId, map, mapExpiration);
+        }
+        insertScoreInfo(curPage, page, info);
     }));
-    for (const rowTask of rowTasks) {
-        const { page, info, shouldSave } = rowTask;
-        if (shouldSave) {
-            tasks.push({ page, info });
-        }
-        try {
-            curPage.insertScoreInfo(page, info);
-        }
-        catch (error) {
-            console.error(error);
-        }
-    }
 }
 async function refreshScore(curPage, pages, force = false) {
-    const saveTask = [];
+    const refreshToken = ++activeRefreshToken;
     const curInfo = curPage.getScoreInfo();
-    saveTask.push({
-        page: curPage,
-        info: curInfo,
-    });
     const subjectId = curPage.getSubjectId(curInfo.url);
-    let map = { [curPage.name]: subjectId };
-    if (!force) {
+    let map = subjectId ? { [curPage.name]: subjectId } : {};
+    if (!force && subjectId) {
         const scoreMap = getScoreMap(curPage.name, subjectId);
         map = { ...scoreMap, [curPage.name]: subjectId };
+    }
+    const mapExpiration = getMapExpiration(pages);
+    saveScoreInfo(curPage, curInfo, map);
+    if (subjectId) {
+        setScoreMap(subjectId, map, mapExpiration);
     }
     if (force) {
         document
             .querySelectorAll('.e-userjs-score-compare')
             .forEach((el) => el.remove());
     }
-    await insertScoreRows(curPage, pages, curInfo, map, saveTask);
-    saveTask.forEach((t) => {
-        const { page, info } = t;
-        if (info && info.url) {
-            const key = page.getSubjectId(info.url);
-            saveInfo(key, info, page.expiration);
-            map[page.name] = key;
-        }
-        else {
-            const key = `${page.name}_${info.name}`;
-            saveInfo(key, { url: '', name: '' }, page.expiration);
-            map[page.name] = key;
-        }
-    });
-    setScoreMap(subjectId, map);
+    await insertScoreRows(curPage, pages, curInfo, map, refreshToken, subjectId, mapExpiration);
+    if (isActiveRefresh(refreshToken) && subjectId) {
+        setScoreMap(subjectId, map, mapExpiration);
+    }
 }
 function isValidPage(curPage) {
     const $page = findElement(curPage.pageSelector);

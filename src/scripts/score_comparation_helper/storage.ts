@@ -28,13 +28,29 @@ export function getInfo(id: string) {
 
 export function getScoreMap(site: string, id: string): ScoreMap {
   const currentDict = storage.get(CURRENT_ID_DICT) || {};
-  if (currentDict[site] === id) {
+  if (
+    currentDict[site] === id ||
+    Object.values(currentDict).includes(id)
+  ) {
     return currentDict;
   }
-  return storage.get('DICT_ID' + id) || {};
+
+  const scoreMap = storage.get('DICT_ID' + id);
+  if (scoreMap) {
+    return scoreMap;
+  }
+
+  return {};
 }
 
-export function setScoreMap(id: string, map: ScoreMap) {
+export function setScoreMap(id: string, map: ScoreMap, expiration?: number) {
+  if (!id) {
+    console.error('invalid score map id: ', map);
+    return;
+  }
   storage.set(CURRENT_ID_DICT, map);
-  storage.set('DICT_ID' + id, map, 7);
+  const ids = new Set([id, ...Object.values(map)].filter(Boolean));
+  ids.forEach((mapId) => {
+    storage.set('DICT_ID' + mapId, map, expiration || 7);
+  });
 }

@@ -3,15 +3,24 @@ import { SearchSubject } from '../../interface/subject';
 import { ScoreMap, ScoreMapEntry } from './types';
 
 const USERJS_PREFIX = 'E_SCORE_V2_';
+const LEGACY_USERJS_PREFIX = 'E_SCORE_';
 const CURRENT_ID_DICT = 'CURRENT_ID_DICT';
 const SCORE_MAP_PREFIX = 'DICT_ID';
 const DEFAULT_EXPIRATION_DAYS = 7;
 const CURRENT_MAP_EXPIRATION_DAYS = 1;
 
-const storage = new KvExpiration(new GmEngine(), USERJS_PREFIX);
+const storageEngine = new GmEngine();
+const storage = new KvExpiration(storageEngine, USERJS_PREFIX);
 
 export function clearInfoStorage() {
-  storage.flush();
+  storageEngine.keys().forEach((key) => {
+    if (
+      key.startsWith(USERJS_PREFIX) ||
+      key.startsWith(LEGACY_USERJS_PREFIX)
+    ) {
+      storageEngine.remove(key);
+    }
+  });
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

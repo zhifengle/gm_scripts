@@ -36,6 +36,7 @@ const BGM_UA = 'e_user_bgm_ua';
 const HIDE_GAME_SCORE_KEY = 'e_user_hide_game_score';
 const GAME_PAGES_CONF_KEY = 'e_user_game_pages_conf';
 const SEARCH_TIMEOUT = 10000;
+const MAX_PARALLEL_SEARCH_REQUESTS = 2;
 
 type GamePagesConf = Record<string, { hide?: boolean }>;
 const siteSearchQueues: Record<string, Promise<void>> = {};
@@ -451,7 +452,7 @@ function showConfigDialog() {
   </style>
   <div class="game-option-container e-user-config-content">
     <div class="e-user-config-header">
-      <p id="e-user-config-title" class="e-user-config-title">游戏评分设置</p>
+      <p id="e-user-config-title" class="e-user-config-title">评分设置</p>
       <p class="e-user-config-desc">集中管理显示状态、自动搜索、Bangumi 请求和当前页面操作。</p>
     </div>
     <div class="e-user-config-section">
@@ -597,26 +598,66 @@ async function insertScoreRows(
   const targetPages = pages.filter(
     (page) => page.name !== curPage.name && page.type !== 'info'
   );
-  await Promise.all(
-    targetPages.map(async (page): Promise<void> => {
-      const cachedInfo = getInfo(map[page.name]) as SearchSubject | undefined;
-      if (cachedInfo) {
-        if (isActiveRefresh(refreshToken)) {
-          insertScoreInfo(curPage, page, cachedInfo);
-        }
+  const rowResults: Array<{ page: PageConfig; info: SearchSubject } | undefined> =
+    new Array(targetPages.length);
+  let nextLoadIndex = 0;
+  let nextInsertIndex = 0;
+  let stopped = false;
+
+  function insertReadyRows(): void {
+    while (!stopped && nextInsertIndex < targetPages.length) {
+      const result = rowResults[nextInsertIndex];
+      if (!result) return;
+      if (!isActiveRefresh(refreshToken)) {
+        stopped = true;
         return;
       }
+      insertScoreInfo(curPage, result.page, result.info);
+      nextInsertIndex++;
+    }
+  }
 
-      const searchResult = await getPageSearchResult(page, curInfo);
-      if (!isActiveRefresh(refreshToken)) return;
+  async function loadRow(index: number): Promise<void> {
+    if (!isActiveRefresh(refreshToken)) {
+      stopped = true;
+      return;
+    }
 
-      const info = searchResult || getNoMatchInfo(curInfo);
-      saveScoreInfo(page, info, map);
-      if (subjectId) {
-        setScoreMap(subjectId, map, mapExpiration);
-      }
-      insertScoreInfo(curPage, page, info);
-    })
+    const page = targetPages[index];
+    const cachedInfo = getInfo(map[page.name]) as SearchSubject | undefined;
+    if (cachedInfo) {
+      rowResults[index] = { page, info: cachedInfo };
+      insertReadyRows();
+      return;
+    }
+
+    const searchResult = await getPageSearchResult(page, curInfo);
+    if (!isActiveRefresh(refreshToken)) {
+      stopped = true;
+      return;
+    }
+
+    const info = searchResult || getNoMatchInfo(curInfo);
+    saveScoreInfo(page, info, map);
+    if (subjectId) {
+      setScoreMap(subjectId, map, mapExpiration);
+    }
+
+    rowResults[index] = { page, info };
+    insertReadyRows();
+  }
+
+  async function searchWorker(): Promise<void> {
+    while (!stopped && isActiveRefresh(refreshToken)) {
+      const index = nextLoadIndex++;
+      if (index >= targetPages.length) return;
+      await loadRow(index);
+    }
+  }
+
+  const workerCount = Math.min(MAX_PARALLEL_SEARCH_REQUESTS, targetPages.length);
+  await Promise.all(
+    Array.from({ length: workerCount }, () => searchWorker())
   );
 }
 

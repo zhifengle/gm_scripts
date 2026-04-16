@@ -1,7 +1,32 @@
 import { SearchSubject } from '../../interface/subject';
 import { Selector } from '../../interface/wiki';
 
-export type ScoreMap = Record<string, string>;
+export type ScoreMapEntry =
+  | {
+      status: 'matched';
+      id: string;
+    }
+  | {
+      status: 'no-match';
+      cacheKey: string;
+    };
+
+export type ScoreMap = Record<string, ScoreMapEntry>;
+
+export type SearchLoadResult =
+  | {
+      status: 'matched';
+      info: SearchSubject;
+    }
+  | {
+      status: 'not-found';
+      info: SearchSubject;
+    }
+  | {
+      status: 'failed';
+      error: unknown;
+    };
+
 export type PageConfig = {
   name: string;
   href: string | string[];

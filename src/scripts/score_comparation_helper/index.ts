@@ -6,13 +6,14 @@ import { doubanAnimePage } from './pages/douban';
 import { myanimelistPage } from './pages/myanimelist';
 import {
   clearInfoStorage,
-  getInfo,
+  getInfoFromMap,
   getScoreMap,
-  saveInfo,
+  saveNoMatchInfo,
+  saveSubjectInfo,
   setScoreMap,
 } from './storage';
 import { twodfanPage } from './pages/twodfan';
-import { PageConfig, ScoreMap } from './types';
+import { PageConfig, ScoreMap, SearchLoadResult } from './types';
 import { vndbPage } from './pages/vndb';
 import { erogamescapePage } from './pages/erogamescape';
 import { moepediaPage } from './pages/moepedia';
@@ -147,28 +148,41 @@ function getMapExpiration(pages: PageConfig[]): number {
   return pages.reduce((max, page) => Math.max(max, page.expiration || 7), 7);
 }
 
-function getInfoStorageKey(page: PageConfig, info: SearchSubject): string {
-  if (info?.url) {
-    return page.getSubjectId(info.url);
-  }
-  return `${page.name}_${info.name}`;
+function getNoMatchCacheKey(
+  page: PageConfig,
+  sourcePage: PageConfig,
+  sourceSubjectId: string
+): string {
+  return `${page.name}_no_match_${sourcePage.name}_${sourceSubjectId}`;
 }
 
 function saveScoreInfo(
   page: PageConfig,
   info: SearchSubject,
-  map: ScoreMap
+  map: ScoreMap,
+  options: {
+    sourcePage?: PageConfig;
+    sourceSubjectId?: string;
+    status?: 'matched' | 'no-match';
+  } = {}
 ): string | undefined {
-  const key = getInfoStorageKey(page, info);
-  if (!key) return;
-
-  if (info.url) {
-    saveInfo(key, info, page.expiration);
-  } else if (!info.url) {
-    saveInfo(key, { url: '', name: '' }, page.expiration);
+  if (options.status === 'no-match' || !info.url) {
+    if (!options.sourcePage || !options.sourceSubjectId) return;
+    const cacheKey = getNoMatchCacheKey(
+      page,
+      options.sourcePage,
+      options.sourceSubjectId
+    );
+    saveNoMatchInfo(cacheKey, page.expiration);
+    map[page.name] = { status: 'no-match', cacheKey };
+    return cacheKey;
   }
-  map[page.name] = key;
-  return key;
+
+  const id = page.getSubjectId(info.url);
+  if (!id) return;
+  saveSubjectInfo(id, info, page.expiration);
+  map[page.name] = { status: 'matched', id };
+  return id;
 }
 
 function insertScoreInfo(
@@ -186,15 +200,27 @@ function insertScoreInfo(
 async function getPageSearchResult(
   page: PageConfig,
   curInfo: SearchSubject
-): Promise<SearchSubject | undefined> {
+): Promise<SearchLoadResult> {
+  const searchRequest = runInSiteSearchQueue(page, () =>
+    page.getSearchResult(curInfo)
+  );
+  searchRequest.catch((): void => undefined);
   try {
-    return await withTimeout(
-      runInSiteSearchQueue(page, () => page.getSearchResult(curInfo)),
+    const info = await withTimeout(
+      searchRequest,
       SEARCH_TIMEOUT,
       `${page.name} search timeout`
     );
+    if (info?.url) {
+      return { status: 'matched', info };
+    }
+    return {
+      status: 'not-found',
+      info: getNoMatchInfo(curInfo),
+    };
   } catch (error) {
     console.error(error);
+    return { status: 'failed', error };
   }
 }
 
@@ -624,7 +650,7 @@ async function insertScoreRows(
     }
 
     const page = targetPages[index];
-    const cachedInfo = getInfo(map[page.name]) as SearchSubject | undefined;
+    const cachedInfo = getInfoFromMap(map, page.name);
     if (cachedInfo) {
       rowResults[index] = { page, info: cachedInfo };
       insertReadyRows();
@@ -637,9 +663,25 @@ async function insertScoreRows(
       return;
     }
 
-    const info = searchResult || getNoMatchInfo(curInfo);
-    saveScoreInfo(page, info, map);
-    if (subjectId) {
+    let info: SearchSubject;
+    let shouldSaveMap = false;
+    if (searchResult.status === 'matched') {
+      info = searchResult.info;
+      shouldSaveMap = Boolean(saveScoreInfo(page, info, map));
+    } else if (searchResult.status === 'not-found') {
+      info = searchResult.info;
+      shouldSaveMap = Boolean(
+        saveScoreInfo(page, info, map, {
+          sourcePage: curPage,
+          sourceSubjectId: subjectId,
+          status: 'no-match',
+        })
+      );
+    } else {
+      info = getNoMatchInfo(curInfo);
+    }
+
+    if (subjectId && shouldSaveMap) {
       setScoreMap(subjectId, map, mapExpiration);
     }
 
@@ -669,10 +711,15 @@ async function refreshScore(
   const refreshToken = ++activeRefreshToken;
   const curInfo = curPage.getScoreInfo();
   const subjectId = curPage.getSubjectId(curInfo.url);
-  let map: ScoreMap = subjectId ? { [curPage.name]: subjectId } : {};
+  let map: ScoreMap = subjectId
+    ? { [curPage.name]: { status: 'matched', id: subjectId } }
+    : {};
   if (!force && subjectId) {
     const scoreMap = getScoreMap(curPage.name, subjectId);
-    map = { ...scoreMap, [curPage.name]: subjectId };
+    map = {
+      ...scoreMap,
+      [curPage.name]: { status: 'matched', id: subjectId },
+    };
   }
   const mapExpiration = getMapExpiration(pages);
   saveScoreInfo(curPage, curInfo, map);

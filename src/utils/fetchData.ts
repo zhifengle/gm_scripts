@@ -82,6 +82,10 @@ export function fetchInfo(
           retryCounter = 0;
           reject(e);
         },
+        ontimeout: (e: any) => {
+          retryCounter = 0;
+          reject(e || new Error(`request timeout: ${url}`));
+        },
         ...gmXhrOpts,
       });
     });
@@ -89,16 +93,16 @@ export function fetchInfo(
   if (method === 'POST' && opts.data) {
     opts.body = opts.data;
   }
-  return internalFetch(
-    fetch(url, {
-      method,
-      // credentials: 'include',
-      // mode: 'cors',
-      // cache: 'default',
-      ...opts,
-    }),
-    TIMEOUT
-  ).then(
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT);
+  return fetch(url, {
+    method,
+    // credentials: 'include',
+    // mode: 'cors',
+    // cache: 'default',
+    ...opts,
+    signal: opts.signal || controller.signal,
+  }).finally(() => clearTimeout(timer)).then(
     (response) => {
       if (response.status === 302 && retryCounter < 5) {
         retryCounter++;
@@ -111,6 +115,9 @@ export function fetchInfo(
             let text = decoder.decode(buffer);
             return text;
           });
+        }
+        if (type === 'arraybuffer') {
+          return response.arrayBuffer();
         }
         return response[type]();
       }
@@ -134,23 +141,4 @@ export function fetchText(
 }
 export function fetchJson(url: string, opts: IFetchOpts = {}): Promise<any> {
   return fetchInfo(url, 'json', opts);
-}
-
-// TODO: promise type
-function internalFetch<R>(
-  fetchPromise: Promise<R>,
-  TIMEOUT: number
-): Promise<any> {
-  let abortFn: null | Function = null;
-  const abortPromise = new Promise(function (resolve, reject) {
-    abortFn = function () {
-      reject('abort promise');
-    };
-  });
-
-  let abortablePromise = Promise.race([fetchPromise, abortPromise]);
-  setTimeout(function () {
-    abortFn();
-  }, TIMEOUT);
-  return abortablePromise;
 }

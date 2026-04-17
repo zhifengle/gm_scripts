@@ -2,6 +2,8 @@
 // @name        offline 115 for rss2cloud
 // @namespace   https://github.com/zhifengle
 // @include     https://mikanani.me/*
+// @include     https://nyaa.si/*
+// @include     https://sukebei.nyaa.si/*
 // @version     0.1
 // @author      zhifengle
 // @description add offline tasks to rss2cloud server
@@ -23,6 +25,7 @@ if (GM_registerMenuCommand) {
   GM_registerMenuCommand('设置cid', setCid, 's');
 }
 const RSS2CLOUD_URL = 'http://localhost:8115';
+// const authString = btoa(`xx:xxx`);
 
 GM_addStyle(`
 .offline115-anchor {
@@ -236,10 +239,12 @@ function handleOfflineClick(e) {
     url: `${RSS2CLOUD_URL}/add`,
     headers: {
       'Content-Type': 'application/json',
+      // 'Authorization': `Basic ${authString}`,
     },
     data: JSON.stringify({
       tasks: [link],
       cid: folder_cid,
+      //savepath: "文件夹名称",
     }),
     onerror: function (response) {
       el.style.opacity = '1'

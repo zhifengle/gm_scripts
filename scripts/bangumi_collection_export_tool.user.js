@@ -9,10 +9,11 @@
 // @homepage    https://github.com/22earth/gm_scripts
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/\w+\/list\/.*$/
 // @include     /^https?:\/\/(bangumi|bgm|chii)\.(tv|in)\/index\/\d+/
-// @version     0.0.7
+// @version     0.0.8
 // @note        0.0.6 导出格式改为 excel 和支持 excel 的导入。
 // @note        0.0.4 添加导入功能。注意：不支持是否对自己可见的导入
 // @grant       GM_xmlhttpRequest
+// @grant       GM_addStyle
 // @require     https://cdnjs.cloudflare.com/ajax/libs/jschardet/1.4.1/jschardet.min.js
 // @require     https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
 // @run-at      document-end
@@ -130,6 +131,10 @@ function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
                     retryCounter = 0;
                     reject(e);
                 },
+                ontimeout: (e) => {
+                    retryCounter = 0;
+                    reject(e || new Error(`request timeout: ${url}`));
+                },
                 ...gmXhrOpts,
             });
         });
@@ -174,18 +179,8 @@ const typeIdDict = {
         id: '1',
     },
 };
-// 默认返回 2， 表示看过
-function getInterestTypeIdByName(name) {
-    let type = '2';
-    if (!name)
-        return type;
-    let key;
-    for (key in typeIdDict) {
-        if (typeIdDict[key].name === name) {
-            return typeIdDict[key].id;
-        }
-    }
-    return type;
+function getInterestTypeId(type) {
+    return typeIdDict[type].id;
 }
 function getInterestTypeName(type) {
     return typeIdDict[type].name;
@@ -382,257 +377,746 @@ function htmlToElement(html) {
     return template.content.firstChild;
 }
 
-// 目前写死
-const CSV_HEADER = '名称,别名,发行日期,地址,封面地址,收藏日期,我的评分,标签,吐槽,其它信息';
-const WATCH_STATUS_STR = '观看状态';
-const interestTypeArr = [
+const INTEREST_TYPE_HEADERS = ['观看状态', '类别', 'interestType'];
+const SYNC_STATUS_HEADERS = ['同步情况', 'syncStatus'];
+const SYNC_SUBJECT_HEADERS = ['搜索结果信息', 'syncSubject'];
+const DEFAULT_COLLECTION_SHEET_NAME = '用户收藏';
+const COLLECTION_SHEET_COLUMNS = [
+    {
+        key: 'name',
+        headers: ['名称', 'name', 'title'],
+        exportValue: (item) => item.name,
+        importValue: (item, value) => {
+            item.name = value;
+        },
+    },
+    {
+        key: 'greyName',
+        headers: ['别名', 'greyName', 'subtitle'],
+        exportValue: (item) => item.greyName,
+        importValue: (item, value) => {
+            item.greyName = value;
+        },
+    },
+    {
+        key: 'releaseDate',
+        headers: ['发行日期', 'releaseDate'],
+        exportValue: (item) => item.releaseDate,
+        importValue: (item, value) => {
+            item.releaseDate = value;
+        },
+    },
+    {
+        key: 'url',
+        headers: ['地址', 'url', 'subjectUrl'],
+        exportValue: (item) => item.url,
+        importValue: (item, value) => {
+            item.url = value;
+        },
+    },
+    {
+        key: 'cover',
+        headers: ['封面地址', 'cover', 'coverUrl'],
+        exportValue: (item) => item.cover,
+        importValue: (item, value) => {
+            item.cover = value;
+        },
+    },
+    {
+        key: 'collectDate',
+        headers: ['收藏日期', 'collectDate'],
+        exportValue: (item) => item.collectInfo?.date,
+        importValue: (item, value) => {
+            ensureCollectionInfo(item).date = value;
+        },
+    },
+    {
+        key: 'score',
+        headers: ['我的评分', 'score', 'rating'],
+        exportValue: (item) => item.collectInfo?.score,
+        importValue: (item, value) => {
+            ensureCollectionInfo(item).score = value;
+        },
+    },
+    {
+        key: 'tags',
+        headers: ['标签', 'tags'],
+        exportValue: (item) => item.collectInfo?.tags,
+        importValue: (item, value) => {
+            ensureCollectionInfo(item).tags = value;
+        },
+    },
+    {
+        key: 'comment',
+        headers: ['吐槽', 'comment'],
+        exportValue: (item) => item.collectInfo?.comment,
+        importValue: (item, value) => {
+            ensureCollectionInfo(item).comment = value;
+        },
+    },
+    {
+        key: 'rawInfos',
+        headers: ['其它信息', 'rawInfos', 'info'],
+        exportValue: (item) => item.rawInfos,
+        importValue: (item, value) => {
+            item.rawInfos = value;
+        },
+    },
+];
+function ensureCollectionInfo(item) {
+    if (!item.collectInfo) {
+        item.collectInfo = {
+            date: '',
+            score: '',
+            tags: '',
+            comment: '',
+        };
+    }
+    return item.collectInfo;
+}
+function toCellText(value) {
+    if (value == null) {
+        return '';
+    }
+    return String(value).trim();
+}
+function readFirstCell(row, headers) {
+    for (const header of headers) {
+        const value = toCellText(row[header]);
+        if (value) {
+            return value;
+        }
+    }
+    return '';
+}
+function getInterestTypeByName(name) {
+    const text = toCellText(name);
+    return ['wish', 'collect', 'do', 'on_hold', 'dropped'].find((type) => type === text || getInterestTypeName(type) === text);
+}
+function createEmptyCollectionSheetItem() {
+    return {
+        name: '',
+        url: '',
+        rawInfos: '',
+        syncStatus: '',
+        collectInfo: {
+            date: '',
+            score: '',
+            tags: '',
+            comment: '',
+        },
+    };
+}
+function serializeSearchSubject(subject) {
+    if (!subject) {
+        return '';
+    }
+    return [
+        subject.name || '',
+        subject.greyName || '',
+        subject.url || '',
+        subject.rawName || '',
+    ].join(';');
+}
+function parseSearchSubject(value) {
+    const text = toCellText(value);
+    if (!text) {
+        return;
+    }
+    try {
+        const parsed = JSON.parse(text);
+        if (parsed?.name || parsed?.url) {
+            return {
+                name: parsed.name || '',
+                greyName: parsed.greyName || '',
+                url: parsed.url || '',
+                rawName: parsed.rawName || '',
+            };
+        }
+    }
+    catch (error) {
+        // Older exports use "name;greyName;url;rawName".
+    }
+    const [name, greyName, url, rawName] = text.split(';');
+    if (!name && !url) {
+        return;
+    }
+    return {
+        name: name || '',
+        greyName: greyName || '',
+        url: url || '',
+        rawName: rawName || '',
+    };
+}
+function getCollectionSheetHeaders(options = {}) {
+    const headers = COLLECTION_SHEET_COLUMNS.map((column) => column.headers[0]);
+    headers.push(options.interestTypeHeader || INTEREST_TYPE_HEADERS[0]);
+    if (options.includeSyncColumns) {
+        headers.push(SYNC_STATUS_HEADERS[0], SYNC_SUBJECT_HEADERS[0]);
+    }
+    return headers;
+}
+function collectionItemToSheetRow(item, options = {}) {
+    const row = COLLECTION_SHEET_COLUMNS.reduce((res, column) => {
+        res[column.headers[0]] = column.exportValue(item) || '';
+        return res;
+    }, {});
+    const interestType = options.getInterestType?.(item) || item.collectInfo?.interestType;
+    row[options.interestTypeHeader || INTEREST_TYPE_HEADERS[0]] = interestType
+        ? getInterestTypeName(interestType)
+        : '';
+    if (options.includeSyncColumns) {
+        row[SYNC_STATUS_HEADERS[0]] = item.syncStatus || '';
+        row[SYNC_SUBJECT_HEADERS[0]] = serializeSearchSubject(item.syncSubject);
+    }
+    return row;
+}
+function collectionItemsToSheetRows(items, options = {}) {
+    return items.map((item) => collectionItemToSheetRow(item, options));
+}
+function collectionSheetRowToItem(row, options = {}) {
+    const item = createEmptyCollectionSheetItem();
+    COLLECTION_SHEET_COLUMNS.forEach((column) => {
+        column.importValue(item, readFirstCell(row, column.headers));
+    });
+    item.syncStatus = readFirstCell(row, SYNC_STATUS_HEADERS);
+    item.syncSubject = parseSearchSubject(readFirstCell(row, SYNC_SUBJECT_HEADERS));
+    if (!item.name && item.syncSubject?.name) {
+        item.name = item.syncSubject.name;
+    }
+    const fallbackTypes = options.fallbackTypes || [];
+    const interestType = getInterestTypeByName(readFirstCell(row, INTEREST_TYPE_HEADERS)) ||
+        (fallbackTypes.length === 1
+            ? fallbackTypes[0]
+            : options.defaultInterestType || 'collect');
+    ensureCollectionInfo(item).interestType = interestType;
+    return { item, interestType };
+}
+function createCollectionWorkbook(items, options = {}) {
+    const worksheet = XLSX.utils.json_to_sheet(collectionItemsToSheetRows(items, options), {
+        header: getCollectionSheetHeaders(options),
+    });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, options.sheetName || DEFAULT_COLLECTION_SHEET_NAME);
+    return workbook;
+}
+function downloadCollectionExcel(filename, items, options = {}) {
+    XLSX.writeFile(createCollectionWorkbook(items, options), filename);
+}
+async function readCollectionWorkbook(file) {
+    if (/\.csv$/i.test(file.name)) {
+        const data = await file.text();
+        return XLSX.read(data, { type: 'string' });
+    }
+    const data = await file.arrayBuffer();
+    return XLSX.read(data);
+}
+async function readCollectionSheetRows(file) {
+    const workbook = await readCollectionWorkbook(file);
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+        throw new Error('文件中没有工作表');
+    }
+    const worksheet = workbook.Sheets[sheetName];
+    if (!worksheet) {
+        throw new Error(`找不到工作表: ${sheetName}`);
+    }
+    return XLSX.utils.sheet_to_json(worksheet, {
+        defval: '',
+    });
+}
+
+const INTEREST_TYPES = [
     'wish',
     'collect',
     'do',
     'on_hold',
     'dropped',
 ];
-function genListUrl(t) {
-    let u = location.href.replace(/[^\/]+?$/, '');
-    return u + t;
+const IMPORT_INPUT_ID = 'e-userjs-import-csv-file';
+const COLLECTION_SHEET_EXTENSION = 'xlsx';
+const COLLECTION_PAGE_DELAY_MS = 500;
+const collectionCache = new Map();
+function injectActionStyles() {
+    GM_addStyle(`
+.e-userjs-collection-tool-action {
+  --action-border: rgba(112, 154, 174, .38);
+  --action-bg: rgba(112, 154, 174, .08);
+  --action-color: #6c93a6;
+  --action-hover-border: rgba(84, 144, 176, .58);
+  --action-hover-bg: rgba(112, 154, 174, .14);
+  --action-hover-color: #4f8fad;
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 0 6px;
+  padding: 0;
+  list-style: none;
+  vertical-align: middle;
 }
-// 通过 URL 获取收藏的状态
-function getInterestTypeByUrl(url) {
-    let m = url.match(/[^\/]+?$/);
-    return m[0].split('#')[0];
+.navSubTabs .e-userjs-collection-tool-action {
+  flex: 0 0 auto;
+  margin-left: 6px;
 }
-async function getCollectionInfo(url) {
-    const rawText = await fetchText(url);
-    const $doc = new DOMParser().parseFromString(rawText, 'text/html');
-    const totalPageNum = getTotalPageNum($doc);
-    const res = [...getItemInfos($doc)];
-    let page = 2;
-    while (page <= totalPageNum) {
-        let reqUrl = url;
-        const m = url.match(/page=(\d*)/);
-        if (m) {
-            reqUrl = reqUrl.replace(m[0], `page=${page}`);
-        }
-        else {
-            reqUrl = `${reqUrl}?page=${page}`;
-        }
-        await sleep(500);
-        console.info('fetch info: ', reqUrl);
-        const rawText = await fetchText(reqUrl);
-        const $doc = new DOMParser().parseFromString(rawText, 'text/html');
-        res.push(...getItemInfos($doc));
-        page += 1;
+.navSubTabs .e-userjs-collection-tool-action + .e-userjs-collection-tool-action {
+  margin-left: 0;
+}
+.e-userjs-collection-tool-action > a {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  margin: 2px 0;
+  border: 1px solid var(--action-border);
+  border-radius: 8px;
+  padding: 3px 9px;
+  background: var(--action-bg);
+  color: var(--action-color);
+  font-size: 13px;
+  line-height: 16px;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6);
+  transition: border-color .15s, background-color .15s, box-shadow .15s, color .15s, opacity .15s;
+}
+.navSubTabs .e-userjs-collection-tool-action > a {
+  display: inline-flex;
+  padding: 3px 9px;
+  color: var(--action-color);
+}
+.e-userjs-collection-tool-action > a:hover {
+  border-color: var(--action-hover-border);
+  background: var(--action-hover-bg);
+  color: var(--action-hover-color);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), 0 1px 3px rgba(112, 154, 174, .18);
+}
+.navSubTabs .e-userjs-collection-tool-action > a:hover {
+  color: var(--action-hover-color);
+}
+.e-userjs-collection-tool-action span {
+  color: inherit !important;
+}
+.e-userjs-collection-tool-action--inline {
+  margin-left: 10px;
+}
+#indexCatBox .e-userjs-collection-tool-action {
+  margin-left: auto;
+  padding-right: 2px;
+}
+#indexCatBox .e-userjs-collection-tool-action > a {
+  border: 1px solid var(--action-border);
+  padding: 4px 10px;
+  background: var(--action-bg);
+  color: var(--action-color);
+  transform: none;
+}
+#indexCatBox .e-userjs-collection-tool-action > a:hover {
+  border-color: var(--action-hover-border);
+  background: var(--action-hover-bg);
+  color: var(--action-hover-color);
+  transform: none;
+}
+#indexCatBox .e-userjs-collection-tool-action > a::after {
+  content: none;
+  display: none;
+}
+.e-userjs-collection-tool-action.is-busy > a {
+  opacity: .62;
+  cursor: wait;
+}
+.e-userjs-collection-tool-action.is-success {
+  --action-border: rgba(87, 166, 114, .6);
+  --action-bg: rgba(87, 166, 114, .1);
+  --action-color: #3b9461;
+}
+.e-userjs-collection-tool-action.is-error {
+  --action-border: rgba(203, 84, 84, .6);
+  --action-bg: rgba(203, 84, 84, .1);
+  --action-color: #bd4a4a;
+}
+.e-userjs-collection-tool-action.is-success > a:hover,
+.e-userjs-collection-tool-action.is-error > a:hover {
+  border-color: var(--action-border);
+  background: var(--action-bg);
+  color: var(--action-color);
+}
+#header .e-userjs-collection-tool-action--inline > a {
+  min-height: 23px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+html[data-theme="dark"] .e-userjs-collection-tool-action {
+  --action-border: rgba(132, 174, 195, .45);
+  --action-bg: rgba(132, 174, 195, .12);
+  --action-color: #a7c9da;
+  --action-hover-border: rgba(159, 199, 218, .7);
+  --action-hover-bg: rgba(132, 174, 195, .2);
+  --action-hover-color: #d2edf7;
+}
+html[data-theme="dark"] .e-userjs-collection-tool-action > a {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+html[data-theme="dark"] .e-userjs-collection-tool-action > a:hover {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .22);
+}
+html[data-theme="dark"] .e-userjs-collection-tool-action.is-success {
+  --action-border: rgba(90, 180, 124, .55);
+  --action-bg: rgba(90, 180, 124, .14);
+  --action-color: #8bd0a2;
+}
+html[data-theme="dark"] .e-userjs-collection-tool-action.is-error {
+  --action-border: rgba(218, 100, 100, .6);
+  --action-bg: rgba(218, 100, 100, .14);
+  --action-color: #ef9a9a;
+}
+`);
+}
+function getErrorMessage(error) {
+    if (error instanceof Error) {
+        return error.message;
     }
-    return res;
+    return String(error);
 }
-function getRowItem(item) {
-    const dict = {
-        name: '名称',
-        greyName: '别名',
-        releaseDate: '发行日期',
-        url: '地址',
-        cover: '封面地址',
-        rawInfos: '其它信息',
-    };
-    const dictCollection = {
-        date: '收藏日期',
-        score: '我的评分',
-        tags: '标签',
-        comment: '吐槽',
-        interestType: WATCH_STATUS_STR,
-    };
-    const res = {};
-    for (const [key, value] of Object.entries(dict)) {
-        // @ts-ignore
-        res[value] = item[key] || '';
+function setMenuText(item, text) {
+    const span = item.querySelector('span');
+    if (span) {
+        span.innerText = text;
     }
-    for (const [key, value] of Object.entries(dictCollection)) {
-        const collect = item.collectInfo || {};
-        if (key === 'interestType') {
-            res[value] = getInterestTypeName(item.collectInfo.interestType) || '';
-            continue;
+}
+function setActionState(item, state) {
+    item.classList.toggle('is-busy', state === 'busy');
+    item.classList.toggle('is-success', state === 'success');
+    item.classList.toggle('is-error', state === 'error');
+}
+async function withBusyState(item, busyText, fn) {
+    setMenuText(item, busyText);
+    setActionState(item, 'busy');
+    item.style.pointerEvents = 'none';
+    try {
+        await fn();
+    }
+    finally {
+        item.style.pointerEvents = 'auto';
+        if (item.classList.contains('is-busy')) {
+            setActionState(item, 'idle');
         }
-        // @ts-ignore
-        res[value] = collect[key] || '';
     }
-    return res;
 }
-function downloadExcel(filename, items) {
-    const rows = items.map((item) => getRowItem(item));
-    // @TODO 采用分步写入的方式
-    const header = CSV_HEADER.split(',');
-    header.push(WATCH_STATUS_STR);
-    const worksheet = XLSX.utils.json_to_sheet(rows, {
-        header,
-    });
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, '用户收藏');
-    XLSX.writeFile(workbook, filename);
-}
-function genAllExportBtn(filename) {
-    const btnStr = `<li><a href="javascript:void(0);"><span style="color:tomato;">导出所有收藏</span></a></li>`;
-    const $node = htmlToElement(btnStr);
-    $node.addEventListener('click', async (e) => {
-        const $text = $node.querySelector('span');
-        $text.innerText = '导出中...';
-        $node.style.pointerEvents = 'none';
-        let infos = [];
-        for (const t of interestTypeArr) {
-            let res = [];
+function createMenuItem(options) {
+    const tagName = options.tagName || 'li';
+    const className = [
+        'e-userjs-collection-tool-action',
+        tagName === 'span' ? 'e-userjs-collection-tool-action--inline' : '',
+    ]
+        .filter(Boolean)
+        .join(' ');
+    const node = htmlToElement(`<${tagName} class="${className}"${options.title ? ` title="${options.title}"` : ''}>
+  <a href="javascript:void(0);"><span>${options.label}</span></a>
+</${tagName}>`);
+    if (options.onClick) {
+        node.addEventListener('click', async () => {
             try {
-                res = await getCollectionInfo(genListUrl(t));
+                await options.onClick(node);
             }
             catch (error) {
-                console.error('抓取错误: ', error);
+                setMenuText(node, '操作失败');
+                setActionState(node, 'error');
+                console.error('操作失败: ', error);
             }
-            infos = infos.concat(res.map((item) => {
-                item.collectInfo.interestType = t;
-                return item;
-            }));
-        }
-        downloadExcel(filename, infos);
-        $text.innerText = '完成所有导出';
-        $node.style.pointerEvents = 'auto';
-    });
-    return $node;
+        });
+    }
+    return node;
 }
-function genExportBtn(filename) {
-    const btnStr = `<li><a href="javascript:void(0);"><span style="color:tomato;">导出收藏</span></a></li>`;
-    const $node = htmlToElement(btnStr);
-    $node.addEventListener('click', async (e) => {
-        const $text = $node.querySelector('span');
-        $text.innerText = '导出中...';
-        $node.style.pointerEvents = 'none';
-        let res = [];
+function clearLogInfo(container) {
+    container
+        .querySelectorAll('.e-wiki-log-info')
+        .forEach((node) => node.remove());
+}
+function getInterestTypeByUrl(url) {
+    const currentType = url.match(/[^\/?#]+(?=[?#]?[^\/]*$)/)?.[0];
+    return INTEREST_TYPES.find((type) => type === currentType);
+}
+function getListBaseUrl() {
+    return location.href.replace(/[^\/?#]+(?:[?#].*)?$/, '');
+}
+function getListUrl(interestType) {
+    return `${getListBaseUrl()}${interestType}`;
+}
+function getCacheKey(url) {
+    const parsedUrl = new URL(url, location.href);
+    parsedUrl.hash = '';
+    parsedUrl.searchParams.delete('page');
+    return parsedUrl.toString();
+}
+function isCurrentDocumentFirstPage() {
+    return !new URL(location.href).searchParams.has('page');
+}
+function canUseCurrentDocument(url) {
+    if (!isCurrentDocumentFirstPage()) {
+        return false;
+    }
+    return getCacheKey(url) === getCacheKey(location.href);
+}
+function getPageUrl(url, page) {
+    const pageParam = `page=${page}`;
+    if (/page=\d+/.test(url)) {
+        return url.replace(/page=\d+/, pageParam);
+    }
+    return `${url}${url.includes('?') ? '&' : '?'}${pageParam}`;
+}
+async function fetchCollectionPage(url) {
+    const rawText = await fetchText(url);
+    return new DOMParser().parseFromString(rawText, 'text/html');
+}
+async function loadCollectionInfo(url) {
+    const firstPage = canUseCurrentDocument(url)
+        ? document
+        : await fetchCollectionPage(url);
+    const totalPageNum = getTotalPageNum(firstPage);
+    const items = [...getItemInfos(firstPage)];
+    let page = 2;
+    while (page <= totalPageNum) {
+        const reqUrl = getPageUrl(url, page);
+        await sleep(COLLECTION_PAGE_DELAY_MS);
+        console.info('fetch info: ', reqUrl);
+        items.push(...getItemInfos(await fetchCollectionPage(reqUrl)));
+        page += 1;
+    }
+    return items;
+}
+async function getCollectionInfo(url) {
+    const cacheKey = getCacheKey(url);
+    if (!collectionCache.has(cacheKey)) {
+        collectionCache.set(cacheKey, loadCollectionInfo(url));
+    }
+    return collectionCache.get(cacheKey);
+}
+function withInterestType(item, interestType) {
+    const collectInfo = {
+        ...ensureCollectionInfo(item),
+    };
+    if (interestType) {
+        collectInfo.interestType = interestType;
+    }
+    return {
+        ...item,
+        collectInfo,
+    };
+}
+async function getCollectionItems(url, interestType) {
+    const items = await getCollectionInfo(url);
+    return items.map((item) => withInterestType(item, interestType));
+}
+async function getAllCollectionItems() {
+    let items = [];
+    for (const interestType of INTEREST_TYPES) {
         try {
-            res = await getCollectionInfo(location.href);
+            const pageItems = await getCollectionInfo(getListUrl(interestType));
+            items = items.concat(pageItems.map((item) => withInterestType(item, interestType)));
         }
         catch (error) {
-            console.error('抓取错误: ', error);
+            console.error(`抓取${interestType}收藏错误: `, error);
         }
-        const interestType = getInterestTypeByUrl(location.href);
-        downloadExcel(filename, res.map((item) => {
-            item.collectInfo.interestType = interestType;
-            return item;
-        }));
-        $text.innerText = '导出完成';
-        $node.style.pointerEvents = 'auto';
-    });
-    return $node;
+    }
+    return items;
 }
-async function updateUserInterest(subject, data, $infoDom) {
+function downloadItems(filename, items) {
+    downloadCollectionExcel(filename, items);
+}
+async function exportCurrentCollection(menuItem, filename, interestType) {
+    const url = interestType ? getListUrl(interestType) : location.href;
+    await exportCollectionFromUrl(menuItem, filename, url, interestType);
+}
+async function exportCollectionFromUrl(menuItem, filename, url, interestType) {
+    await withBusyState(menuItem, '导出中...', async () => {
+        downloadItems(filename, await getCollectionItems(url, interestType));
+        setMenuText(menuItem, '导出完成');
+        setActionState(menuItem, 'success');
+    });
+}
+async function exportAllCollections(menuItem, filename) {
+    await withBusyState(menuItem, '导出中...', async () => {
+        downloadItems(filename, await getAllCollectionItems());
+        setMenuText(menuItem, '完成所有导出');
+        setActionState(menuItem, 'success');
+    });
+}
+function getImportLogTarget(fallback) {
+    return document.querySelector('#columnSubjectBrowserB .menu_inner') || fallback;
+}
+async function updateUserInterest(subject, data, logTarget) {
     const nameStr = `<span style="color:tomato">《${subject.name}》</span>`;
     try {
         const subjectId = getSubjectId(subject.url);
         if (!subjectId) {
             throw new Error('条目地址无效');
         }
-        insertLogInfo($infoDom, `更新收藏 ${nameStr} 中...`);
+        insertLogInfo(logTarget, `更新收藏 ${nameStr} 中...`);
         await updateInterest(subjectId, data);
-        insertLogInfo($infoDom, `更新收藏 ${nameStr} 成功`);
+        insertLogInfo(logTarget, `更新收藏 ${nameStr} 成功`);
         await randomSleep(2000, 1000);
     }
     catch (error) {
-        insertLogInfo($infoDom, `导入 ${nameStr} 错误: ${error}`);
+        insertLogInfo(logTarget, `导入 ${nameStr} 错误: ${getErrorMessage(error)}`);
         console.error('导入错误: ', error);
     }
 }
-function readCSV(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        const detectReader = new FileReader();
-        detectReader.readAsBinaryString(file);
-        detectReader.onload = function (e) {
-            const contents = this.result;
-            const arr = contents.split(/\r\n|\n/);
-            // 检测文件编码
-            reader.readAsText(file, jschardet.detect(arr[0].toString()).encoding);
-        };
-        reader.onload = function (e) {
-            resolve(this.result);
-        };
-        reader.onerror = function (e) {
-            reject(e);
-        };
-    });
-}
-async function handleFileAsync(e) {
-    const target = e.target;
-    const $parent = this.closest('li');
-    const file = target.files[0];
-    let workbook;
-    if (file.name.includes('.csv')) {
-        const data = await readCSV(file);
-        workbook = XLSX.read(data, { type: 'string' });
-    }
-    else {
-        const data = await file.arrayBuffer();
-        workbook = XLSX.read(data);
-    }
-    var first_sheet_name = workbook.SheetNames[0];
-    var worksheet = workbook.Sheets[first_sheet_name];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet);
-    const $menu = document.querySelector('#columnSubjectBrowserB .menu_inner');
-    for (const item of jsonData) {
+async function importCollectionFile(file, logTarget) {
+    const rows = await readCollectionSheetRows(file);
+    for (const row of rows) {
         try {
+            const { item, interestType } = collectionSheetRowToItem(row);
             const subject = {
-                name: item['名称'],
-                url: item['地址'],
+                name: item.name,
+                url: item.url,
             };
             if (!subject.name || !subject.url) {
                 throw new Error('没有条目信息');
             }
-            const info = {
-                interest: getInterestTypeIdByName(item[WATCH_STATUS_STR]),
-                rating: item['我的评分'],
-                comment: item['吐槽'],
-                tags: item['标签'],
-            };
-            await updateUserInterest(subject, info, $menu);
+            const collectInfo = ensureCollectionInfo(item);
+            await updateUserInterest(subject, {
+                interest: getInterestTypeId(interestType),
+                rating: collectInfo.score,
+                comment: collectInfo.comment,
+                tags: collectInfo.tags,
+            }, logTarget);
         }
         catch (error) {
+            insertLogInfo(logTarget, `导入条目错误: ${getErrorMessage(error)}`);
             console.error('导入错误: ', error);
         }
     }
-    $parent.querySelector('a > span').innerHTML = '导入完成';
-    $parent.style.pointerEvents = 'auto';
 }
-function genImportControl() {
-    const btnStr = `<li title="支持和导出表头相同的 csv 和 xlsx 文件">
-  <a href="javascript:void(0);"><span style="color:tomato;"><label for="e-userjs-import-csv-file">导入收藏</label></span></a>
-  <input type="file" id="e-userjs-import-csv-file" style="display:none" />
-</li>`;
-    const $node = htmlToElement(btnStr);
-    const $file = $node.querySelector('#e-userjs-import-csv-file');
-    // $file.addEventListener('change', handleInputChange);
-    $file.addEventListener('change', handleFileAsync);
-    return $node;
+function createImportControl() {
+    const node = htmlToElement(`<li class="e-userjs-collection-tool-action" title="支持和导出表头相同的 csv 和 xlsx 文件">
+  <a href="javascript:void(0);"><span><label for="${IMPORT_INPUT_ID}">导入收藏</label></span></a>
+  <input type="file" id="${IMPORT_INPUT_ID}" style="display:none" accept=".xlsx,.xls,.csv" />
+</li>`);
+    const input = node.querySelector(`#${IMPORT_INPUT_ID}`);
+    input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file) {
+            return;
+        }
+        const logTarget = getImportLogTarget(node);
+        clearLogInfo(logTarget);
+        try {
+            await withBusyState(node, '导入中...', async () => {
+                await importCollectionFile(file, logTarget);
+                setMenuText(node, '导入完成');
+                setActionState(node, 'success');
+            });
+        }
+        catch (error) {
+            setMenuText(node, '导入失败');
+            setActionState(node, 'error');
+            insertLogInfo(logTarget, `导入文件错误: ${getErrorMessage(error)}`);
+            console.error('导入文件错误: ', error);
+        }
+        finally {
+            input.value = '';
+        }
+    });
+    return node;
 }
-function addExportBtn(ext = 'xlsx') {
-    const $nav = $q('#headerProfile .navSubTabs');
-    if (!$nav)
+function createAllExportControl(filename) {
+    return createMenuItem({
+        label: '导出所有收藏',
+        onClick: (item) => exportAllCollections(item, filename),
+    });
+}
+function createExportControl(filename, interestType) {
+    return createMenuItem({
+        label: '导出收藏',
+        onClick: (item) => exportCurrentCollection(item, filename, interestType),
+    });
+}
+function createInlineExportControl(filename) {
+    return createMenuItem({
+        tagName: 'span',
+        label: '导出目录',
+        onClick: (item) => exportCurrentCollection(item, filename),
+    });
+}
+function createIndexExportControl() {
+    return createMenuItem({
+        label: '导出目录',
+        title: '导出当前选中分类',
+        onClick: (item) => exportCollectionFromUrl(item, getIndexPageFilename(), getSelectedIndexCatUrl()),
+    });
+}
+function getPageTitle() {
+    const header = $q('#header');
+    return header?.querySelector('h1')?.textContent?.trim() || '导出收藏';
+}
+function getPageTitleFilename(ext = COLLECTION_SHEET_EXTENSION) {
+    return `${getPageTitle()}.${ext}`;
+}
+function getSelectedIndexCatLink() {
+    const catLinkSelector = '#indexCatBox .cat li:not(.e-userjs-collection-tool-action) a';
+    return ($q(`${catLinkSelector}.selected`) ||
+        $q(`${catLinkSelector}.focus`) ||
+        $q(catLinkSelector));
+}
+function getSelectedIndexCatUrl() {
+    const href = getSelectedIndexCatLink()?.getAttribute('href');
+    if (!href || href.startsWith('javascript:')) {
+        return location.href;
+    }
+    return new URL(href, location.href).toString();
+}
+function getSelectedIndexCatName() {
+    const link = getSelectedIndexCatLink();
+    const span = link?.querySelector('span');
+    if (!span) {
+        return '';
+    }
+    const clone = span.cloneNode(true);
+    clone.querySelectorAll('small').forEach((node) => node.remove());
+    return clone.textContent?.trim() || '';
+}
+function getIndexPageFilename(ext = COLLECTION_SHEET_EXTENSION) {
+    const catName = getSelectedIndexCatName();
+    return `${getPageTitle()}${catName ? `-${catName}` : ''}.${ext}`;
+}
+function getUserListFilename(ext = COLLECTION_SHEET_EXTENSION) {
+    const type = $q('#headerProfile .navSubTabs .focus')?.textContent || '';
+    const username = $q('.nameSingle .inner>a')?.textContent?.trim() || '导出收藏';
+    return {
+        all: `${username}-${formatDate(new Date())}.${ext}`,
+        current: `${username}-${type}-${formatDate(new Date())}.${ext}`,
+    };
+}
+function addListPageControls() {
+    injectActionStyles();
+    const nav = $q('#headerProfile .navSubTabs');
+    if (!nav) {
         return;
-    const type = $nav.querySelector('.focus')?.textContent || '';
-    const $username = $q('.nameSingle .inner>a');
-    let name = '导出收藏';
-    if ($username) {
-        name = $username.textContent;
     }
-    const filename = `${name}-${type}-${formatDate(new Date())}.${ext}`;
-    $nav.appendChild(genAllExportBtn(`${name}-${formatDate(new Date())}.${ext}`));
-    // 判断是否在单个分类页面
+    const filename = getUserListFilename();
+    nav.appendChild(createAllExportControl(filename.all));
     const interestType = getInterestTypeByUrl(location.href);
-    if (interestTypeArr.includes(interestType)) {
-        $nav.appendChild(genExportBtn(filename));
+    if (interestType) {
+        nav.appendChild(createExportControl(filename.current, interestType));
     }
-    $nav.appendChild(genImportControl());
+    nav.appendChild(createImportControl());
 }
-// 索引
+function addIndexPageControls() {
+    injectActionStyles();
+    const catList = $q('#indexCatBox .cat');
+    if (catList) {
+        catList.appendChild(createIndexExportControl());
+        return;
+    }
+    const header = $q('#header');
+    if (!header) {
+        return;
+    }
+    header.appendChild(createInlineExportControl(getPageTitleFilename()));
+}
 if (location.href.match(/index\/\d+/)) {
-    const $header = $q('#header');
-    const title = $header.querySelector('h1').textContent.trim();
-    $header.appendChild(genExportBtn(`${title}.xlsx`));
+    addIndexPageControls();
 }
 if (location.href.match(/\w+\/list\//)) {
-    addExportBtn();
+    addListPageControls();
 }

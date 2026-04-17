@@ -36,43 +36,140 @@ type MenuItemOptions = {
   title?: string;
   label: string;
   onClick?: (item: HTMLElement) => Promise<void> | void;
+  tagName?: 'li' | 'span';
 };
 
 function injectActionStyles() {
   GM_addStyle(`
 .e-userjs-collection-tool-action {
-  margin-left: 4px;
+  --action-border: rgba(112, 154, 174, .38);
+  --action-bg: rgba(112, 154, 174, .08);
+  --action-color: #6c93a6;
+  --action-hover-border: rgba(84, 144, 176, .58);
+  --action-hover-bg: rgba(112, 154, 174, .14);
+  --action-hover-color: #4f8fad;
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 0 6px;
+  padding: 0;
+  list-style: none;
+  vertical-align: middle;
+}
+.navSubTabs .e-userjs-collection-tool-action {
+  flex: 0 0 auto;
+  margin-left: 6px;
+}
+.navSubTabs .e-userjs-collection-tool-action + .e-userjs-collection-tool-action {
+  margin-left: 0;
 }
 .e-userjs-collection-tool-action > a {
-  border: 1px solid #d0d0d5;
-  border-radius: 4px;
-  padding: 2px 8px;
-  background: #fff;
-  color: #4c5161;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  margin: 2px 0;
+  border: 1px solid var(--action-border);
+  border-radius: 8px;
+  padding: 3px 9px;
+  background: var(--action-bg);
+  color: var(--action-color);
+  font-size: 13px;
+  line-height: 16px;
   text-decoration: none;
-  transition: border-color .15s, background-color .15s, color .15s, opacity .15s;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6);
+  transition: border-color .15s, background-color .15s, box-shadow .15s, color .15s, opacity .15s;
+}
+.navSubTabs .e-userjs-collection-tool-action > a {
+  display: inline-flex;
+  padding: 3px 9px;
+  color: var(--action-color);
 }
 .e-userjs-collection-tool-action > a:hover {
-  border-color: #2a80eb;
-  background: #f7fbff;
-  color: #2a80eb;
+  border-color: var(--action-hover-border);
+  background: var(--action-hover-bg);
+  color: var(--action-hover-color);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), 0 1px 3px rgba(112, 154, 174, .18);
+}
+.navSubTabs .e-userjs-collection-tool-action > a:hover {
+  color: var(--action-hover-color);
 }
 .e-userjs-collection-tool-action span {
   color: inherit !important;
+}
+.e-userjs-collection-tool-action--inline {
+  margin-left: 10px;
+}
+#indexCatBox .e-userjs-collection-tool-action {
+  margin-left: auto;
+  padding-right: 2px;
+}
+#indexCatBox .e-userjs-collection-tool-action > a {
+  border: 1px solid var(--action-border);
+  padding: 4px 10px;
+  background: var(--action-bg);
+  color: var(--action-color);
+  transform: none;
+}
+#indexCatBox .e-userjs-collection-tool-action > a:hover {
+  border-color: var(--action-hover-border);
+  background: var(--action-hover-bg);
+  color: var(--action-hover-color);
+  transform: none;
+}
+#indexCatBox .e-userjs-collection-tool-action > a::after {
+  content: none;
+  display: none;
 }
 .e-userjs-collection-tool-action.is-busy > a {
   opacity: .62;
   cursor: wait;
 }
-.e-userjs-collection-tool-action.is-success > a {
-  border-color: #3ca370;
-  color: #278455;
-  background: #f4fbf7;
+.e-userjs-collection-tool-action.is-success {
+  --action-border: rgba(87, 166, 114, .6);
+  --action-bg: rgba(87, 166, 114, .1);
+  --action-color: #3b9461;
 }
-.e-userjs-collection-tool-action.is-error > a {
-  border-color: #d05050;
-  color: #b23636;
-  background: #fff7f7;
+.e-userjs-collection-tool-action.is-error {
+  --action-border: rgba(203, 84, 84, .6);
+  --action-bg: rgba(203, 84, 84, .1);
+  --action-color: #bd4a4a;
+}
+.e-userjs-collection-tool-action.is-success > a:hover,
+.e-userjs-collection-tool-action.is-error > a:hover {
+  border-color: var(--action-border);
+  background: var(--action-bg);
+  color: var(--action-color);
+}
+#header .e-userjs-collection-tool-action--inline > a {
+  min-height: 23px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+html[data-theme="dark"] .e-userjs-collection-tool-action {
+  --action-border: rgba(132, 174, 195, .45);
+  --action-bg: rgba(132, 174, 195, .12);
+  --action-color: #a7c9da;
+  --action-hover-border: rgba(159, 199, 218, .7);
+  --action-hover-bg: rgba(132, 174, 195, .2);
+  --action-hover-color: #d2edf7;
+}
+html[data-theme="dark"] .e-userjs-collection-tool-action > a {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+html[data-theme="dark"] .e-userjs-collection-tool-action > a:hover {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .22);
+}
+html[data-theme="dark"] .e-userjs-collection-tool-action.is-success {
+  --action-border: rgba(90, 180, 124, .55);
+  --action-bg: rgba(90, 180, 124, .14);
+  --action-color: #8bd0a2;
+}
+html[data-theme="dark"] .e-userjs-collection-tool-action.is-error {
+  --action-border: rgba(218, 100, 100, .6);
+  --action-bg: rgba(218, 100, 100, .14);
+  --action-color: #ef9a9a;
 }
 `);
 }
@@ -119,10 +216,17 @@ async function withBusyState(
 }
 
 function createMenuItem(options: MenuItemOptions) {
+  const tagName = options.tagName || 'li';
+  const className = [
+    'e-userjs-collection-tool-action',
+    tagName === 'span' ? 'e-userjs-collection-tool-action--inline' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
   const node = htmlToElement(
-    `<li class="e-userjs-collection-tool-action"${options.title ? ` title="${options.title}"` : ''}>
+    `<${tagName} class="${className}"${options.title ? ` title="${options.title}"` : ''}>
   <a href="javascript:void(0);"><span>${options.label}</span></a>
-</li>`
+</${tagName}>`
   ) as HTMLElement;
   if (options.onClick) {
     node.addEventListener('click', async () => {
@@ -172,9 +276,7 @@ function canUseCurrentDocument(url: string) {
   if (!isCurrentDocumentFirstPage()) {
     return false;
   }
-  const target = new URL(url, location.href);
-  const current = new URL(location.href);
-  return target.origin === current.origin && target.pathname === current.pathname;
+  return getCacheKey(url) === getCacheKey(location.href);
 }
 
 function getPageUrl(url: string, page: number) {
@@ -229,9 +331,14 @@ function withInterestType(item: SubjectItem, interestType?: InterestType) {
 }
 
 async function getCurrentCollectionItems(interestType?: InterestType) {
-  const items = await getCollectionInfo(
-    interestType ? getListUrl(interestType) : location.href
+  return getCollectionItems(
+    interestType ? getListUrl(interestType) : location.href,
+    interestType
   );
+}
+
+async function getCollectionItems(url: string, interestType?: InterestType) {
+  const items = await getCollectionInfo(url);
   return items.map((item) => withInterestType(item, interestType));
 }
 
@@ -259,8 +366,18 @@ async function exportCurrentCollection(
   filename: string,
   interestType?: InterestType
 ) {
+  const url = interestType ? getListUrl(interestType) : location.href;
+  await exportCollectionFromUrl(menuItem, filename, url, interestType);
+}
+
+async function exportCollectionFromUrl(
+  menuItem: HTMLElement,
+  filename: string,
+  url: string,
+  interestType?: InterestType
+) {
   await withBusyState(menuItem, '导出中...', async () => {
-    downloadItems(filename, await getCurrentCollectionItems(interestType));
+    downloadItems(filename, await getCollectionItems(url, interestType));
     setMenuText(menuItem, '导出完成');
     setActionState(menuItem, 'success');
   });
@@ -374,10 +491,68 @@ function createExportControl(filename: string, interestType?: InterestType) {
   });
 }
 
-function getPageTitleFilename(ext = COLLECTION_SHEET_EXTENSION) {
+function createInlineExportControl(filename: string) {
+  return createMenuItem({
+    tagName: 'span',
+    label: '导出目录',
+    onClick: (item) => exportCurrentCollection(item, filename),
+  });
+}
+
+function createIndexExportControl() {
+  return createMenuItem({
+    label: '导出目录',
+    title: '导出当前选中分类',
+    onClick: (item) =>
+      exportCollectionFromUrl(
+        item,
+        getIndexPageFilename(),
+        getSelectedIndexCatUrl()
+      ),
+  });
+}
+
+function getPageTitle() {
   const header = $q('#header');
-  const title = header?.querySelector('h1')?.textContent?.trim() || '导出收藏';
-  return `${title}.${ext}`;
+  return header?.querySelector('h1')?.textContent?.trim() || '导出收藏';
+}
+
+function getPageTitleFilename(ext = COLLECTION_SHEET_EXTENSION) {
+  return `${getPageTitle()}.${ext}`;
+}
+
+function getSelectedIndexCatLink() {
+  const catLinkSelector =
+    '#indexCatBox .cat li:not(.e-userjs-collection-tool-action) a';
+  return (
+    $q<HTMLAnchorElement>(`${catLinkSelector}.selected`) ||
+    $q<HTMLAnchorElement>(`${catLinkSelector}.focus`) ||
+    $q<HTMLAnchorElement>(catLinkSelector)
+  );
+}
+
+function getSelectedIndexCatUrl() {
+  const href = getSelectedIndexCatLink()?.getAttribute('href');
+  if (!href || href.startsWith('javascript:')) {
+    return location.href;
+  }
+  return new URL(href, location.href).toString();
+}
+
+function getSelectedIndexCatName() {
+  const link = getSelectedIndexCatLink();
+  const span = link?.querySelector('span');
+  if (!span) {
+    return '';
+  }
+  const clone = span.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('small').forEach((node) => node.remove());
+  return clone.textContent?.trim() || '';
+}
+
+function getIndexPageFilename(ext = COLLECTION_SHEET_EXTENSION) {
+  const catName = getSelectedIndexCatName();
+  return `${getPageTitle()}${catName ? `-${catName}` : ''}.${ext}`;
 }
 
 function getUserListFilename(ext = COLLECTION_SHEET_EXTENSION) {
@@ -407,11 +582,16 @@ function addListPageControls() {
 
 function addIndexPageControls() {
   injectActionStyles();
+  const catList = $q('#indexCatBox .cat');
+  if (catList) {
+    catList.appendChild(createIndexExportControl());
+    return;
+  }
   const header = $q('#header');
   if (!header) {
     return;
   }
-  header.appendChild(createExportControl(getPageTitleFilename()));
+  header.appendChild(createInlineExportControl(getPageTitleFilename()));
 }
 
 if (location.href.match(/index\/\d+/)) {

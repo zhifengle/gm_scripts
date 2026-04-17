@@ -35,11 +35,12 @@ const gamePages: PageConfig[] = [
 ];
 const BGM_UA = 'e_user_bgm_ua';
 const HIDE_GAME_SCORE_KEY = 'e_user_hide_game_score';
+const ANIME_PAGES_CONF_KEY = 'e_user_anime_pages_conf';
 const GAME_PAGES_CONF_KEY = 'e_user_game_pages_conf';
 const SEARCH_TIMEOUT = 10000;
 const MAX_PARALLEL_SEARCH_REQUESTS = 2;
 
-type GamePagesConf = Record<string, { hide?: boolean }>;
+type PagesConf = Record<string, { hide?: boolean }>;
 const siteSearchQueues: Record<string, Promise<void>> = {};
 let activeRefreshToken = 0;
 
@@ -51,19 +52,26 @@ function setGameScoreHidden(hidden: boolean) {
   GM_setValue(HIDE_GAME_SCORE_KEY, hidden ? '1' : '');
 }
 
-function getGamePagesConf(): GamePagesConf {
+function getAnimePagesConf(): PagesConf {
+  return GM_getValue(ANIME_PAGES_CONF_KEY) || {};
+}
+
+function setAnimePagesConf(conf: PagesConf) {
+  GM_setValue(ANIME_PAGES_CONF_KEY, conf);
+}
+
+function getGamePagesConf(): PagesConf {
   return GM_getValue(GAME_PAGES_CONF_KEY) || {};
 }
 
-function setGamePagesConf(conf: GamePagesConf) {
+function setGamePagesConf(conf: PagesConf) {
   GM_setValue(GAME_PAGES_CONF_KEY, conf);
 }
 
-function getRuntimeGamePages(): PageConfig[] {
-  const gamePagesConf = getGamePagesConf();
-  return gamePages.map((p) => {
-    const conf = gamePagesConf[p.name] || {};
-    if (conf.hide) {
+function applyPagesConf(pages: PageConfig[], conf: PagesConf): PageConfig[] {
+  return pages.map((p) => {
+    const pageConf = conf[p.name] || {};
+    if (pageConf.hide) {
       return {
         ...p,
         type: 'info',
@@ -73,11 +81,23 @@ function getRuntimeGamePages(): PageConfig[] {
   });
 }
 
+function getRuntimeAnimePages(): PageConfig[] {
+  return applyPagesConf(animePages, getAnimePagesConf());
+}
+
+function getRuntimeGamePages(): PageConfig[] {
+  return applyPagesConf(gamePages, getGamePagesConf());
+}
+
 function getRuntimePages(pages: PageConfig[]): PageConfig[] {
   const isGamePages = pages.some((page) =>
     gamePages.some((gamePage) => gamePage.name === page.name)
   );
-  return isGamePages ? getRuntimeGamePages() : pages;
+  if (isGamePages) return getRuntimeGamePages();
+  const isAnimePages = pages.some((page) =>
+    animePages.some((animePage) => animePage.name === page.name)
+  );
+  return isAnimePages ? getRuntimeAnimePages() : pages;
 }
 
 function getUrlHost(url: string): string {
@@ -232,7 +252,7 @@ function refreshVisibleScores(force = true) {
   document
     .querySelectorAll('.e-userjs-score-compare')
     .forEach((el) => el.remove());
-  initPage(animePages, force);
+  initPage(getRuntimeAnimePages(), force);
   if (!isGameScoreHidden()) {
     initPage(getRuntimeGamePages(), force);
   }
@@ -256,6 +276,15 @@ if (typeof GM_registerMenuCommand === 'function') {
 }
 
 function showConfigDialog() {
+  const animePagesFormStr = animePages.map((page) => {
+    return `<label class="e-user-config-row" for="e-user-anime-pages-${page.name}">
+      <span class="e-user-config-row-text">
+        <span class="e-user-config-row-title">${page.name}</span>
+        <span class="e-user-config-row-desc">开启后自动请求该站点评分；关闭后跳过后台搜索</span>
+      </span>
+      <input class="e-user-config-switch e-user-anime-page-switch" type="checkbox" id="e-user-anime-pages-${page.name}">
+    </label>`;
+  }).join('\n');
   const gamePagesFormStr = gamePages.map((page) => {
     return `<label class="e-user-config-row" for="e-user-game-pages-${page.name}">
       <span class="e-user-config-row-text">
@@ -490,9 +519,16 @@ function showConfigDialog() {
         <input class="e-user-config-switch" type="checkbox" id="e-user-show-game-score">
       </label>
     </div>
+    <div class="e-user-config-section">
+      <p class="e-user-config-section-title">动画自动搜索站点</p>
+      <p class="e-user-config-section-desc">开启的站点会在后台搜索动画评分；关闭后跳过自动请求，配置会保留。</p>
+      <div class="e-user-config-list">
+        ${animePagesFormStr}
+      </div>
+    </div>
     <div class="e-user-config-section e-user-config-search-section">
-      <p class="e-user-config-section-title">自动搜索站点</p>
-      <p class="e-user-config-section-desc">开启的站点会在后台搜索评分；关闭后跳过自动请求，配置会保留。</p>
+      <p class="e-user-config-section-title">游戏自动搜索站点</p>
+      <p class="e-user-config-section-desc">开启的站点会在后台搜索游戏评分；关闭后跳过自动请求，配置会保留。</p>
       <p class="e-user-config-note" hidden>游戏评分已隐藏，站点搜索设置暂不生效。</p>
       <div class="e-user-config-list">
         ${gamePagesFormStr}
@@ -520,6 +556,7 @@ function showConfigDialog() {
   </div>
 </dialog>
 `) as HTMLDialogElement;
+  let animePagesConf = getAnimePagesConf();
   let gamePagesConf = getGamePagesConf();
   const $showGameScore = $dialog.querySelector('#e-user-show-game-score') as HTMLInputElement;
   const $searchSection = $dialog.querySelector('.e-user-config-search-section') as HTMLElement;
@@ -542,6 +579,10 @@ function showConfigDialog() {
   };
 
   $showGameScore.checked = !isGameScoreHidden();
+  animePages.forEach((page) => {
+    const conf = animePagesConf[page.name] || {};
+    ($dialog.querySelector(`#e-user-anime-pages-${page.name}`) as HTMLInputElement).checked = conf.hide ? false : true;
+  })
   gamePages.forEach((page) => {
     const conf = gamePagesConf[page.name] || {};
     ($dialog.querySelector(`#e-user-game-pages-${page.name}`) as HTMLInputElement).checked = conf.hide ? false : true;
@@ -552,6 +593,16 @@ function showConfigDialog() {
       setGameScoreHidden(!target.checked);
       updateSearchSectionState();
       setStatus(target.checked ? '游戏评分已设为显示。' : '游戏评分已隐藏，站点搜索设置暂不生效。');
+    } else if (target.id?.startsWith('e-user-anime-pages-')) {
+      const name = target.id.replace('e-user-anime-pages-', '');
+      const conf = animePagesConf[name] || {};
+      conf.hide = !target.checked;
+      animePagesConf = {
+        ...animePagesConf,
+        [name]: conf,
+      };
+      setAnimePagesConf(animePagesConf);
+      setStatus(`${name} 动画自动搜索已${target.checked ? '开启' : '关闭'}。`);
     } else if (target.id?.startsWith('e-user-game-pages-')) {
       const name = target.id.replace('e-user-game-pages-', '');
       const conf = gamePagesConf[name] || {};
@@ -561,7 +612,7 @@ function showConfigDialog() {
         [name]: conf,
       };
       setGamePagesConf(gamePagesConf);
-      setStatus(`${name} 自动搜索已${target.checked ? '开启' : '关闭'}。`);
+      setStatus(`${name} 游戏自动搜索已${target.checked ? '开启' : '关闭'}。`);
     }
   })
   $dialog.querySelector('.e-user-save-ua').addEventListener('click', () => {
@@ -809,7 +860,7 @@ window.VNDB_REVISE_QUERY_DICT = window.VNDB_REVISE_QUERY_DICT ?? {
 window.EGS_REVISE_QUERY_DICT = window.EGS_REVISE_QUERY_DICT ?? {
 }
 
-initPage(animePages);
+initPage(getRuntimeAnimePages());
 if (!isGameScoreHidden()) {
   initPage(getRuntimeGamePages());
 }

@@ -18,5 +18,6 @@
 // @grant       GM_getValue
 // @grant       GM_getResourceText
 // @require     https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.0/fuse.min.js
+// @require     https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
 // @resource    bangumiDataURL https://unpkg.com/bangumi-data@0.3/dist/data.json
 // ==/UserScript==

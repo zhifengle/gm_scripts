@@ -21,6 +21,9 @@ export function insertControl(contanerSelector: string, name: string) {
   .e-userjs-export-tool-container .retry-btn {
     display: none;
   }
+  .e-userjs-export-tool-container .import-file-input {
+    display: none;
+  }
   .ui-button {
     display: inline-block;
     line-height: 20px;
@@ -64,6 +67,10 @@ export function insertControl(contanerSelector: string, name: string) {
   <button class="ui-button import-btn" type="submit">
 导入${name}动画收藏
   </button>
+  <button class="ui-button import-file-btn" type="button">
+从文件导入并同步
+  </button>
+  <input class="import-file-input" type="file" accept=".xlsx,.xls,.csv" />
   <br/>
   <button class="ui-button export-btn" type="submit">
 导出${name}动画的收藏同步信息

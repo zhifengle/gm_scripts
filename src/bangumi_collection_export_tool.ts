@@ -29,6 +29,8 @@ const INTEREST_TYPES: InterestType[] = [
 
 const IMPORT_INPUT_ID = 'e-userjs-import-csv-file';
 const COLLECTION_SHEET_EXTENSION = 'xlsx';
+const COLLECTION_PAGE_DELAY_MS = 500;
+const collectionCache = new Map<string, Promise<SubjectItem[]>>();
 
 type MenuItemOptions = {
   title?: string;
@@ -102,6 +104,26 @@ function getListUrl(interestType: InterestType) {
   return `${getListBaseUrl()}${interestType}`;
 }
 
+function getCacheKey(url: string) {
+  const parsedUrl = new URL(url, location.href);
+  parsedUrl.hash = '';
+  parsedUrl.searchParams.delete('page');
+  return parsedUrl.toString();
+}
+
+function isCurrentDocumentFirstPage() {
+  return !new URL(location.href).searchParams.has('page');
+}
+
+function canUseCurrentDocument(url: string) {
+  if (!isCurrentDocumentFirstPage()) {
+    return false;
+  }
+  const target = new URL(url, location.href);
+  const current = new URL(location.href);
+  return target.origin === current.origin && target.pathname === current.pathname;
+}
+
 function getPageUrl(url: string, page: number) {
   const pageParam = `page=${page}`;
   if (/page=\d+/.test(url)) {
@@ -115,19 +137,29 @@ async function fetchCollectionPage(url: string) {
   return new DOMParser().parseFromString(rawText, 'text/html');
 }
 
-async function getCollectionInfo(url: string) {
-  const firstPage = await fetchCollectionPage(url);
+async function loadCollectionInfo(url: string) {
+  const firstPage = canUseCurrentDocument(url)
+    ? document
+    : await fetchCollectionPage(url);
   const totalPageNum = getTotalPageNum(firstPage);
   const items = [...getItemInfos(firstPage)];
   let page = 2;
   while (page <= totalPageNum) {
     const reqUrl = getPageUrl(url, page);
-    await sleep(500);
+    await sleep(COLLECTION_PAGE_DELAY_MS);
     console.info('fetch info: ', reqUrl);
     items.push(...getItemInfos(await fetchCollectionPage(reqUrl)));
     page += 1;
   }
   return items;
+}
+
+async function getCollectionInfo(url: string) {
+  const cacheKey = getCacheKey(url);
+  if (!collectionCache.has(cacheKey)) {
+    collectionCache.set(cacheKey, loadCollectionInfo(url));
+  }
+  return collectionCache.get(cacheKey);
 }
 
 function withInterestType(item: SubjectItem, interestType?: InterestType) {
@@ -144,7 +176,9 @@ function withInterestType(item: SubjectItem, interestType?: InterestType) {
 }
 
 async function getCurrentCollectionItems(interestType?: InterestType) {
-  const items = await getCollectionInfo(location.href);
+  const items = await getCollectionInfo(
+    interestType ? getListUrl(interestType) : location.href
+  );
   return items.map((item) => withInterestType(item, interestType));
 }
 

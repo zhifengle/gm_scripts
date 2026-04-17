@@ -16,6 +16,7 @@ export type CollectionSheetItem = SubjectItem & {
 
 type CollectionSheetColumn = {
   key: string;
+  // 导出时使用的第一个 header，导入时使用的所有 header
   headers: string[];
   exportValue: (item: CollectionSheetItem) => CollectionSheetValue;
   importValue: (item: CollectionSheetItem, value: string) => void;

@@ -38,6 +38,45 @@ type MenuItemOptions = {
   onClick?: (item: HTMLElement) => Promise<void> | void;
 };
 
+function injectActionStyles() {
+  GM_addStyle(`
+.e-userjs-collection-tool-action {
+  margin-left: 4px;
+}
+.e-userjs-collection-tool-action > a {
+  border: 1px solid #d0d0d5;
+  border-radius: 4px;
+  padding: 2px 8px;
+  background: #fff;
+  color: #4c5161;
+  text-decoration: none;
+  transition: border-color .15s, background-color .15s, color .15s, opacity .15s;
+}
+.e-userjs-collection-tool-action > a:hover {
+  border-color: #2a80eb;
+  background: #f7fbff;
+  color: #2a80eb;
+}
+.e-userjs-collection-tool-action span {
+  color: inherit !important;
+}
+.e-userjs-collection-tool-action.is-busy > a {
+  opacity: .62;
+  cursor: wait;
+}
+.e-userjs-collection-tool-action.is-success > a {
+  border-color: #3ca370;
+  color: #278455;
+  background: #f4fbf7;
+}
+.e-userjs-collection-tool-action.is-error > a {
+  border-color: #d05050;
+  color: #b23636;
+  background: #fff7f7;
+}
+`);
+}
+
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message;
@@ -52,24 +91,37 @@ function setMenuText(item: HTMLElement, text: string) {
   }
 }
 
+function setActionState(
+  item: HTMLElement,
+  state: 'idle' | 'busy' | 'success' | 'error'
+) {
+  item.classList.toggle('is-busy', state === 'busy');
+  item.classList.toggle('is-success', state === 'success');
+  item.classList.toggle('is-error', state === 'error');
+}
+
 async function withBusyState(
   item: HTMLElement,
   busyText: string,
   fn: () => Promise<void>
 ) {
   setMenuText(item, busyText);
+  setActionState(item, 'busy');
   item.style.pointerEvents = 'none';
   try {
     await fn();
   } finally {
     item.style.pointerEvents = 'auto';
+    if (item.classList.contains('is-busy')) {
+      setActionState(item, 'idle');
+    }
   }
 }
 
 function createMenuItem(options: MenuItemOptions) {
   const node = htmlToElement(
-    `<li${options.title ? ` title="${options.title}"` : ''}>
-  <a href="javascript:void(0);"><span style="color:tomato;">${options.label}</span></a>
+    `<li class="e-userjs-collection-tool-action"${options.title ? ` title="${options.title}"` : ''}>
+  <a href="javascript:void(0);"><span>${options.label}</span></a>
 </li>`
   ) as HTMLElement;
   if (options.onClick) {
@@ -78,6 +130,7 @@ function createMenuItem(options: MenuItemOptions) {
         await options.onClick(node);
       } catch (error) {
         setMenuText(node, '操作失败');
+        setActionState(node, 'error');
         console.error('操作失败: ', error);
       }
     });
@@ -209,6 +262,7 @@ async function exportCurrentCollection(
   await withBusyState(menuItem, '导出中...', async () => {
     downloadItems(filename, await getCurrentCollectionItems(interestType));
     setMenuText(menuItem, '导出完成');
+    setActionState(menuItem, 'success');
   });
 }
 
@@ -216,6 +270,7 @@ async function exportAllCollections(menuItem: HTMLElement, filename: string) {
   await withBusyState(menuItem, '导出中...', async () => {
     downloadItems(filename, await getAllCollectionItems());
     setMenuText(menuItem, '完成所有导出');
+    setActionState(menuItem, 'success');
   });
 }
 
@@ -275,8 +330,8 @@ async function importCollectionFile(file: File, logTarget: Element) {
 }
 
 function createImportControl() {
-  const node = htmlToElement(`<li title="支持和导出表头相同的 csv 和 xlsx 文件">
-  <a href="javascript:void(0);"><span style="color:tomato;"><label for="${IMPORT_INPUT_ID}">导入收藏</label></span></a>
+  const node = htmlToElement(`<li class="e-userjs-collection-tool-action" title="支持和导出表头相同的 csv 和 xlsx 文件">
+  <a href="javascript:void(0);"><span><label for="${IMPORT_INPUT_ID}">导入收藏</label></span></a>
   <input type="file" id="${IMPORT_INPUT_ID}" style="display:none" accept=".xlsx,.xls,.csv" />
 </li>`) as HTMLElement;
   const input = node.querySelector(`#${IMPORT_INPUT_ID}`) as HTMLInputElement;
@@ -291,9 +346,11 @@ function createImportControl() {
       await withBusyState(node, '导入中...', async () => {
         await importCollectionFile(file, logTarget);
         setMenuText(node, '导入完成');
+        setActionState(node, 'success');
       });
     } catch (error) {
       setMenuText(node, '导入失败');
+      setActionState(node, 'error');
       insertLogInfo(logTarget, `导入文件错误: ${getErrorMessage(error)}`);
       console.error('导入文件错误: ', error);
     } finally {
@@ -334,6 +391,7 @@ function getUserListFilename(ext = COLLECTION_SHEET_EXTENSION) {
 }
 
 function addListPageControls() {
+  injectActionStyles();
   const nav = $q('#headerProfile .navSubTabs');
   if (!nav) {
     return;
@@ -348,6 +406,7 @@ function addListPageControls() {
 }
 
 function addIndexPageControls() {
+  injectActionStyles();
   const header = $q('#header');
   if (!header) {
     return;

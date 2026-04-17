@@ -19,7 +19,7 @@
 // @include     https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/*.php?game=*
 // @include     https://moepedia.net/game/*
 // @include     http://www.getchu.com/soft.phtml?id=*
-// @version     0.1.31
+// @version     0.1.32
 // @note        0.1.29 能够设置后台搜索游戏的评分
 // @run-at      document-end
 // @grant       GM_addStyle
@@ -264,6 +264,10 @@ function fetchInfo(url, type, opts = {}, TIMEOUT = 10 * 1000) {
                 onerror: (e) => {
                     retryCounter = 0;
                     reject(e);
+                },
+                ontimeout: (e) => {
+                    retryCounter = 0;
+                    reject(e || new Error(`request timeout: ${url}`));
                 },
                 ...gmXhrOpts,
             });
@@ -1976,34 +1980,90 @@ class GmEngine {
     }
 }
 
-const USERJS_PREFIX = 'E_SCORE_';
+const USERJS_PREFIX = 'E_SCORE_V2_';
+const LEGACY_USERJS_PREFIX = 'E_SCORE_';
 const CURRENT_ID_DICT = 'CURRENT_ID_DICT';
-const storage = new KvExpiration(new GmEngine(), USERJS_PREFIX);
+const SCORE_MAP_PREFIX = 'DICT_ID';
+const DEFAULT_EXPIRATION_DAYS = 7;
+const CURRENT_MAP_EXPIRATION_DAYS = 1;
+const storageEngine = new GmEngine();
+const storage = new KvExpiration(storageEngine, USERJS_PREFIX);
 function clearInfoStorage() {
-    storage.flush();
+    storageEngine.keys().forEach((key) => {
+        if (key.startsWith(USERJS_PREFIX) ||
+            key.startsWith(LEGACY_USERJS_PREFIX)) {
+            storageEngine.remove(key);
+        }
+    });
 }
-function saveInfo(id, info, expiration) {
-    expiration = expiration || 7;
+function isObject(value) {
+    return Boolean(value) && typeof value === 'object';
+}
+function isSearchSubject(value) {
+    return (isObject(value) &&
+        typeof value.name === 'string' &&
+        typeof value.url === 'string');
+}
+function isScoreMapEntry(value) {
+    if (!isObject(value) || typeof value.status !== 'string')
+        return false;
+    if (value.status === 'matched') {
+        return typeof value.id === 'string' && value.id !== '';
+    }
+    if (value.status === 'no-match') {
+        return typeof value.cacheKey === 'string' && value.cacheKey !== '';
+    }
+    return false;
+}
+function isScoreMap(value) {
+    if (!isObject(value))
+        return false;
+    return Object.values(value).every(isScoreMapEntry);
+}
+function getMatchedIds(map) {
+    return Object.values(map)
+        .filter((entry) => entry.status === 'matched')
+        .map((entry) => entry.id);
+}
+function mapHasMatchedId(map, site, id) {
+    const siteEntry = map[site];
+    return ((siteEntry?.status === 'matched' && siteEntry.id === id) ||
+        getMatchedIds(map).includes(id));
+}
+function saveSubjectInfo(id, info, expiration) {
+    const expirationDays = expiration || DEFAULT_EXPIRATION_DAYS;
     if (id === '') {
         console.error('invalid id:  ', info);
         return;
     }
-    storage.set(id, info, expiration);
+    storage.set(id, info, expirationDays);
 }
-function getInfo(id) {
-    if (id) {
-        return storage.get(id);
+function getSubjectInfo(id) {
+    if (!id)
+        return;
+    const info = storage.get(id);
+    if (isSearchSubject(info))
+        return info;
+}
+function saveNoMatchInfo(cacheKey, expiration) {
+    if (!cacheKey) {
+        console.error('invalid no-match cache key');
+        return;
     }
+    const info = { url: '', name: '' };
+    storage.set(cacheKey, info, expiration || DEFAULT_EXPIRATION_DAYS);
+    return info;
 }
 function getScoreMap(site, id) {
-    const currentDict = storage.get(CURRENT_ID_DICT) || {};
-    if (currentDict[site] === id ||
-        Object.values(currentDict).includes(id)) {
-        return currentDict;
-    }
-    const scoreMap = storage.get('DICT_ID' + id);
-    if (scoreMap) {
+    if (!id)
+        return {};
+    const scoreMap = storage.get(SCORE_MAP_PREFIX + id);
+    if (isScoreMap(scoreMap)) {
         return scoreMap;
+    }
+    const currentDict = storage.get(CURRENT_ID_DICT);
+    if (isScoreMap(currentDict) && mapHasMatchedId(currentDict, site, id)) {
+        return currentDict;
     }
     return {};
 }
@@ -2012,11 +2072,20 @@ function setScoreMap(id, map, expiration) {
         console.error('invalid score map id: ', map);
         return;
     }
-    storage.set(CURRENT_ID_DICT, map);
-    const ids = new Set([id, ...Object.values(map)].filter(Boolean));
+    storage.set(CURRENT_ID_DICT, map, CURRENT_MAP_EXPIRATION_DAYS);
+    const ids = new Set([id, ...getMatchedIds(map)].filter(Boolean));
     ids.forEach((mapId) => {
-        storage.set('DICT_ID' + mapId, map, expiration || 7);
+        storage.set(SCORE_MAP_PREFIX + mapId, map, expiration || DEFAULT_EXPIRATION_DAYS);
     });
+}
+function getInfoFromMap(map, site) {
+    const entry = map[site];
+    if (!entry)
+        return;
+    if (entry.status === 'matched') {
+        return getSubjectInfo(entry.id);
+    }
+    return getSubjectInfo(entry.cacheKey);
 }
 
 const site_origin$1 = 'https://2dfan.com/';
@@ -2925,8 +2994,10 @@ const gamePages = [
 ];
 const BGM_UA = 'e_user_bgm_ua';
 const HIDE_GAME_SCORE_KEY = 'e_user_hide_game_score';
+const ANIME_PAGES_CONF_KEY = 'e_user_anime_pages_conf';
 const GAME_PAGES_CONF_KEY = 'e_user_game_pages_conf';
 const SEARCH_TIMEOUT = 10000;
+const MAX_PARALLEL_SEARCH_REQUESTS = 2;
 const siteSearchQueues = {};
 let activeRefreshToken = 0;
 function isGameScoreHidden() {
@@ -2935,17 +3006,22 @@ function isGameScoreHidden() {
 function setGameScoreHidden(hidden) {
     GM_setValue(HIDE_GAME_SCORE_KEY, hidden ? '1' : '');
 }
+function getAnimePagesConf() {
+    return GM_getValue(ANIME_PAGES_CONF_KEY) || {};
+}
+function setAnimePagesConf(conf) {
+    GM_setValue(ANIME_PAGES_CONF_KEY, conf);
+}
 function getGamePagesConf() {
     return GM_getValue(GAME_PAGES_CONF_KEY) || {};
 }
 function setGamePagesConf(conf) {
     GM_setValue(GAME_PAGES_CONF_KEY, conf);
 }
-function getRuntimeGamePages() {
-    const gamePagesConf = getGamePagesConf();
-    return gamePages.map((p) => {
-        const conf = gamePagesConf[p.name] || {};
-        if (conf.hide) {
+function applyPagesConf(pages, conf) {
+    return pages.map((p) => {
+        const pageConf = conf[p.name] || {};
+        if (pageConf.hide) {
             return {
                 ...p,
                 type: 'info',
@@ -2954,9 +3030,18 @@ function getRuntimeGamePages() {
         return p;
     });
 }
+function getRuntimeAnimePages() {
+    return applyPagesConf(animePages, getAnimePagesConf());
+}
+function getRuntimeGamePages() {
+    return applyPagesConf(gamePages, getGamePagesConf());
+}
 function getRuntimePages(pages) {
     const isGamePages = pages.some((page) => gamePages.some((gamePage) => gamePage.name === page.name));
-    return isGamePages ? getRuntimeGamePages() : pages;
+    if (isGamePages)
+        return getRuntimeGamePages();
+    const isAnimePages = pages.some((page) => animePages.some((animePage) => animePage.name === page.name));
+    return isAnimePages ? getRuntimeAnimePages() : pages;
 }
 function getUrlHost(url) {
     try {
@@ -3019,24 +3104,24 @@ function isActiveRefresh(token) {
 function getMapExpiration(pages) {
     return pages.reduce((max, page) => Math.max(max, page.expiration || 7), 7);
 }
-function getInfoStorageKey(page, info) {
-    if (info?.url) {
-        return page.getSubjectId(info.url);
-    }
-    return `${page.name}_${info.name}`;
+function getNoMatchCacheKey(page, sourcePage, sourceSubjectId) {
+    return `${page.name}_no_match_${sourcePage.name}_${sourceSubjectId}`;
 }
-function saveScoreInfo(page, info, map) {
-    const key = getInfoStorageKey(page, info);
-    if (!key)
+function saveScoreInfo(page, info, map, options = {}) {
+    if (options.status === 'no-match' || !info.url) {
+        if (!options.sourcePage || !options.sourceSubjectId)
+            return;
+        const cacheKey = getNoMatchCacheKey(page, options.sourcePage, options.sourceSubjectId);
+        saveNoMatchInfo(cacheKey, page.expiration);
+        map[page.name] = { status: 'no-match', cacheKey };
+        return cacheKey;
+    }
+    const id = page.getSubjectId(info.url);
+    if (!id)
         return;
-    if (info.url) {
-        saveInfo(key, info, page.expiration);
-    }
-    else if (!info.url) {
-        saveInfo(key, { url: '', name: '' }, page.expiration);
-    }
-    map[page.name] = key;
-    return key;
+    saveSubjectInfo(id, info, page.expiration);
+    map[page.name] = { status: 'matched', id };
+    return id;
 }
 function insertScoreInfo(curPage, page, info) {
     try {
@@ -3047,11 +3132,21 @@ function insertScoreInfo(curPage, page, info) {
     }
 }
 async function getPageSearchResult(page, curInfo) {
+    const searchRequest = runInSiteSearchQueue(page, () => page.getSearchResult(curInfo));
+    searchRequest.catch(() => undefined);
     try {
-        return await withTimeout(runInSiteSearchQueue(page, () => page.getSearchResult(curInfo)), SEARCH_TIMEOUT, `${page.name} search timeout`);
+        const info = await withTimeout(searchRequest, SEARCH_TIMEOUT, `${page.name} search timeout`);
+        if (info?.url) {
+            return { status: 'matched', info };
+        }
+        return {
+            status: 'not-found',
+            info: getNoMatchInfo(curInfo),
+        };
     }
     catch (error) {
         console.error(error);
+        return { status: 'failed', error };
     }
 }
 function logRefreshError(error) {
@@ -3061,7 +3156,7 @@ function refreshVisibleScores(force = true) {
     document
         .querySelectorAll('.e-userjs-score-compare')
         .forEach((el) => el.remove());
-    initPage(animePages, force);
+    initPage(getRuntimeAnimePages(), force);
     if (!isGameScoreHidden()) {
         initPage(getRuntimeGamePages(), force);
     }
@@ -3082,6 +3177,15 @@ if (typeof GM_registerMenuCommand === 'function') {
     GM_registerMenuCommand('评分设置', () => showConfigDialog());
 }
 function showConfigDialog() {
+    const animePagesFormStr = animePages.map((page) => {
+        return `<label class="e-user-config-row" for="e-user-anime-pages-${page.name}">
+      <span class="e-user-config-row-text">
+        <span class="e-user-config-row-title">${page.name}</span>
+        <span class="e-user-config-row-desc">开启后自动请求该站点评分；关闭后跳过后台搜索</span>
+      </span>
+      <input class="e-user-config-switch e-user-anime-page-switch" type="checkbox" id="e-user-anime-pages-${page.name}">
+    </label>`;
+    }).join('\n');
     const gamePagesFormStr = gamePages.map((page) => {
         return `<label class="e-user-config-row" for="e-user-game-pages-${page.name}">
       <span class="e-user-config-row-text">
@@ -3304,7 +3408,7 @@ function showConfigDialog() {
   </style>
   <div class="game-option-container e-user-config-content">
     <div class="e-user-config-header">
-      <p id="e-user-config-title" class="e-user-config-title">游戏评分设置</p>
+      <p id="e-user-config-title" class="e-user-config-title">评分设置</p>
       <p class="e-user-config-desc">集中管理显示状态、自动搜索、Bangumi 请求和当前页面操作。</p>
     </div>
     <div class="e-user-config-section">
@@ -3316,9 +3420,16 @@ function showConfigDialog() {
         <input class="e-user-config-switch" type="checkbox" id="e-user-show-game-score">
       </label>
     </div>
+    <div class="e-user-config-section">
+      <p class="e-user-config-section-title">动画自动搜索站点</p>
+      <p class="e-user-config-section-desc">开启的站点会在后台搜索动画评分；关闭后跳过自动请求，配置会保留。</p>
+      <div class="e-user-config-list">
+        ${animePagesFormStr}
+      </div>
+    </div>
     <div class="e-user-config-section e-user-config-search-section">
-      <p class="e-user-config-section-title">自动搜索站点</p>
-      <p class="e-user-config-section-desc">开启的站点会在后台搜索评分；关闭后跳过自动请求，配置会保留。</p>
+      <p class="e-user-config-section-title">游戏自动搜索站点</p>
+      <p class="e-user-config-section-desc">开启的站点会在后台搜索游戏评分；关闭后跳过自动请求，配置会保留。</p>
       <p class="e-user-config-note" hidden>游戏评分已隐藏，站点搜索设置暂不生效。</p>
       <div class="e-user-config-list">
         ${gamePagesFormStr}
@@ -3346,6 +3457,7 @@ function showConfigDialog() {
   </div>
 </dialog>
 `);
+    let animePagesConf = getAnimePagesConf();
     let gamePagesConf = getGamePagesConf();
     const $showGameScore = $dialog.querySelector('#e-user-show-game-score');
     const $searchSection = $dialog.querySelector('.e-user-config-search-section');
@@ -3366,6 +3478,10 @@ function showConfigDialog() {
         });
     };
     $showGameScore.checked = !isGameScoreHidden();
+    animePages.forEach((page) => {
+        const conf = animePagesConf[page.name] || {};
+        $dialog.querySelector(`#e-user-anime-pages-${page.name}`).checked = conf.hide ? false : true;
+    });
     gamePages.forEach((page) => {
         const conf = gamePagesConf[page.name] || {};
         $dialog.querySelector(`#e-user-game-pages-${page.name}`).checked = conf.hide ? false : true;
@@ -3377,6 +3493,17 @@ function showConfigDialog() {
             updateSearchSectionState();
             setStatus(target.checked ? '游戏评分已设为显示。' : '游戏评分已隐藏，站点搜索设置暂不生效。');
         }
+        else if (target.id?.startsWith('e-user-anime-pages-')) {
+            const name = target.id.replace('e-user-anime-pages-', '');
+            const conf = animePagesConf[name] || {};
+            conf.hide = !target.checked;
+            animePagesConf = {
+                ...animePagesConf,
+                [name]: conf,
+            };
+            setAnimePagesConf(animePagesConf);
+            setStatus(`${name} 动画自动搜索已${target.checked ? '开启' : '关闭'}。`);
+        }
         else if (target.id?.startsWith('e-user-game-pages-')) {
             const name = target.id.replace('e-user-game-pages-', '');
             const conf = gamePagesConf[name] || {};
@@ -3386,7 +3513,7 @@ function showConfigDialog() {
                 [name]: conf,
             };
             setGamePagesConf(gamePagesConf);
-            setStatus(`${name} 自动搜索已${target.checked ? '开启' : '关闭'}。`);
+            setStatus(`${name} 游戏自动搜索已${target.checked ? '开启' : '关闭'}。`);
         }
     });
     $dialog.querySelector('.e-user-save-ua').addEventListener('click', () => {
@@ -3438,33 +3565,87 @@ function getPageIdxByHost(pages, host) {
 }
 async function insertScoreRows(curPage, pages, curInfo, map, refreshToken, subjectId, mapExpiration) {
     const targetPages = pages.filter((page) => page.name !== curPage.name && page.type !== 'info');
-    await Promise.all(targetPages.map(async (page) => {
-        const cachedInfo = getInfo(map[page.name]);
-        if (cachedInfo) {
-            if (isActiveRefresh(refreshToken)) {
-                insertScoreInfo(curPage, page, cachedInfo);
+    const rowResults = new Array(targetPages.length);
+    let nextLoadIndex = 0;
+    let nextInsertIndex = 0;
+    let stopped = false;
+    function insertReadyRows() {
+        while (!stopped && nextInsertIndex < targetPages.length) {
+            const result = rowResults[nextInsertIndex];
+            if (!result)
+                return;
+            if (!isActiveRefresh(refreshToken)) {
+                stopped = true;
+                return;
             }
+            insertScoreInfo(curPage, result.page, result.info);
+            nextInsertIndex++;
+        }
+    }
+    async function loadRow(index) {
+        if (!isActiveRefresh(refreshToken)) {
+            stopped = true;
+            return;
+        }
+        const page = targetPages[index];
+        const cachedInfo = getInfoFromMap(map, page.name);
+        if (cachedInfo) {
+            rowResults[index] = { page, info: cachedInfo };
+            insertReadyRows();
             return;
         }
         const searchResult = await getPageSearchResult(page, curInfo);
-        if (!isActiveRefresh(refreshToken))
+        if (!isActiveRefresh(refreshToken)) {
+            stopped = true;
             return;
-        const info = searchResult || getNoMatchInfo(curInfo);
-        saveScoreInfo(page, info, map);
-        if (subjectId) {
+        }
+        let info;
+        let shouldSaveMap = false;
+        if (searchResult.status === 'matched') {
+            info = searchResult.info;
+            shouldSaveMap = Boolean(saveScoreInfo(page, info, map));
+        }
+        else if (searchResult.status === 'not-found') {
+            info = searchResult.info;
+            shouldSaveMap = Boolean(saveScoreInfo(page, info, map, {
+                sourcePage: curPage,
+                sourceSubjectId: subjectId,
+                status: 'no-match',
+            }));
+        }
+        else {
+            info = getNoMatchInfo(curInfo);
+        }
+        if (subjectId && shouldSaveMap) {
             setScoreMap(subjectId, map, mapExpiration);
         }
-        insertScoreInfo(curPage, page, info);
-    }));
+        rowResults[index] = { page, info };
+        insertReadyRows();
+    }
+    async function searchWorker() {
+        while (!stopped && isActiveRefresh(refreshToken)) {
+            const index = nextLoadIndex++;
+            if (index >= targetPages.length)
+                return;
+            await loadRow(index);
+        }
+    }
+    const workerCount = Math.min(MAX_PARALLEL_SEARCH_REQUESTS, targetPages.length);
+    await Promise.all(Array.from({ length: workerCount }, () => searchWorker()));
 }
 async function refreshScore(curPage, pages, force = false) {
     const refreshToken = ++activeRefreshToken;
     const curInfo = curPage.getScoreInfo();
     const subjectId = curPage.getSubjectId(curInfo.url);
-    let map = subjectId ? { [curPage.name]: subjectId } : {};
+    let map = subjectId
+        ? { [curPage.name]: { status: 'matched', id: subjectId } }
+        : {};
     if (!force && subjectId) {
         const scoreMap = getScoreMap(curPage.name, subjectId);
-        map = { ...scoreMap, [curPage.name]: subjectId };
+        map = {
+            ...scoreMap,
+            [curPage.name]: { status: 'matched', id: subjectId },
+        };
     }
     const mapExpiration = getMapExpiration(pages);
     saveScoreInfo(curPage, curInfo, map);
@@ -3542,7 +3723,7 @@ window.VNDB_REVISE_QUERY_DICT = window.VNDB_REVISE_QUERY_DICT ?? {
 // 'does not exist query': 'SCH_SKIP_SEARCH',
 };
 window.EGS_REVISE_QUERY_DICT = window.EGS_REVISE_QUERY_DICT ?? {};
-initPage(animePages);
+initPage(getRuntimeAnimePages());
 if (!isGameScoreHidden()) {
     initPage(getRuntimeGamePages());
 }

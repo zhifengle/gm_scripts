@@ -9,7 +9,7 @@
 // @include     https://search.douban.com/movie/subject_search*
 // @author      22earth
 // @homepage    https://github.com/22earth/gm_scripts
-// @version     0.0.9
+// @version     0.0.10
 // @run-at      document-end
 // @grant       GM_registerMenuCommand
 // @grant       GM_xmlhttpRequest
@@ -1538,6 +1538,255 @@ const siteUtils = {
     checkSubjectExist: checkAnimeSubjectExist,
 };
 
+const INTEREST_TYPE_HEADERS = ['观看状态', '类别', 'interestType'];
+const SYNC_STATUS_HEADERS = ['同步情况', 'syncStatus'];
+const SYNC_SUBJECT_HEADERS = ['搜索结果信息', 'syncSubject'];
+const DEFAULT_COLLECTION_SHEET_NAME = '用户收藏';
+const COLLECTION_SHEET_COLUMNS = [
+    {
+        key: 'name',
+        headers: ['名称', 'name', 'title'],
+        exportValue: (item) => item.name,
+        importValue: (item, value) => {
+            item.name = value;
+        },
+    },
+    {
+        key: 'greyName',
+        headers: ['别名', 'greyName', 'subtitle'],
+        exportValue: (item) => item.greyName,
+        importValue: (item, value) => {
+            item.greyName = value;
+        },
+    },
+    {
+        key: 'releaseDate',
+        headers: ['发行日期', 'releaseDate'],
+        exportValue: (item) => item.releaseDate,
+        importValue: (item, value) => {
+            item.releaseDate = value;
+        },
+    },
+    {
+        key: 'url',
+        headers: ['地址', 'url', 'subjectUrl'],
+        exportValue: (item) => item.url,
+        importValue: (item, value) => {
+            item.url = value;
+        },
+    },
+    {
+        key: 'cover',
+        headers: ['封面地址', 'cover', 'coverUrl'],
+        exportValue: (item) => item.cover,
+        importValue: (item, value) => {
+            item.cover = value;
+        },
+    },
+    {
+        key: 'collectDate',
+        headers: ['收藏日期', 'collectDate'],
+        exportValue: (item) => item.collectInfo?.date,
+        importValue: (item, value) => {
+            ensureCollectionInfo(item).date = value;
+        },
+    },
+    {
+        key: 'score',
+        headers: ['我的评分', 'score', 'rating'],
+        exportValue: (item) => item.collectInfo?.score,
+        importValue: (item, value) => {
+            ensureCollectionInfo(item).score = value;
+        },
+    },
+    {
+        key: 'tags',
+        headers: ['标签', 'tags'],
+        exportValue: (item) => item.collectInfo?.tags,
+        importValue: (item, value) => {
+            ensureCollectionInfo(item).tags = value;
+        },
+    },
+    {
+        key: 'comment',
+        headers: ['吐槽', 'comment'],
+        exportValue: (item) => item.collectInfo?.comment,
+        importValue: (item, value) => {
+            ensureCollectionInfo(item).comment = value;
+        },
+    },
+    {
+        key: 'rawInfos',
+        headers: ['其它信息', 'rawInfos', 'info'],
+        exportValue: (item) => item.rawInfos,
+        importValue: (item, value) => {
+            item.rawInfos = value;
+        },
+    },
+];
+function ensureCollectionInfo(item) {
+    if (!item.collectInfo) {
+        item.collectInfo = {
+            date: '',
+            score: '',
+            tags: '',
+            comment: '',
+        };
+    }
+    return item.collectInfo;
+}
+function toCellText(value) {
+    if (value == null) {
+        return '';
+    }
+    return String(value).trim();
+}
+function readFirstCell(row, headers) {
+    for (const header of headers) {
+        const value = toCellText(row[header]);
+        if (value) {
+            return value;
+        }
+    }
+    return '';
+}
+function getInterestTypeByName(name) {
+    const text = toCellText(name);
+    return ['wish', 'collect', 'do', 'on_hold', 'dropped'].find((type) => type === text || getInterestTypeName(type) === text);
+}
+function createEmptyCollectionSheetItem() {
+    return {
+        name: '',
+        url: '',
+        rawInfos: '',
+        syncStatus: '',
+        collectInfo: {
+            date: '',
+            score: '',
+            tags: '',
+            comment: '',
+        },
+    };
+}
+function serializeSearchSubject(subject) {
+    if (!subject) {
+        return '';
+    }
+    return [
+        subject.name || '',
+        subject.greyName || '',
+        subject.url || '',
+        subject.rawName || '',
+    ].join(';');
+}
+function parseSearchSubject(value) {
+    const text = toCellText(value);
+    if (!text) {
+        return;
+    }
+    try {
+        const parsed = JSON.parse(text);
+        if (parsed?.name || parsed?.url) {
+            return {
+                name: parsed.name || '',
+                greyName: parsed.greyName || '',
+                url: parsed.url || '',
+                rawName: parsed.rawName || '',
+            };
+        }
+    }
+    catch (error) {
+        // Older exports use "name;greyName;url;rawName".
+    }
+    const [name, greyName, url, rawName] = text.split(';');
+    if (!name && !url) {
+        return;
+    }
+    return {
+        name: name || '',
+        greyName: greyName || '',
+        url: url || '',
+        rawName: rawName || '',
+    };
+}
+function getCollectionSheetHeaders(options = {}) {
+    const headers = COLLECTION_SHEET_COLUMNS.map((column) => column.headers[0]);
+    headers.push(options.interestTypeHeader || INTEREST_TYPE_HEADERS[0]);
+    if (options.includeSyncColumns) {
+        headers.push(SYNC_STATUS_HEADERS[0], SYNC_SUBJECT_HEADERS[0]);
+    }
+    return headers;
+}
+function collectionItemToSheetRow(item, options = {}) {
+    const row = COLLECTION_SHEET_COLUMNS.reduce((res, column) => {
+        res[column.headers[0]] = column.exportValue(item) || '';
+        return res;
+    }, {});
+    const interestType = options.getInterestType?.(item) || item.collectInfo?.interestType;
+    row[options.interestTypeHeader || INTEREST_TYPE_HEADERS[0]] = interestType
+        ? getInterestTypeName(interestType)
+        : '';
+    if (options.includeSyncColumns) {
+        row[SYNC_STATUS_HEADERS[0]] = item.syncStatus || '';
+        row[SYNC_SUBJECT_HEADERS[0]] = serializeSearchSubject(item.syncSubject);
+    }
+    return row;
+}
+function collectionItemsToSheetRows(items, options = {}) {
+    return items.map((item) => collectionItemToSheetRow(item, options));
+}
+function collectionSheetRowToItem(row, options = {}) {
+    const item = createEmptyCollectionSheetItem();
+    COLLECTION_SHEET_COLUMNS.forEach((column) => {
+        column.importValue(item, readFirstCell(row, column.headers));
+    });
+    item.syncStatus = readFirstCell(row, SYNC_STATUS_HEADERS);
+    item.syncSubject = parseSearchSubject(readFirstCell(row, SYNC_SUBJECT_HEADERS));
+    if (!item.name && item.syncSubject?.name) {
+        item.name = item.syncSubject.name;
+    }
+    const fallbackTypes = options.fallbackTypes || [];
+    const interestType = getInterestTypeByName(readFirstCell(row, INTEREST_TYPE_HEADERS)) ||
+        (fallbackTypes.length === 1
+            ? fallbackTypes[0]
+            : options.defaultInterestType || 'collect');
+    ensureCollectionInfo(item).interestType = interestType;
+    return { item, interestType };
+}
+function createCollectionWorkbook(items, options = {}) {
+    const worksheet = XLSX.utils.json_to_sheet(collectionItemsToSheetRows(items, options), {
+        header: getCollectionSheetHeaders(options),
+    });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, options.sheetName || DEFAULT_COLLECTION_SHEET_NAME);
+    return workbook;
+}
+function downloadCollectionExcel(filename, items, options = {}) {
+    XLSX.writeFile(createCollectionWorkbook(items, options), filename);
+}
+async function readCollectionWorkbook(file) {
+    if (/\.csv$/i.test(file.name)) {
+        const data = await file.text();
+        return XLSX.read(data, { type: 'string' });
+    }
+    const data = await file.arrayBuffer();
+    return XLSX.read(data);
+}
+async function readCollectionSheetRows(file) {
+    const workbook = await readCollectionWorkbook(file);
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+        throw new Error('文件中没有工作表');
+    }
+    const worksheet = workbook.Sheets[sheetName];
+    if (!worksheet) {
+        throw new Error(`找不到工作表: ${sheetName}`);
+    }
+    return XLSX.utils.sheet_to_json(worksheet, {
+        defval: '',
+    });
+}
+
 function insertControl(contanerSelector, name) {
     GM_addStyle(`
   .e-userjs-export-tool-container input {
@@ -1630,365 +1879,65 @@ const ALL_INTEREST_TYPES = [
     'dropped',
 ];
 const DEFAULT_INTEREST_TYPES = ['do', 'collect', 'wish'];
-const WATCH_STATUS_HEADER = '观看状态';
-const INTEREST_TYPE_HEADER = '类别';
-const SYNC_STATUS_HEADER = '同步情况';
-const SYNC_SUBJECT_HEADER = '搜索结果信息';
-const SUBJECT_COLUMNS = [
-    {
-        header: '名称',
-        getValue: (item) => item.name,
-        setValue: (item, value) => {
-            item.name = value;
-        },
-    },
-    {
-        header: '别名',
-        getValue: (item) => item.greyName,
-        setValue: (item, value) => {
-            item.greyName = value;
-        },
-    },
-    {
-        header: '发行日期',
-        getValue: (item) => item.releaseDate,
-        setValue: (item, value) => {
-            item.releaseDate = value;
-        },
-    },
-    {
-        header: '地址',
-        getValue: (item) => item.url,
-        setValue: (item, value) => {
-            item.url = value;
-        },
-    },
-    {
-        header: '封面地址',
-        getValue: (item) => item.cover,
-        setValue: (item, value) => {
-            item.cover = value;
-        },
-    },
-    {
-        header: '收藏日期',
-        getValue: (item) => item.collectInfo?.date,
-        setValue: (item, value) => {
-            item.collectInfo.date = value;
-        },
-    },
-    {
-        header: '我的评分',
-        getValue: (item) => item.collectInfo?.score,
-        setValue: (item, value) => {
-            item.collectInfo.score = value;
-        },
-    },
-    {
-        header: '标签',
-        getValue: (item) => item.collectInfo?.tags,
-        setValue: (item, value) => {
-            item.collectInfo.tags = value;
-        },
-    },
-    {
-        header: '吐槽',
-        getValue: (item) => item.collectInfo?.comment,
-        setValue: (item, value) => {
-            item.collectInfo.comment = value;
-        },
-    },
-    {
-        header: '其它信息',
-        getValue: (item) => item.rawInfos,
-        setValue: (item, value) => {
-            item.rawInfos = value;
-        },
-    },
-];
-const EXPORT_HEADERS = [
-    ...SUBJECT_COLUMNS.map((column) => column.header),
-    INTEREST_TYPE_HEADER,
-    SYNC_STATUS_HEADER,
-    SYNC_SUBJECT_HEADER,
-];
+const SYNC_SUCCESS = '成功';
+const SYNC_SHEET_NAME = '同步信息';
 let bangumiData = null;
 let bangumiDataLoaded = false;
+function cloneItem(item) {
+    return {
+        ...item,
+        syncStatus: item.syncStatus || '',
+        collectInfo: item.collectInfo ? { ...item.collectInfo } : undefined,
+        syncSubject: item.syncSubject ? { ...item.syncSubject } : undefined,
+    };
+}
+function createEmptyBuckets() {
+    return ALL_INTEREST_TYPES.reduce((res, type) => {
+        res[type] = [];
+        return res;
+    }, {});
+}
+function replaceBuckets(target, source) {
+    ALL_INTEREST_TYPES.forEach((type) => {
+        target[type] = [...source[type]];
+    });
+}
 function getBangumiData() {
-    if (!bangumiDataLoaded) {
-        bangumiDataLoaded = true;
-        try {
-            bangumiData = JSON.parse(GM_getResourceText('bangumiDataURL'));
-        }
-        catch (error) {
-            bangumiData = null;
-            console.log('parse JSON:', error);
-        }
+    if (bangumiDataLoaded) {
+        return bangumiData;
+    }
+    bangumiDataLoaded = true;
+    try {
+        bangumiData = JSON.parse(GM_getResourceText('bangumiDataURL'));
+    }
+    catch (error) {
+        bangumiData = null;
+        console.log('parse JSON:', error);
     }
     return bangumiData;
 }
 function getBangumiSubjectId(name = '', greyName = '') {
     const data = getBangumiData();
-    if (!data)
+    if (!data) {
         return '';
-    const obj = data.items.find((item) => {
-        let cnNames = [];
-        if (item.titleTranslate && item.titleTranslate['zh-Hans']) {
-            cnNames = item.titleTranslate['zh-Hans'];
-        }
+    }
+    const matchedItem = data.items.find((item) => {
+        const cnNames = item.titleTranslate?.['zh-Hans'] || [];
         return (item.title === name ||
             item.title === greyName ||
             cnNames.includes(greyName));
     });
-    return obj?.sites?.find((item) => item.site === 'bangumi')?.id || '';
+    return matchedItem?.sites?.find((item) => item.site === 'bangumi')?.id || '';
 }
-function getSearchResultInfo(item) {
-    if (!item.syncSubject) {
-        return '';
-    }
-    const { name, greyName, url, rawName } = item.syncSubject;
-    return [name, greyName || '', url || '', rawName || ''].join(';');
-}
-function genSheetRow(item, type) {
-    const row = SUBJECT_COLUMNS.reduce((res, column) => {
-        res[column.header] = column.getValue(item) || '';
-        return res;
-    }, {});
-    return {
-        ...row,
-        [INTEREST_TYPE_HEADER]: getInterestTypeName(type),
-        [SYNC_STATUS_HEADER]: item.syncStatus || '',
-        [SYNC_SUBJECT_HEADER]: getSearchResultInfo(item),
-    };
-}
-function getSheetRows(infos) {
-    const rows = [];
-    const keys = Object.keys(infos);
-    keys.forEach((key) => {
-        infos[key].forEach((item) => {
-            rows.push(genSheetRow(item, key));
-        });
-    });
-    return rows;
-}
-function downloadExcel(filename, infos) {
-    const worksheet = XLSX.utils.json_to_sheet(getSheetRows(infos), {
-        header: EXPORT_HEADERS,
-    });
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, '同步信息');
-    XLSX.writeFile(workbook, filename);
-}
-async function readWorkbook(file) {
-    if (/\.csv$/i.test(file.name)) {
-        const data = await file.text();
-        return XLSX.read(data, { type: 'string' });
-    }
-    const data = await file.arrayBuffer();
-    return XLSX.read(data);
-}
-async function readSheetRows(file) {
-    const workbook = await readWorkbook(file);
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    return XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-}
-function toCellText(val) {
-    if (val == null) {
-        return '';
-    }
-    return String(val).trim();
-}
-function getInterestTypeByName(name) {
-    const text = toCellText(name);
-    return ALL_INTEREST_TYPES.find((type) => {
-        return type === text || getInterestTypeName(type) === text;
-    });
-}
-function parseSyncSubject(val) {
-    const text = toCellText(val);
-    if (!text) {
-        return;
-    }
-    const [name, greyName, url, rawName] = text.split(';');
-    if (!name && !url) {
-        return;
-    }
-    return {
-        name: name || '',
-        greyName: greyName || '',
-        url: url || '',
-        rawName: rawName || '',
-    };
-}
-function getRowInterestType(row, fallbackTypes) {
-    const typeName = toCellText(row[INTEREST_TYPE_HEADER]) || toCellText(row[WATCH_STATUS_HEADER]);
-    return (getInterestTypeByName(typeName) ||
-        (fallbackTypes.length === 1 ? fallbackTypes[0] : 'collect'));
-}
-function parseSheetRow(row, fallbackTypes) {
-    const type = getRowInterestType(row, fallbackTypes);
-    const syncSubject = parseSyncSubject(row[SYNC_SUBJECT_HEADER]);
-    const item = {
-        name: '',
-        url: '',
-        rawInfos: '',
-        syncStatus: toCellText(row[SYNC_STATUS_HEADER]),
-        collectInfo: {
-            date: '',
-            score: '',
-            tags: '',
-            comment: '',
-        },
-    };
-    SUBJECT_COLUMNS.forEach((column) => {
-        column.setValue(item, toCellText(row[column.header]));
-    });
-    if (syncSubject) {
-        item.syncSubject = syncSubject;
-    }
-    return { type, item };
-}
-async function readInterestInfosFromFile(file) {
-    const rows = await readSheetRows(file);
-    const infos = createEmptyInterestInfos();
-    const fallbackTypes = getInterestTypeArr();
-    rows.forEach((row) => {
-        const { type, item } = parseSheetRow(row, fallbackTypes);
-        if (item.name) {
-            infos[type].push(item);
-        }
-    });
-    return infos;
-}
-function replaceInterestInfos(target, source) {
-    ALL_INTEREST_TYPES.forEach((type) => {
-        target[type] = [...source[type]];
-    });
-}
-// 区分是否为动画
-function isJpMovie(item) {
-    return item.rawInfos.indexOf('日本') !== -1;
-}
-function clearLogInfo($container) {
-    $container
-        .querySelectorAll('.e-wiki-log-info')
-        .forEach((node) => node.remove());
-}
-function createEmptyInterestInfos() {
-    return {
-        do: [],
-        collect: [],
-        wish: [],
-        dropped: [],
-        on_hold: [],
-    };
-}
-function getMigrateUtils(localSite) {
-    let localUtils;
-    let remoteUtils;
-    if (localSite === 'bangumi') {
-        localUtils = siteUtils$1;
-        remoteUtils = siteUtils;
-    }
-    else {
-        localUtils = siteUtils;
-        remoteUtils = siteUtils$1;
-    }
-    return { localUtils, remoteUtils };
-}
-function getExportSubjectName(site) {
-    return site === 'bangumi' ? '豆瓣' : 'Bangumi';
-}
-function init(site) {
-    const { localUtils, remoteUtils } = getMigrateUtils(site);
-    const $container = insertControl(localUtils.contanerSelector, remoteUtils.name);
-    const $input = $container.querySelector('input');
-    const $importBtn = $container.querySelector('.import-btn');
-    const $importFileBtn = $container.querySelector('.import-file-btn');
-    const $importFileInput = $container.querySelector('.import-file-input');
-    const $exportBtn = $container.querySelector('.export-btn');
-    const $retryBtn = $container.querySelector('.retry-btn');
-    const interestInfos = createEmptyInterestInfos();
-    const context = {
-        localUtils,
-        remoteUtils,
-        localSite: site,
-        $container,
-        $button: $importBtn,
-    };
-    $exportBtn.addEventListener('click', async () => {
-        $exportBtn.value = '导出中...';
-        const strName = `${getExportSubjectName(site)}动画的收藏`;
-        downloadExcel(`${strName}-${formatDate(new Date())}.xlsx`, interestInfos);
-        $exportBtn.style.display = 'none';
-    });
-    $retryBtn.addEventListener('click', async () => {
-        const userId = getUserIdFromInput($input.value, remoteUtils.getUserId, remoteUtils.name);
-        if (!userId)
-            return;
-        await retryUnsyncedCollections(context, interestInfos);
-        showActionButtons($container);
-    });
-    $importBtn.addEventListener('click', async () => {
-        const userId = getUserIdFromInput($input.value, remoteUtils.getUserId, remoteUtils.name);
-        if (!userId)
-            return;
-        await importCollections(context, userId, interestInfos);
-        showActionButtons($container);
-    });
-    $importFileBtn.addEventListener('click', () => {
-        $importFileInput.click();
-    });
-    $importFileInput.addEventListener('change', async () => {
-        const file = $importFileInput.files?.[0];
-        if (!file)
-            return;
-        try {
-            const infos = await readInterestInfosFromFile(file);
-            replaceInterestInfos(interestInfos, infos);
-            await retryUnsyncedCollections(context, interestInfos);
-            showActionButtons($container);
-        }
-        catch (error) {
-            console.error('导入文件错误: ', error);
-            alert(`导入文件错误: ${error}`);
-        }
-        finally {
-            $importFileInput.value = '';
-        }
-    });
-}
-function getUserIdFromInput(val, fn, siteName) {
-    if (!val) {
-        alert(`请输入${siteName}主页地址`);
-        return '';
-    }
-    const userId = fn(val);
-    if (!userId) {
-        alert(`无效${siteName}主页地址`);
-        return '';
-    }
-    return userId;
-}
-function getInterestTypeArr() {
-    const $container = document.querySelector('.e-userjs-export-tool-container');
-    const $select = $container.querySelector('#movie-type-select');
-    // const arr: InterestType[] = ['wish'];
-    if ($select && $select.value) {
-        return [$select.value];
+function getSelectedInterestTypes() {
+    const select = document.querySelector('.e-userjs-export-tool-container #movie-type-select');
+    if (select?.value) {
+        return [select.value];
     }
     return [...DEFAULT_INTEREST_TYPES];
 }
-function showActionButtons($container) {
-    clearLogInfo($container);
-    const $exportBtn = $container.querySelector('.export-btn');
-    const $retryBtn = $container.querySelector('.retry-btn');
-    $exportBtn.style.display = 'inline-block';
-    $retryBtn.style.display = 'inline-block';
-}
-function shouldSyncItem(item) {
-    return item.syncStatus !== '成功';
+function isJpMovie(item) {
+    return item.rawInfos.indexOf('日本') !== -1;
 }
 function getErrorMessage(error) {
     if (error instanceof Error) {
@@ -1996,39 +1945,113 @@ function getErrorMessage(error) {
     }
     return String(error);
 }
+function setFailure(item, message) {
+    item.syncStatus = `失败: ${message}`;
+}
+function shouldSyncItem(item) {
+    const status = item.syncStatus || '';
+    return status !== SYNC_SUCCESS && !status.startsWith('跳过:');
+}
+function clearLogInfo(container) {
+    container
+        .querySelectorAll('.e-wiki-log-info')
+        .forEach((node) => node.remove());
+}
+function insertStatusLog(context, message) {
+    insertLogInfo(context.controls.importButton, message);
+}
 function insertErrorLog(context, message) {
-    insertLogInfo(context.$button, `<span style="color:tomato">${message}</span>`);
+    insertStatusLog(context, `<span style="color:tomato">${message}</span>`);
 }
-async function retryUnsyncedCollections(context, interestInfos) {
-    const arr = getInterestTypeArr();
-    for (const type of arr) {
-        const res = interestInfos[type];
-        for (let i = 0; i < res.length; i++) {
-            const item = res[i];
-            if (shouldSyncItem(item)) {
-                res[i] = await migrateCollection(context, item, type);
-            }
-        }
+function getMigrateUtils(localSite) {
+    if (localSite === 'bangumi') {
+        return {
+            localUtils: siteUtils$1,
+            remoteUtils: siteUtils,
+        };
     }
+    return {
+        localUtils: siteUtils,
+        remoteUtils: siteUtils$1,
+    };
 }
-async function importCollections(context, userId, interestInfos) {
-    const arr = getInterestTypeArr();
-    for (const type of arr) {
-        let res = [];
-        try {
-            res = (await context.remoteUtils.getAllPageInfo(userId, 'movie', type));
-        }
-        catch (error) {
-            const message = `获取${getInterestTypeName(type)}收藏失败: ${getErrorMessage(error)}`;
-            insertErrorLog(context, message);
-            console.error(message, error);
-            continue;
-        }
-        for (let i = 0; i < res.length; i++) {
-            res[i] = await migrateCollection(context, res[i], type);
-        }
-        interestInfos[type] = [...res];
+function getExportSubjectName(site) {
+    return site === 'bangumi' ? '豆瓣' : 'Bangumi';
+}
+function getRequiredElement(parent, selector) {
+    const element = parent.querySelector(selector);
+    if (!element) {
+        throw new Error(`Missing element: ${selector}`);
     }
+    return element;
+}
+function createControls(localUtils, remoteUtils) {
+    const container = insertControl(localUtils.contanerSelector, remoteUtils.name);
+    return {
+        container,
+        userInput: getRequiredElement(container, 'input'),
+        importButton: getRequiredElement(container, '.import-btn'),
+        importFileButton: getRequiredElement(container, '.import-file-btn'),
+        importFileInput: getRequiredElement(container, '.import-file-input'),
+        exportButton: getRequiredElement(container, '.export-btn'),
+        retryButton: getRequiredElement(container, '.retry-btn'),
+    };
+}
+function getUserIdFromInput(context) {
+    const value = context.controls.userInput.value;
+    if (!value) {
+        alert(`请输入${context.remoteUtils.name}主页地址`);
+        return '';
+    }
+    const userId = context.remoteUtils.getUserId(value);
+    if (!userId) {
+        alert(`无效${context.remoteUtils.name}主页地址`);
+        return '';
+    }
+    return userId;
+}
+function sheetRowToItem(row, fallbackTypes) {
+    const { item, interestType } = collectionSheetRowToItem(row, {
+        fallbackTypes,
+        defaultInterestType: 'collect',
+    });
+    return {
+        type: interestType,
+        item: {
+            ...item,
+            syncStatus: item.syncStatus || '',
+        },
+    };
+}
+function bucketsToItems(buckets) {
+    const items = [];
+    ALL_INTEREST_TYPES.forEach((type) => {
+        buckets[type].forEach((item) => {
+            const itemWithType = cloneItem(item);
+            ensureCollectionInfo(itemWithType).interestType = type;
+            items.push(itemWithType);
+        });
+    });
+    return items;
+}
+function downloadExcel(filename, buckets) {
+    downloadCollectionExcel(filename, bucketsToItems(buckets), {
+        includeSyncColumns: true,
+        interestTypeHeader: '类别',
+        sheetName: SYNC_SHEET_NAME,
+    });
+}
+async function readBucketsFromFile(file) {
+    const rows = await readCollectionSheetRows(file);
+    const buckets = createEmptyBuckets();
+    const fallbackTypes = getSelectedInterestTypes();
+    rows.forEach((row) => {
+        const { type, item } = sheetRowToItem(row, fallbackTypes);
+        if (item.name || item.url || item.syncSubject?.url) {
+            buckets[type].push(item);
+        }
+    });
+    return buckets;
 }
 function getSubjectIdFromSyncSubject(context, item) {
     if (!item.syncSubject?.url) {
@@ -2036,55 +2059,152 @@ function getSubjectIdFromSyncSubject(context, item) {
     }
     return context.localUtils.getSubjectId(item.syncSubject.url);
 }
-async function migrateCollection(context, item, type) {
-    const subjectItem = { ...item };
-    // 在 Bangumi 上 非日语的条目跳过
+async function findLocalSubjectId(context, item) {
+    let subjectId = getSubjectIdFromSyncSubject(context, item);
+    if (subjectId) {
+        return subjectId;
+    }
+    if (context.localSite === 'bangumi') {
+        subjectId = getBangumiSubjectId(item.name, item.greyName);
+        if (subjectId) {
+            return subjectId;
+        }
+    }
+    await randomSleep(1000, 400);
+    const result = await context.localUtils.checkSubjectExist({
+        name: item.name,
+        releaseDate: item.releaseDate,
+    });
+    if (result?.url) {
+        item.syncSubject = result;
+        return context.localUtils.getSubjectId(result.url);
+    }
+    return '';
+}
+async function syncItem(context, item, type) {
+    const subjectItem = cloneItem(item);
     if (context.localSite === 'bangumi' && !isJpMovie(subjectItem)) {
+        subjectItem.syncStatus = '跳过: 非日本动画';
         return subjectItem;
     }
-    let subjectId = getSubjectIdFromSyncSubject(context, subjectItem);
-    // 使用 bangumi data
-    if (!subjectId && context.localSite === 'bangumi') {
-        subjectId = getBangumiSubjectId(subjectItem.name, subjectItem.greyName);
+    let subjectId = '';
+    try {
+        subjectId = await findLocalSubjectId(context, subjectItem);
+    }
+    catch (error) {
+        setFailure(subjectItem, `搜索错误: ${getErrorMessage(error)}`);
+        console.error('搜索条目错误: ', error);
+        return subjectItem;
     }
     if (!subjectId) {
-        try {
-            await randomSleep(1000, 400);
-            const result = await context.localUtils.checkSubjectExist({
-                name: subjectItem.name,
-                releaseDate: subjectItem.releaseDate,
-            });
-            if (result && result.url) {
-                subjectId = context.localUtils.getSubjectId(result.url);
-                subjectItem.syncSubject = result;
-            }
-        }
-        catch (error) {
-            console.error(error);
-        }
+        setFailure(subjectItem, '未找到匹配条目');
+        return subjectItem;
     }
-    if (subjectId) {
-        clearLogInfo(context.$container);
-        const nameStr = `<span style="color:tomato">《${subjectItem.name}》</span>`;
-        insertLogInfo(context.$button, `更新收藏 ${nameStr} 中...`);
-        const collectInfo = subjectItem.collectInfo || {};
-        try {
-            await context.localUtils.updateInterest(subjectId, {
-                interest: getInterestTypeId(type),
-                ...collectInfo,
-                rating: collectInfo.score || '',
-            });
-            subjectItem.syncStatus = '成功';
-            await randomSleep(2000, 1000);
-            insertLogInfo(context.$button, `更新收藏 ${nameStr} 成功`);
-        }
-        catch (error) {
-            subjectItem.syncStatus = `失败: ${getErrorMessage(error)}`;
-            insertLogInfo(context.$button, `更新收藏 ${nameStr} 失败: ${getErrorMessage(error)}`);
-            console.error('更新收藏错误: ', error);
-        }
+    clearLogInfo(context.controls.container);
+    const nameStr = `<span style="color:tomato">《${subjectItem.name}》</span>`;
+    insertStatusLog(context, `更新收藏 ${nameStr} 中...`);
+    const collectInfo = subjectItem.collectInfo || {};
+    try {
+        await context.localUtils.updateInterest(subjectId, {
+            interest: getInterestTypeId(type),
+            ...collectInfo,
+            rating: collectInfo.score || '',
+        });
+        subjectItem.syncStatus = SYNC_SUCCESS;
+        await randomSleep(2000, 1000);
+        insertStatusLog(context, `更新收藏 ${nameStr} 成功`);
+    }
+    catch (error) {
+        setFailure(subjectItem, getErrorMessage(error));
+        insertErrorLog(context, `更新收藏 ${nameStr} 失败: ${getErrorMessage(error)}`);
+        console.error('更新收藏错误: ', error);
     }
     return subjectItem;
+}
+async function syncBuckets(context, buckets) {
+    for (const type of getSelectedInterestTypes()) {
+        const items = buckets[type];
+        for (let i = 0; i < items.length; i++) {
+            if (shouldSyncItem(items[i])) {
+                items[i] = await syncItem(context, items[i], type);
+            }
+        }
+    }
+}
+async function importRemoteCollections(context, userId, buckets) {
+    for (const type of getSelectedInterestTypes()) {
+        let items = [];
+        try {
+            items = (await context.remoteUtils.getAllPageInfo(userId, 'movie', type));
+        }
+        catch (error) {
+            const message = `获取${getInterestTypeName(type)}收藏失败: ${getErrorMessage(error)}`;
+            insertErrorLog(context, message);
+            console.error(message, error);
+            continue;
+        }
+        for (let i = 0; i < items.length; i++) {
+            items[i] = await syncItem(context, items[i], type);
+        }
+        buckets[type] = [...items];
+    }
+}
+function showActionButtons(context) {
+    clearLogInfo(context.controls.container);
+    context.controls.exportButton.style.display = 'inline-block';
+    context.controls.retryButton.style.display = 'inline-block';
+}
+function bindControls(context, buckets) {
+    const { exportButton, importButton, importFileButton, importFileInput, retryButton, } = context.controls;
+    exportButton.addEventListener('click', async () => {
+        exportButton.textContent = '导出中...';
+        const filename = `${getExportSubjectName(context.localSite)}动画的收藏-${formatDate(new Date())}.xlsx`;
+        downloadExcel(filename, buckets);
+        exportButton.style.display = 'none';
+    });
+    retryButton.addEventListener('click', async () => {
+        await syncBuckets(context, buckets);
+        showActionButtons(context);
+    });
+    importButton.addEventListener('click', async () => {
+        const userId = getUserIdFromInput(context);
+        if (!userId) {
+            return;
+        }
+        await importRemoteCollections(context, userId, buckets);
+        showActionButtons(context);
+    });
+    importFileButton.addEventListener('click', () => {
+        importFileInput.click();
+    });
+    importFileInput.addEventListener('change', async () => {
+        const file = importFileInput.files?.[0];
+        if (!file) {
+            return;
+        }
+        try {
+            replaceBuckets(buckets, await readBucketsFromFile(file));
+            await syncBuckets(context, buckets);
+            showActionButtons(context);
+        }
+        catch (error) {
+            console.error('导入文件错误: ', error);
+            alert(`导入文件错误: ${getErrorMessage(error)}`);
+        }
+        finally {
+            importFileInput.value = '';
+        }
+    });
+}
+function init(localSite) {
+    const { localUtils, remoteUtils } = getMigrateUtils(localSite);
+    const context = {
+        localSite,
+        localUtils,
+        remoteUtils,
+        controls: createControls(localUtils, remoteUtils),
+    };
+    bindControls(context, createEmptyBuckets());
 }
 if (location.href.match(/bgm.tv|bangumi.tv|chii.in/)) {
     init('bangumi');

@@ -6,6 +6,7 @@
 // @note        按照实际情况修改 include
 // @author      zhifengle
 // @description open external player for openlist
+// @grant       GM_addStyle
 // @require     https://cdn.jsdelivr.net/npm/pinyin@4.0.0/lib/umd/pinyin.min.js
 // ==/UserScript==
 
@@ -27,6 +28,16 @@
     open.apply(this, arguments);
   };
 })(XMLHttpRequest.prototype.open);
+
+const ACTIVE_CLASS = 'e-userjs-active-item';
+
+GM_addStyle(`
+  .${ACTIVE_CLASS} {
+    text-decoration: underline;
+    transform: scale(1.01);
+    background-color: rgba(236, 245, 255);
+  }
+`);
 
 /**
  * 生成字符串对应的全拼 + 首字母拼音
@@ -89,9 +100,12 @@ function extractAnimeName(filename) {
 
 const FILTER_STYLES = {
   container: 'margin: 10px 0; padding: 0 16px;',
-  input: 'padding: 6px 12px; font-size: 14px; border-radius: 4px; border: 1px solid #ddd; min-width: 300px;',
+  inputWrapper: 'position: relative; display: inline-block; min-width: 300px;',
+  input: 'width: 100%; padding: 6px 28px 6px 12px; font-size: 14px; border-radius: 4px; border: 1px solid #ddd; box-sizing: border-box;',
+  clearBtn: 'position: absolute; right: 4px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 16px; color: #999; line-height: 1; padding: 0 4px; display: none;',
   label: 'margin-right: 8px; font-weight: 500;'
 };
+
 
 const FILTER_IDS = {
   input: 'e-userjs-filter-input',
@@ -99,11 +113,15 @@ const FILTER_IDS = {
   container: 'e-userjs-filter-container'
 };
 
+function isVideoFile(filename) {
+  return /\.(mkv|mp4)$/i.test(filename);
+}
+
 function extractAnimeNames(fileList) {
   const nameSet = new Set();
   for (const file of fileList) {
     if (file.type !== 2) continue;
-    if (!/\.(mkv|mp4)$/i.test(file.name)) continue;
+    if (!isVideoFile(file.name)) continue;
     const animeName = extractAnimeName(file.name);
     if (animeName) {
       nameSet.add(animeName);
@@ -123,13 +141,35 @@ function createDatalistOptions(animeNames) {
 }
 
 function createSearchInput(datalistId) {
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = FILTER_STYLES.inputWrapper;
+
   const input = document.createElement('input');
   input.type = 'text';
   input.id = FILTER_IDS.input;
   input.setAttribute('list', datalistId);
   input.placeholder = '输入名称筛选（支持拼音）...';
   input.style.cssText = FILTER_STYLES.input;
-  return input;
+
+  const clearBtn = document.createElement('span');
+  clearBtn.innerHTML = '&times;';
+  clearBtn.style.cssText = FILTER_STYLES.clearBtn;
+  clearBtn.title = '清除';
+
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    input.focus();
+  });
+
+  input.addEventListener('input', () => {
+    clearBtn.style.display = input.value ? 'block' : 'none';
+  });
+
+  wrapper.appendChild(input);
+  wrapper.appendChild(clearBtn);
+
+  return { wrapper, input, clearBtn };
 }
 
 function createDatalist(id, animeNames) {
@@ -139,7 +179,7 @@ function createDatalist(id, animeNames) {
   return datalist;
 }
 
-function createFilterContainer(inputElement, datalistElement) {
+function createFilterContainer(wrapperElement, datalistElement) {
   const container = document.createElement('div');
   container.id = FILTER_IDS.container;
   container.style.cssText = FILTER_STYLES.container;
@@ -149,7 +189,7 @@ function createFilterContainer(inputElement, datalistElement) {
   label.style.cssText = FILTER_STYLES.label;
 
   container.appendChild(label);
-  container.appendChild(inputElement);
+  container.appendChild(wrapperElement);
   container.appendChild(datalistElement);
 
   return container;
@@ -176,9 +216,9 @@ function addFilterDropdown(fileList) {
   if (animeNames.length === 0) return;
 
   const datalist = createDatalist(FILTER_IDS.datalist, animeNames);
-  const input = createSearchInput(FILTER_IDS.datalist);
+  const { wrapper, input, clearBtn } = createSearchInput(FILTER_IDS.datalist);
 
-  const container = createFilterContainer(input, datalist);
+  const container = createFilterContainer(wrapper, datalist);
   if (!insertFilterContainer(container)) return;
 
   bindFilterEvents(input, fileList);
@@ -189,7 +229,7 @@ function filterItems(searchQuery, fileList) {
   const items = [...document.querySelectorAll('.obj-box a.list-item')];
 
   fileList.forEach((file, index) => {
-    if (!file || file.type !== 2 || !/\.(mkv|mp4)$/i.test(file.name)) {
+    if (!file || file.type !== 2 || !isVideoFile(file.name)) {
       return;
     }
 
@@ -218,35 +258,42 @@ function openByIframe(url) {
   return $iframe;
 }
 
-function patchItemClick(item, file) {
-  if (/\.mkv|\.mp4$/.test(item.href) && file.type === 2) {
-    const el = item;
+function createMpvUrl(href, sign) {
+  const dUrl = `${location.origin}/d/${href}?sign=${sign}`;
+  return `mpv://${encodeURIComponent(dUrl)}`;
+}
 
-    const newElement = el.cloneNode(true);
-    newElement.onclick = (e) => {
-      e.stopImmediatePropagation();
-      e.preventDefault();
-      const href = el.getAttribute('href');
-      const dUrl = `${location.origin}/d/${href}?sign=${file.sign}`;
-      const url = `mpv://${encodeURIComponent(dUrl)}`;
-      // copyTextToClipboard(url);
-      console.log(url);
-      openByIframe(url);
-      removeActiveClass();
-      newElement.style.textDecoration = 'underline';
-      newElement.style.transform = 'scale(1.01)';
-      newElement.style.backgroundColor = 'rgba(236, 245, 255)';
-    };
-    el.parentElement.replaceChild(newElement, el);
+function clearActiveItem() {
+  const active = document.querySelector(`.${ACTIVE_CLASS}`);
+  if (active) {
+    active.classList.remove(ACTIVE_CLASS);
   }
 }
-function removeActiveClass() {
-  const items = document.querySelectorAll('.nav + .obj-box a.list-item');
-  items.forEach((item) => {
-    item.style.textDecoration = '';
-    item.style.transform = '';
-    item.style.backgroundColor = '';
+
+function setActiveItem(element) {
+  clearActiveItem();
+  element.classList.add(ACTIVE_CLASS);
+}
+
+function patchItemClick(item, file) {
+  if (file.type !== 2) return;
+  if (!/\.mkv|\.mp4$/i.test(item.href)) return;
+
+  const clonedItem = item.cloneNode(true);
+
+  clonedItem.addEventListener('click', (e) => {
+    e.stopImmediatePropagation();
+    e.preventDefault();
+
+    const href = item.getAttribute('href');
+    const url = createMpvUrl(href, file.sign);
+
+    console.log(url);
+    openByIframe(url);
+    setActiveItem(clonedItem);
   });
+
+  item.parentElement.replaceChild(clonedItem, item);
 }
 
 function copyTextToClipboard(text) {

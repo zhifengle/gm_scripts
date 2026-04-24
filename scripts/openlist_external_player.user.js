@@ -57,6 +57,7 @@ function detectListRenderComplete(fileList) {
           items.forEach((item, index) => {
             patchItemClick(item, fileList[index]);
           });
+          addFilterDropdown(fileList, items);
         }
       }
     }
@@ -65,6 +66,100 @@ function detectListRenderComplete(fileList) {
   // 不需要 subtree: true
   const config = { childList: true };
   observer.observe(document.body, config);
+}
+
+function extractAnimeName(filename) {
+  // 移除 [ANi] 前缀和文件扩展名
+  let name = filename.replace(/^\[ANi\]\s*/, '').replace(/\.\w+$/, '');
+  // 匹配 " - XX " 或 " - XX[" 格式的集数，并移除集数部分
+  name = name.replace(/\s+-\s+\d+(\s+\[|$).*/, '');
+  // 清理多余空格
+  return name.trim();
+}
+
+function addFilterDropdown(fileList, items) {
+  // 避免重复添加
+  if (document.querySelector('#e-userjs-filter-select')) {
+    return;
+  }
+
+  // 提取所有动画名称
+  const nameSet = new Set();
+  fileList.forEach(file => {
+    if (file.type === 2 && /\.(mkv|mp4)$/i.test(file.name)) {
+      const animeName = extractAnimeName(file.name);
+      if (animeName) {
+        nameSet.add(animeName);
+      }
+    }
+  });
+
+  const animeNames = Array.from(nameSet).sort();
+  if (animeNames.length === 0) {
+    return;
+  }
+
+  // 创建筛选容器
+  const filterContainer = document.createElement('div');
+  filterContainer.style.cssText = 'margin: 10px 0; padding: 0 16px;';
+  filterContainer.id = 'e-userjs-filter-container';
+
+  // 创建下拉框
+  const select = document.createElement('select');
+  select.id = 'e-userjs-filter-select';
+  select.style.cssText = 'padding: 6px 12px; font-size: 14px; border-radius: 4px; border: 1px solid #ddd; min-width: 300px; cursor: pointer;';
+
+  // 添加默认选项
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = '全部显示';
+  select.appendChild(defaultOption);
+
+  // 添加动画名称选项
+  animeNames.forEach(name => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name;
+    select.appendChild(option);
+  });
+
+  // 添加标签
+  const label = document.createElement('label');
+  label.textContent = '筛选: ';
+  label.style.cssText = 'margin-right: 8px; font-weight: 500;';
+
+  filterContainer.appendChild(label);
+  filterContainer.appendChild(select);
+
+  // 插入到列表上方
+  const objBox = document.querySelector('.nav + .obj-box');
+  if (objBox) {
+    objBox.parentElement.insertBefore(filterContainer, objBox);
+  }
+
+  // 绑定筛选事件
+  select.addEventListener('change', (e) => {
+    const selectedName = e.target.value;
+    filterItems(selectedName, fileList, items);
+  });
+}
+
+function filterItems(selectedName, fileList, items) {
+  items.forEach((item, index) => {
+    const file = fileList[index];
+    if (!file || file.type !== 2 || !/\.(mkv|mp4)$/i.test(file.name)) {
+      return;
+    }
+
+    const animeName = extractAnimeName(file.name);
+    const shouldShow = !selectedName || animeName === selectedName;
+
+    // 找到父级列表项容器
+    const listItem = item.closest('.list-item') || item;
+    if (listItem) {
+      listItem.style.display = shouldShow ? '' : 'none';
+    }
+  });
 }
 
 function openByIframe(url) {

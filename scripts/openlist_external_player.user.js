@@ -90,12 +90,14 @@ function detectListRenderComplete(fileList) {
 }
 
 function extractAnimeName(filename) {
-  // 移除 [ANi] 前缀和文件扩展名
-  let name = filename.replace(/^\[.*?\]\s*/, '').replace(/\.\w+$/, '');
-  // 匹配 " - XX " 或 " - XX[" 格式的集数，并移除集数部分
-  name = name.replace(/\s+-\s+\d+(\s+\[|$).*/, '');
-  // 清理多余空格
-  return name.trim();
+  let name = filename
+    .replace(/\.\w+$/, '')           // 移除扩展名
+    .replace(/^\[.*?\]\s*/g, '')     // 移除所有前缀中括号 [ANi][1080P]...
+    .replace(/\s+-\s+\d+/g, ' ')     // 移除集数 "- 01"
+    .replace(/\s*\[.*?\]\s*/g, ' ')  // 移除剩余的中括号标签 [HEVC][CHS]
+    .replace(/\s+/g, ' ')            // 合并多余空格
+    .trim();
+  return name || '';
 }
 
 const FILTER_STYLES = {
@@ -203,9 +205,9 @@ function insertFilterContainer(container) {
   return true;
 }
 
-function bindFilterEvents(input, fileList) {
+function bindFilterEvents(input, fileList, datalist) {
   input.addEventListener('input', (e) => {
-    filterItems(e.target.value.trim(), fileList);
+    filterItems(e.target.value.trim(), fileList, datalist);
   });
 }
 
@@ -221,10 +223,27 @@ function addFilterDropdown(fileList) {
   const container = createFilterContainer(wrapper, datalist);
   if (!insertFilterContainer(container)) return;
 
-  bindFilterEvents(input, fileList);
+  bindFilterEvents(input, fileList, datalist);
 }
 
-function filterItems(searchQuery, fileList) {
+function updateDatalistOptions(datalist, fileList, query) {
+  datalist.innerHTML = '';
+  if (!query) {
+    datalist.appendChild(createDatalistOptions(extractAnimeNames(fileList)));
+    return;
+  }
+  const visibleNames = new Set();
+  const items = [...document.querySelectorAll('.obj-box a.list-item')];
+  fileList.forEach((file, index) => {
+    if (!file || file.type !== 2 || !isVideoFile(file.name)) return;
+    if (items[index].parentElement.style.display === 'none') return;
+    const animeName = extractAnimeName(file.name);
+    if (animeName) visibleNames.add(animeName);
+  });
+  datalist.appendChild(createDatalistOptions(Array.from(visibleNames)));
+}
+
+function filterItems(searchQuery, fileList, datalist) {
   const query = searchQuery.toLowerCase();
   const items = [...document.querySelectorAll('.obj-box a.list-item')];
 
@@ -233,7 +252,7 @@ function filterItems(searchQuery, fileList) {
       return;
     }
 
-    const animeName = extractAnimeName(file.name);
+    const animeName = extractAnimeName(file.name) || file.name;
     const [fullPinyin, firstLetters] = generatePinyinTitles(animeName);
 
     const shouldShow = !query ||
@@ -243,6 +262,8 @@ function filterItems(searchQuery, fileList) {
 
     items[index].parentElement.style.display = shouldShow ? '' : 'none';
   });
+
+  updateDatalistOptions(datalist, fileList, searchQuery);
 }
 
 function openByIframe(url) {

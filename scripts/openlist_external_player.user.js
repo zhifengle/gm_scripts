@@ -10,24 +10,54 @@
 // @require     https://cdn.jsdelivr.net/npm/pinyin@4.0.0/lib/umd/pinyin.min.js
 // ==/UserScript==
 
-(function (open) {
-  XMLHttpRequest.prototype.open = function () {
-    this.addEventListener(
-      'readystatechange',
-      function () {
-        if (this.readyState === 4 && this.responseURL.includes('/api/fs/list')) {
-          let res = JSON.parse(this.response);
-          if (res.code === 200) {
-            const fileList = res.data.content;
-            detectListRenderComplete(fileList);
-          }
-        }
-      },
-      false
-    );
-    open.apply(this, arguments);
-  };
-})(XMLHttpRequest.prototype.open);
+const APIInterceptor = {
+ handlers: new Map(),
+
+ register(urlPattern, callback) {
+   this.handlers.set(urlPattern, callback);
+ },
+
+ dispatch(url, data) {
+   for (const [pattern, cb] of this.handlers) {
+     if (url.includes(pattern)) {
+       try { cb(data); } catch (e) { console.error(e); }
+     }
+   }
+ },
+
+ init() {
+   const self = this;
+
+   const originalOpen = XMLHttpRequest.prototype.open;
+   XMLHttpRequest.prototype.open = function (method, url, ...args) {
+     this.__url = url;
+     originalOpen.call(this, method, url, ...args);
+   };
+
+   const originalSend = XMLHttpRequest.prototype.send;
+   XMLHttpRequest.prototype.send = function (...args) {
+     this.addEventListener('readystatechange', function () {
+       if (this.readyState === 4) {
+         try {
+           self.dispatch(this.__url, JSON.parse(this.response));
+         } catch {}
+       }
+     });
+     originalSend.apply(this, args);
+   };
+ }
+};
+
+// 初始化拦截
+APIInterceptor.init();
+
+// 注册业务逻辑
+APIInterceptor.register('/api/fs/list', (res) => {
+ if (res?.code === 200) {
+   detectListRenderComplete(res.data.content);
+ }
+});
+
 
 const ACTIVE_CLASS = 'e-userjs-active-item';
 
@@ -90,15 +120,58 @@ function detectListRenderComplete(fileList) {
 }
 
 function extractAnimeName(filename) {
-  let name = filename
-    .replace(/\.\w+$/, '')           // 移除扩展名
-    .replace(/^\[.*?\]\s*/g, '')     // 移除所有前缀中括号 [ANi][1080P]...
-    .replace(/\s+-\s+\d+/g, ' ')     // 移除集数 "- 01"
-    .replace(/\s*\[.*?\]\s*/g, ' ')  // 移除剩余的中括号标签 [HEVC][CHS]
-    .replace(/\s+/g, ' ')            // 合并多余空格
+  return filename
+    // 1. 移除文件扩展名
+    .replace(/\.\w+$/, '')
+
+    // 2. 移除开头的字幕组标签，如 [SubsPlease] 或 (SubsPlease)
+    .replace(/^[\[(][^\]\)]*[\])]\s*/, '')
+
+    // 3. 移除分辨率标签，如 [1080p] [4K] [2160P]
+    .replace(/[\[(]\s*(?:4K|[248]K|720[Pp]|1080[Pp]|2160[Pp]|480[Pp])\s*[\])]/g, '')
+
+    // 4. 移除视频编码标签
+    .replace(/[\[(]\s*(?:HEVC|x26[45]|AVC|H\.?26[45]|Hi10P?|Hi10|8[Bb]it|10[Bb]it|12[Bb]it|AV1|VP9)\s*[\])]/gi, '')
+
+    // 5. 移除来源标签
+    .replace(/[\[(]\s*(?:WEB-DL|WEBRip|BDRip|BluRay|Blu-Ray|BD|WebRip|HDTV|DVD|AMZN|NF|CR|DSNP)\s*[\])]/gi, '')
+
+    // 6. 移除语言标签
+    .replace(/[\[(]\s*(?:JPSC|CHS|CHT|BIG5|GB|ENG|JPN|DUAL|Multi(?:[-\s]?[Ss]ub)?)\s*[\])]/gi, '')
+
+    // 7. 移除容器格式标签
+    .replace(/[\[(]\s*(?:MP4|MKV|AVI|AAC|FLAC|AC3|DTS)\s*[\])]/gi, '')
+
+    // 8. 移除平台标签
+    .replace(/[\[(]\s*(?:Baha|Bilibili|B-Global|Netflix|Amazon)\s*[\])]/gi, '')
+
+    // 9. 移除纯数字集数标签，如 [03] (04) —— 放在通用括号清理前
+    .replace(/[\[(]\s*\d{1,4}\s*[\])]/g, '')
+
+    // 10. 移除末尾集数，如 " - 03" " – 12"
+    .replace(/\s*[-–—]\s*\d{1,4}\s*(?:[vV]\d)?\s*$/g, '')
+
+    // 11. 移除开头集数，如 "03 - "
+    .replace(/^\s*\d{1,4}\s*[-–—]\s*/, '')
+
+    // 12. 移除末尾的版本号，如 "v2" "V2"
+    .replace(/\s+[vV]\d+\s*$/, '')
+
+    // 13. 移除开头残余的 [Title] → Title（上面步骤可能已处理，兜底）
+    .replace(/^\[([^\[\]]+)\]/, '$1')
+
+    // 14. 移除剩余的括号块（仅当内容不含中日文，避免误删含括号的标题）
+    .replace(/[\[(][^\]\)]*[\])]/g, (match) => {
+      // 保留含中日韩字符的括号内容（可能是副标题）
+      return /[\u3000-\u9fff\uff00-\uffef]/.test(match) ? match : ' ';
+    })
+
+    // 15. 收尾：合并空格、去掉多余标点
+    .replace(/\s*[-–—]\s*$/, '')   // 末尾残余连字符
+    .replace(/\s+/g, ' ')
     .trim();
-  return name || '';
 }
+
 
 const FILTER_STYLES = {
   container: 'margin: 10px 0; padding: 0 16px;',
@@ -140,6 +213,20 @@ function createDatalistOptions(animeNames) {
     fragment.appendChild(option);
   }
   return fragment;
+}
+
+/**
+ * 简单的防抖动函数
+ * @param {Function} func - 需要防抖的函数
+ * @param {number} delay - 延迟时间（毫秒）
+ * @returns {Function} 防抖后的函数
+ */
+function debounce(func, delay) {
+  let timer = null;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => func.apply(this, args), delay);
+  };
 }
 
 function createSearchInput(datalistId) {
@@ -205,9 +292,13 @@ function insertFilterContainer(container) {
   return true;
 }
 
-function bindFilterEvents(input, fileList, datalist) {
+function bindFilterEvents(input) {
+  const debouncedFilter = debounce((value) => {
+    filterItems(value.trim());
+  }, 200);
+
   input.addEventListener('input', (e) => {
-    filterItems(e.target.value.trim(), fileList, datalist);
+    debouncedFilter(e.target.value);
   });
 }
 
@@ -215,7 +306,6 @@ function addFilterDropdown(fileList) {
   if (document.querySelector(`#${FILTER_IDS.input}`)) return;
 
   const animeNames = extractAnimeNames(fileList);
-  if (animeNames.length === 0) return;
 
   const datalist = createDatalist(FILTER_IDS.datalist, animeNames);
   const { wrapper, input, clearBtn } = createSearchInput(FILTER_IDS.datalist);
@@ -223,47 +313,29 @@ function addFilterDropdown(fileList) {
   const container = createFilterContainer(wrapper, datalist);
   if (!insertFilterContainer(container)) return;
 
-  bindFilterEvents(input, fileList, datalist);
+  bindFilterEvents(input);
 }
 
-function updateDatalistOptions(datalist, fileList, query) {
-  datalist.innerHTML = '';
-  if (!query) {
-    datalist.appendChild(createDatalistOptions(extractAnimeNames(fileList)));
-    return;
-  }
-  const visibleNames = new Set();
-  const items = [...document.querySelectorAll('.obj-box a.list-item')];
-  fileList.forEach((file, index) => {
-    if (!file || file.type !== 2 || !isVideoFile(file.name)) return;
-    if (items[index].parentElement.style.display === 'none') return;
-    const animeName = extractAnimeName(file.name);
-    if (animeName) visibleNames.add(animeName);
-  });
-  datalist.appendChild(createDatalistOptions(Array.from(visibleNames)));
-}
 
-function filterItems(searchQuery, fileList, datalist) {
+function filterItems(searchQuery) {
   const query = searchQuery.toLowerCase();
   const items = [...document.querySelectorAll('.obj-box a.list-item')];
 
-  fileList.forEach((file, index) => {
-    if (!file || file.type !== 2 || !isVideoFile(file.name)) {
-      return;
-    }
+  items.forEach((item) => {
+    if (!item.parentElement) return;
 
-    const animeName = extractAnimeName(file.name) || file.name;
-    const [fullPinyin, firstLetters] = generatePinyinTitles(animeName);
-
+    const text = item.querySelector('.name')?.textContent.toLowerCase();
+    if (!text) return;
     const shouldShow = !query ||
-      animeName.toLowerCase().includes(query) ||
-      (fullPinyin && fullPinyin.toLowerCase().includes(query)) ||
-      (firstLetters && firstLetters.toLowerCase().includes(query));
+      text.includes(query) ||
+      (() => {
+        const [fullPinyin, firstLetters] = generatePinyinTitles(item.textContent);
+        return (fullPinyin && fullPinyin.toLowerCase().includes(query)) ||
+          (firstLetters && firstLetters.toLowerCase().includes(query));
+      })();
 
-    items[index].parentElement.style.display = shouldShow ? '' : 'none';
+    item.parentElement.style.display = shouldShow ? '' : 'none';
   });
-
-  updateDatalistOptions(datalist, fileList, searchQuery);
 }
 
 function openByIframe(url) {

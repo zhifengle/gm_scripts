@@ -351,6 +351,23 @@ function openByIframe(url) {
   return $iframe;
 }
 
+function openByScheme(url) {
+  // 创建宿主元素，附加 Shadow DOM
+  const host = document.createElement('div');
+  const shadow = host.attachShadow({ mode: 'closed' });
+
+  // 在 Shadow DOM 内创建 <a>
+  const a = document.createElement('a');
+  a.href = url;
+  shadow.appendChild(a);
+  document.body.appendChild(host);
+
+  a.click();
+
+  // 清理
+  setTimeout(() => document.body.removeChild(host), 1000);
+}
+
 function createMpvUrl(href, sign) {
   const dUrl = `${location.origin}/d/${href}?sign=${sign}`;
   return `mpv://${encodeURIComponent(dUrl)}`;
@@ -382,7 +399,7 @@ function patchItemClick(item, file) {
     const url = createMpvUrl(href, file.sign);
 
     console.log(url);
-    openByIframe(url);
+    openByScheme(url);
     setActiveItem(clonedItem);
   });
 

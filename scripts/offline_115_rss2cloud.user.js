@@ -201,7 +201,7 @@ class MagnetLinkProcessor {
   reviseUrl(url) {
     var newUrl = url;
     if (url.startsWith('magnet')) {
-      const hash = newUrl.split('&')[0].substring(20) || newUrl.substring(20);
+      let hash = newUrl.split('&')[0].substring(20) || newUrl.substring(20);
       if (hash.length == 32) {
         hash = base32To16(hash);
       }

@@ -101,7 +101,7 @@ function detectListRenderComplete(fileList) {
   const callback = (mutationsList, observer) => {
     for (const mutation of mutationsList) {
       if (mutation.type === 'childList') {
-        const items = document.querySelectorAll('.nav + .obj-box a.list-item');
+        const items = document.querySelectorAll('.obj-box a.list-item');
         if (items.length === fileList.length) {
           observer.disconnect();
           console.log('list render complete');

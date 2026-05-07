@@ -48,6 +48,38 @@ GM_addStyle(`
   width: 20px;
   position: static;
 }
+.offline115-checkbox {
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.offline115-batch-toolbar {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  gap: 10px;
+}
+.offline115-batch-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 5px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.offline115-batch-btn:hover {
+  background: #0056b3;
+}
+.offline115-batch-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
 `);
 
 // 节流函数
@@ -183,9 +215,19 @@ class MagnetLinkProcessor {
   }
 
   /**
-   * 添加下载图标
+   * 添加下载图标和复选框
    */
   addDownloadIcon(element, link) {
+    const container = document.createElement('span');
+    container.style.display = 'inline-block';
+    container.style.whiteSpace = 'nowrap';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'offline115-checkbox';
+    checkbox.dataset.link = link;
+    checkbox.onchange = () => updateBatchToolbar();
+
     const anchor = document.createElement('a');
     anchor.href = 'javascript:void(0)';
     anchor.className = 'offline115-anchor';
@@ -195,7 +237,10 @@ class MagnetLinkProcessor {
     icon.dataset.link = link;
     icon.src = 'https://115.com/favicon.ico';
     anchor.appendChild(icon);
-    element.after(anchor);
+
+    container.appendChild(checkbox);
+    container.appendChild(anchor);
+    element.after(container);
   }
 
   reviseUrl(url) {
@@ -209,6 +254,90 @@ class MagnetLinkProcessor {
     }
     return newUrl;
   }
+}
+
+function createBatchToolbar() {
+  if (document.querySelector('.offline115-batch-toolbar')) return;
+
+  const toolbar = document.createElement('div');
+  toolbar.className = 'offline115-batch-toolbar';
+  toolbar.innerHTML = `
+    <label style="cursor:pointer; display:flex; align-items:center; gap:5px;">
+      <input type="checkbox" id="offline115-select-all"> 全选
+    </label>
+    <span id="offline115-selected-count">已选 0 项</span>
+    <button class="offline115-batch-btn" id="offline115-submit-batch">提交任务</button>
+  `;
+  document.body.appendChild(toolbar);
+
+  document.getElementById('offline115-select-all').addEventListener('change', (e) => {
+    const checkboxes = document.querySelectorAll('.offline115-checkbox');
+    checkboxes.forEach(cb => cb.checked = e.target.checked);
+    updateBatchToolbar();
+  });
+
+  document.getElementById('offline115-submit-batch').addEventListener('click', handleBatchSubmit);
+}
+
+function updateBatchToolbar() {
+  const checkboxes = document.querySelectorAll('.offline115-checkbox:checked');
+  const toolbar = document.querySelector('.offline115-batch-toolbar');
+  const countSpan = document.getElementById('offline115-selected-count');
+  const submitBtn = document.getElementById('offline115-submit-batch');
+  const selectAll = document.getElementById('offline115-select-all');
+  const allCheckboxes = document.querySelectorAll('.offline115-checkbox');
+
+  if (checkboxes.length > 0) {
+    toolbar.style.display = 'flex';
+    countSpan.textContent = `已选 ${checkboxes.length} 项`;
+    submitBtn.disabled = false;
+    selectAll.checked = checkboxes.length === allCheckboxes.length;
+  } else {
+    toolbar.style.display = 'none';
+  }
+}
+
+function handleBatchSubmit() {
+  const checkboxes = document.querySelectorAll('.offline115-checkbox:checked');
+  const links = Array.from(checkboxes).map(cb => cb.dataset.link);
+  const submitBtn = document.getElementById('offline115-submit-batch');
+
+  if (links.length === 0) return;
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = '提交中...';
+
+  GM_xmlhttpRequest({
+    method: 'POST',
+    url: `${RSS2CLOUD_URL}/add`,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: JSON.stringify({
+      tasks: links,
+      cid: folder_cid,
+    }),
+    onload: function (response) {
+      submitBtn.textContent = '提交任务';
+      submitBtn.disabled = false;
+      if (response.status === 200) {
+        checkboxes.forEach(cb => {
+          cb.checked = false;
+          const icon = cb.nextSibling.querySelector('.offline115-icon');
+          if (icon) icon.style.opacity = '0.7';
+        });
+        updateBatchToolbar();
+      } else {
+        alert('提交失败: ' + response.statusText);
+      }
+    },
+    onerror: function (response) {
+      submitBtn.textContent = '提交任务';
+      submitBtn.disabled = false;
+      alert('请求错误');
+      console.error('Batch request failed:', response);
+    },
+  });
 }
 
 function handleOfflineClick(e) {
@@ -246,6 +375,15 @@ function handleOfflineClick(e) {
       cid: folder_cid,
       //savepath: "文件夹名称",
     }),
+    onload: function (response) {
+      if (response.status === 200) {
+        const checkbox = el.closest('span')?.querySelector('.offline115-checkbox');
+        if (checkbox) {
+          checkbox.checked = false;
+          updateBatchToolbar();
+        }
+      }
+    },
     onerror: function (response) {
       el.style.opacity = '1'
       console.error('请求失败:\n', response);
@@ -256,5 +394,12 @@ function handleOfflineClick(e) {
 // 使用示例
 var processor = new MagnetLinkProcessor();
 processor.processPage();
+createBatchToolbar();
+
+// 监听动态加载的内容
+const observer = new MutationObserver(throttle(() => {
+  processor.processPage();
+}, 1000));
+observer.observe(document.body, { childList: true, subtree: true });
 
 document.body.addEventListener('click', throttle(handleOfflineClick, 300)); // 300ms节流间隔

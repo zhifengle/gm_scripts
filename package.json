@@ -4,7 +4,7 @@
   "description": "gm scripts",
   "main": "src/index.js",
   "scripts": {
-    "build": "pnpm run build:export_tool && pnpm run build:douban && pnpm run build:anime_score && pnpm run build:score_helper && pnpm run build:qiandao && pnpm run build:skip_intro && pnpm run build:infobox_fold",
+    "build": "pnpm run build:export_tool && pnpm run build:douban && pnpm run build:anime_score && pnpm run build:score_helper && pnpm run build:qiandao && pnpm run build:skip_intro && pnpm run build:infobox_fold && pnpm run build:reply-extractor",
     "build:export_tool": "cross-env SCRIPT_NAME=bangumi_collection_export_tool rollup -c build/rollup.config.us.mjs",
     "build:douban": "cross-env SCRIPT_NAME=migrate_douban_collection_to_bangumi rollup -c build/rollup.config.us.mjs",
     "build:anime_score": "cross-env SCRIPT_NAME=bangumi_anime_score_compare rollup -c build/rollup.config.us.mjs",
@@ -12,6 +12,7 @@
     "build:qiandao": "cross-env SCRIPT_NAME=qiandao XHR_MODE=fetch rollup -c build/rollup.config.us.mjs",
     "build:skip_intro": "cross-env SCRIPT_NAME=skip_intro rollup -c build/rollup.config.us.mjs",
     "build:infobox_fold": "cross-env SCRIPT_NAME=bangumi_infobox_fold rollup -c build/rollup.config.us.mjs",
+    "build:reply-extractor": "cross-env SCRIPT_NAME=reply-extractor rollup -c build/rollup.config.us.mjs",
     "dev:douban": "cross-env SCRIPT_NAME=migrate_douban_collection_to_bangumi rollup -w -c build/rollup.config.us.mjs",
     "dev:anime_score": "cross-env SCRIPT_NAME=bangumi_anime_score_compare rollup -w -c build/rollup.config.us.mjs",
     "dev:score_helper": "cross-env SCRIPT_NAME=score_comparation_helper rollup -w -c build/rollup.config.us.mjs",

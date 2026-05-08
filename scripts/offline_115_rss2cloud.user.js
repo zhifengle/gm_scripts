@@ -4,7 +4,7 @@
 // @include     https://mikanani.me/*
 // @include     https://nyaa.si/*
 // @include     https://sukebei.nyaa.si/*
-// @version     0.1
+// @version     0.1.1
 // @author      zhifengle
 // @description add offline tasks to rss2cloud server
 // @grant       GM_xmlhttpRequest
@@ -16,16 +16,240 @@
 // ==/UserScript==
 
 // 配置
-var folder_cid = GM_getValue('folder_cid', '');
-function setCid() {
-  folder_cid = prompt('设置cid', '');
-  GM_setValue('folder_cid', folder_cid);
+const FOLDER_CID_KEY = 'folder_cid';
+const RSS2CLOUD_URL_KEY = 'RSS2CLOUD_URL';
+const RSS2CLOUD_AUTH_KEY = 'authString';
+const DEFAULT_RSS2CLOUD_URL = 'http://localhost:8115';
+var folder_cid = GM_getValue(FOLDER_CID_KEY, '');
+let RSS2CLOUD_URL = normalizeRss2cloudUrl(GM_getValue(RSS2CLOUD_URL_KEY, DEFAULT_RSS2CLOUD_URL));
+let rss2cloudAuth = GM_getValue(RSS2CLOUD_AUTH_KEY, '');
+let authString = rss2cloudAuth ? btoa(rss2cloudAuth) : '';
+
+function normalizeRss2cloudUrl(url) {
+  return (url || DEFAULT_RSS2CLOUD_URL).trim().replace(/\/+$/, '') || DEFAULT_RSS2CLOUD_URL;
 }
-if (GM_registerMenuCommand) {
-  GM_registerMenuCommand('设置cid', setCid, 's');
+
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, (char) => {
+    const dict = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    };
+    return dict[char];
+  });
 }
-const RSS2CLOUD_URL = 'http://localhost:8115';
-// const authString = btoa(`xx:xxx`);
+
+function htmlToElement(html) {
+  const template = document.createElement('template');
+  template.innerHTML = html.trim();
+  return template.content.firstElementChild;
+}
+
+if (typeof GM_registerMenuCommand === 'function') {
+  GM_registerMenuCommand('rss2cloud 设置', () => showConfigDialog());
+}
+
+function getRequestHeaders() {
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+
+  if (authString) {
+    headers.Authorization = `Basic ${authString}`;
+  }
+
+  return headers;
+}
+
+function saveConfig(nextConfig) {
+  folder_cid = nextConfig.folderCid.trim();
+  RSS2CLOUD_URL = normalizeRss2cloudUrl(nextConfig.rss2cloudUrl);
+  rss2cloudAuth = nextConfig.auth.trim();
+  authString = rss2cloudAuth ? btoa(rss2cloudAuth) : '';
+
+  GM_setValue(FOLDER_CID_KEY, folder_cid);
+  GM_setValue(RSS2CLOUD_URL_KEY, RSS2CLOUD_URL);
+  GM_setValue(RSS2CLOUD_AUTH_KEY, rss2cloudAuth);
+}
+
+function showConfigDialog() {
+  const existingDialog = document.querySelector('.offline115-config-dialog');
+  if (existingDialog) {
+    if (!existingDialog.open) {
+      existingDialog.showModal();
+    }
+    existingDialog.querySelector('.offline115-config-save')?.focus();
+    return;
+  }
+
+  const dialog = htmlToElement(`
+<dialog class="offline115-config-dialog" aria-labelledby="offline115-config-title">
+  <style>
+    .offline115-config-dialog {
+      width: min(420px, calc(100vw - 32px));
+      padding: 0;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      color: #09090b;
+      background: #ffffff;
+      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .offline115-config-dialog::backdrop {
+      background: rgba(15, 23, 42, 0.42);
+    }
+    .offline115-config-content {
+      padding: 20px;
+    }
+    .offline115-config-header {
+      margin-bottom: 18px;
+    }
+    .offline115-config-title {
+      margin: 0;
+      color: #09090b;
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .offline115-config-desc {
+      margin: 6px 0 0;
+      color: #71717a;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .offline115-config-section {
+      padding: 14px 0;
+      border-top: 1px solid #e5e7eb;
+    }
+    .offline115-config-section-title,
+    .offline115-config-label {
+      margin: 0 0 10px;
+      color: #27272a;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .offline115-config-section-desc {
+      margin: 0;
+      color: #71717a;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .offline115-config-section-desc {
+      margin-bottom: 10px;
+    }
+    .offline115-config-field {
+      display: grid;
+      gap: 8px;
+    }
+    .offline115-config-input {
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
+      height: 36px;
+      padding: 0 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      color: #09090b;
+      background: #ffffff;
+      font-size: 13px;
+    }
+    .offline115-config-input::placeholder {
+      color: #a1a1aa;
+    }
+    .offline115-config-input:focus-visible,
+    .offline115-config-button:focus-visible {
+      outline: 2px solid #18181b;
+      outline-offset: 2px;
+    }
+    .offline115-config-footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .offline115-config-footer {
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .offline115-config-button {
+      height: 36px;
+      padding: 0 14px;
+      border: 1px solid #18181b;
+      border-radius: 8px;
+      color: #ffffff;
+      background: #18181b;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .offline115-config-button.secondary {
+      border-color: #e5e7eb;
+      color: #18181b;
+      background: #ffffff;
+    }
+    .offline115-config-button:hover {
+      background: #27272a;
+    }
+    .offline115-config-button.secondary:hover {
+      background: #f8fafc;
+    }
+  </style>
+  <div class="offline115-config-content">
+    <div class="offline115-config-header">
+      <p id="offline115-config-title" class="offline115-config-title">rss2cloud 设置</p>
+      <p class="offline115-config-desc">集中管理提交地址、115 目录 cid 和可选的 Basic Auth。</p>
+    </div>
+    <div class="offline115-config-section">
+      <label class="offline115-config-field" for="offline115-rss2cloud-url">
+        <span class="offline115-config-label">RSS2CLOUD_URL</span>
+        <input class="offline115-config-input" id="offline115-rss2cloud-url" type="url" value="${escapeHtml(RSS2CLOUD_URL)}" placeholder="${DEFAULT_RSS2CLOUD_URL}">
+      </label>
+      <p class="offline115-config-section-desc">提交任务时会请求该地址的 /add 接口。</p>
+    </div>
+    <div class="offline115-config-section">
+      <label class="offline115-config-field" for="offline115-folder-cid">
+        <span class="offline115-config-label">115 目录 cid</span>
+        <input class="offline115-config-input" id="offline115-folder-cid" type="text" value="${escapeHtml(folder_cid)}" placeholder="留空使用服务端默认目录">
+      </label>
+    </div>
+    <div class="offline115-config-section">
+      <label class="offline115-config-field" for="offline115-auth">
+        <span class="offline115-config-label">Basic Auth</span>
+        <input class="offline115-config-input" id="offline115-auth" type="text" value="${escapeHtml(rss2cloudAuth)}" placeholder="username:password">
+      </label>
+      <p class="offline115-config-section-desc">留空则不会发送 Authorization 请求头。</p>
+    </div>
+    <div class="offline115-config-footer">
+      <button class="offline115-config-button offline115-config-save" type="button" autofocus>保存</button>
+    </div>
+  </div>
+</dialog>
+  `);
+  const urlInput = dialog.querySelector('#offline115-rss2cloud-url');
+  const cidInput = dialog.querySelector('#offline115-folder-cid');
+  const authInput = dialog.querySelector('#offline115-auth');
+
+  const handleSave = () => {
+    saveConfig({
+      folderCid: cidInput.value,
+      rss2cloudUrl: urlInput.value,
+      auth: authInput.value,
+    });
+    dialog.close();
+  };
+
+  dialog.querySelector('.offline115-config-save').addEventListener('click', handleSave);
+  dialog.addEventListener('close', () => {
+    dialog.remove();
+  }, { once: true });
+
+  document.body.appendChild(dialog);
+  dialog.showModal();
+}
 
 GM_addStyle(`
 .offline115-anchor {
@@ -310,9 +534,7 @@ function handleBatchSubmit() {
   GM_xmlhttpRequest({
     method: 'POST',
     url: `${RSS2CLOUD_URL}/add`,
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getRequestHeaders(),
     data: JSON.stringify({
       tasks: links,
       cid: folder_cid,
@@ -366,10 +588,7 @@ function handleOfflineClick(e) {
   GM_xmlhttpRequest({
     method: 'POST',
     url: `${RSS2CLOUD_URL}/add`,
-    headers: {
-      'Content-Type': 'application/json',
-      // 'Authorization': `Basic ${authString}`,
-    },
+    headers: getRequestHeaders(),
     data: JSON.stringify({
       tasks: [link],
       cid: folder_cid,

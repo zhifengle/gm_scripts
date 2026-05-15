@@ -21,14 +21,14 @@ const DB_SCHEMA: DatabaseSchema = {
       { name: 'threadId', keyPath: 'threadId', options: { unique: false } },
       { name: 'uid', keyPath: 'uid', options: { unique: false } },
       { name: 'authorKey', keyPath: 'authorKey', options: { unique: false } },
-      { name: 'postTime', keyPath: '发帖时间', options: { unique: false } },
+      { name: 'postTime', keyPath: 'postTime', options: { unique: false } },
       { name: 'pid', keyPath: 'pid', options: { unique: false } },
       { name: 'floor', keyPath: 'floor', options: { unique: false } },
-      { name: 'collectedAt', keyPath: '采集时间', options: { unique: false } },
+      { name: 'collectedAt', keyPath: 'collectedAt', options: { unique: false } },
       { name: 'threadId_uid', keyPath: ['threadId', 'uid'], options: { unique: false } },
-      { name: 'threadId_postTime', keyPath: ['threadId', '发帖时间'], options: { unique: false } },
+      { name: 'threadId_postTime', keyPath: ['threadId', 'postTime'], options: { unique: false } },
       { name: 'threadKey_uid', keyPath: ['threadKey', 'uid'], options: { unique: false } },
-      { name: 'threadKey_postTime', keyPath: ['threadKey', '发帖时间'], options: { unique: false } },
+      { name: 'threadKey_postTime', keyPath: ['threadKey', 'postTime'], options: { unique: false } },
     ],
   },
   [STORES.threads]: {
@@ -206,9 +206,29 @@ export class IndexedDatabase {
       if (!expectedNames.has(name)) store.deleteIndex(name);
     }
     for (const index of schema.indexes) {
-      if (store.indexNames.contains(index.name)) continue;
+      if (store.indexNames.contains(index.name)) {
+        const existing = store.index(index.name);
+        if (this.indexMatchesSchema(existing, index)) continue;
+        store.deleteIndex(index.name);
+      }
       store.createIndex(index.name, index.keyPath, index.options || {});
     }
+  }
+
+  private indexMatchesSchema(existing: IDBIndex, expected: IndexSchema) {
+    const options = expected.options || {};
+    return (
+      this.keyPathsMatch(existing.keyPath, expected.keyPath) &&
+      existing.unique === Boolean(options.unique) &&
+      existing.multiEntry === Boolean(options.multiEntry)
+    );
+  }
+
+  private keyPathsMatch(left: string | string[], right: string | string[]) {
+    if (Array.isArray(left) || Array.isArray(right)) {
+      return Array.isArray(left) && Array.isArray(right) && left.length === right.length && left.every((key, index) => key === right[index]);
+    }
+    return left === right;
   }
 
   private requestToPromise<T>(request: IDBRequest, operation: string): Promise<T> {

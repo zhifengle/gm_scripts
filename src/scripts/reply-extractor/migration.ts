@@ -43,7 +43,7 @@ function getLegacySiteKey(record: Record<string, string | undefined>, fallbackSi
   const legacySite = String(record.site || '').toLowerCase();
   if (legacySite === 'nga') return 'nga';
   if (legacySite === 's1') return 's1';
-  return inferSiteKeyFromUrl(record['来源URL'] || '') || fallbackSiteKey;
+  return inferSiteKeyFromUrl(record.sourceUrl || record['来源URL'] || '') || fallbackSiteKey;
 }
 
 function normalizeLegacyRecord(record: Record<string, string | undefined>, fallbackSiteKey: string): ReplyRecord | null {

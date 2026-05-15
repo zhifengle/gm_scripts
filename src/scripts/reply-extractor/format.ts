@@ -37,10 +37,10 @@ export function formatRecordMatches(records: ReplyRecord[]) {
     .map((record, index) =>
       [
         `${index + 1}. ${record.threadTitle || '(无标题)'} #${record.floor || record.pid || '-'}`,
-        `   作者: ${record['作者name'] || '-'}${record.uid ? ` uid:${record.uid}` : ''}`,
-        `   时间: ${record['发帖时间'] || '-'}`,
-        `   内容: ${(record['回复内容'] || record['回复全文'] || '').slice(0, 220)}`,
-        `   URL: ${record['来源URL'] || '-'}`,
+        `   作者: ${record.authorName || '-'}${record.uid ? ` uid:${record.uid}` : ''}`,
+        `   时间: ${record.postTime || '-'}`,
+        `   内容: ${(record.replyContent || record.replyFullText || '').slice(0, 220)}`,
+        `   URL: ${record.sourceUrl || '-'}`,
       ].join('\n')
     )
     .join('\n\n');

@@ -1,4 +1,4 @@
-import { EXPORT_HEADERS } from './constants';
+import { REPLY_EXPORT_COLUMNS } from './constants';
 import { ExportFormat, ReplyRecord } from './types';
 import { normalizeText } from './utils';
 
@@ -8,8 +8,8 @@ function csvEscape(value: unknown) {
 }
 
 export function toCsv(rows: ReplyRecord[]) {
-  const lines = [EXPORT_HEADERS.join(',')];
-  for (const row of rows) lines.push(EXPORT_HEADERS.map((header) => csvEscape(row[header])).join(','));
+  const lines = [REPLY_EXPORT_COLUMNS.map((column) => column.label).join(',')];
+  for (const row of rows) lines.push(REPLY_EXPORT_COLUMNS.map((column) => csvEscape(row[column.key])).join(','));
   return `\ufeff${lines.join('\r\n')}`;
 }
 
@@ -17,7 +17,7 @@ export function toJson(rows: ReplyRecord[]) {
   return JSON.stringify(
     rows.map((row) => {
       const exported: Record<string, string> = {};
-      for (const header of EXPORT_HEADERS) exported[header] = String(row[header] || '');
+      for (const column of REPLY_EXPORT_COLUMNS) exported[column.label] = String(row[column.key] || '');
       return exported;
     }),
     null,
@@ -28,15 +28,16 @@ export function toJson(rows: ReplyRecord[]) {
 function rowsToSheetRows(rows: ReplyRecord[]) {
   return rows.map((row) => {
     const exported: Record<string, string> = {};
-    for (const header of EXPORT_HEADERS) exported[header] = String(row[header] || '');
+    for (const column of REPLY_EXPORT_COLUMNS) exported[column.label] = String(row[column.key] || '');
     return exported;
   });
 }
 
 export function downloadExcel(filename: string, rows: ReplyRecord[], sheetName: string) {
   if (typeof XLSX === 'undefined') throw new Error('XLSX 依赖未加载，无法导出 Excel');
-  const worksheet = XLSX.utils.json_to_sheet(rowsToSheetRows(rows), { header: EXPORT_HEADERS });
-  worksheet['!cols'] = EXPORT_HEADERS.map((header) => ({
+  const headers = REPLY_EXPORT_COLUMNS.map((column) => column.label);
+  const worksheet = XLSX.utils.json_to_sheet(rowsToSheetRows(rows), { header: headers });
+  worksheet['!cols'] = headers.map((header) => ({
     wch: Math.max(12, Math.min(36, String(header).length + 4)),
   }));
   const workbook = XLSX.utils.book_new();

@@ -10,15 +10,27 @@ export type ReplyRecord = {
   floor: string;
   pid: string;
   uid: string;
-  '作者name': string;
-  '发帖时间': string;
-  '回复内容': string;
-  '引用内容': string;
-  '回复全文': string;
-  '来源URL': string;
-  '采集时间': string;
+  authorName: string;
+  postTime: string;
+  replyContent: string;
+  quoteContent: string;
+  replyFullText: string;
+  sourceUrl: string;
+  collectedAt: string;
   [key: string]: string | undefined;
 };
+
+export type LegacyReplyRecordFields = {
+  '作者name'?: string;
+  '发帖时间'?: string;
+  '回复内容'?: string;
+  '引用内容'?: string;
+  '回复全文'?: string;
+  '来源URL'?: string;
+  '采集时间'?: string;
+};
+
+export type ReplyRecordInput = Partial<ReplyRecord> & LegacyReplyRecordFields;
 
 export type ThreadInfo = Pick<
   ReplyRecord,

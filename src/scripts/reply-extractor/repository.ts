@@ -10,7 +10,7 @@ import {
 import { finalizeRecord, getAuthorKey, normalizeText } from './utils';
 
 function compareRecords(a: ReplyRecord, b: ReplyRecord) {
-  const timeCompare = String(a['发帖时间'] || '').localeCompare(String(b['发帖时间'] || ''));
+  const timeCompare = String(a.postTime || '').localeCompare(String(b.postTime || ''));
   if (timeCompare) return timeCompare;
   const floorCompare = String(a.floor || '').localeCompare(String(b.floor || ''), undefined, { numeric: true });
   if (floorCompare) return floorCompare;
@@ -31,7 +31,7 @@ function buildThreadMeta(records: ReplyRecord[]): ThreadMeta {
   const first = records[0];
   const pages = new Set(records.map((record) => record.page).filter(Boolean));
   const authors = new Set(records.map((record) => record.authorKey).filter(Boolean));
-  const collectedTimes = records.map((record) => record['采集时间']).filter(Boolean).sort();
+  const collectedTimes = records.map((record) => record.collectedAt).filter(Boolean).sort();
   const pagesCollected = Array.from(pages).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
 
   return {
@@ -40,7 +40,7 @@ function buildThreadMeta(records: ReplyRecord[]): ThreadMeta {
     threadId: first?.threadId || '',
     threadTitle: first?.threadTitle || '',
     forumName: first?.forumName || '',
-    sourceUrl: first?.['来源URL'] || '',
+    sourceUrl: first?.sourceUrl || '',
     firstCollectedAt: collectedTimes[0] || '',
     lastCollectedAt: collectedTimes[collectedTimes.length - 1] || '',
     pageCountCollected: pages.size,
@@ -67,12 +67,12 @@ function buildAuthorStats(records: ReplyRecord[]): AuthorStats[] {
         siteKey: record.siteKey || '',
         authorKey,
         uid: record.uid || '',
-        authorName: record['作者name'] || '',
+        authorName: record.authorName || '',
         replyCount: 0,
         threadIds: new Set<string>(),
         threadKeys: new Set<string>(),
-        firstSeenAt: record['采集时间'] || '',
-        lastSeenAt: record['采集时间'] || '',
+        firstSeenAt: record.collectedAt || '',
+        lastSeenAt: record.collectedAt || '',
       });
     }
 
@@ -81,9 +81,9 @@ function buildAuthorStats(records: ReplyRecord[]): AuthorStats[] {
     if (record.threadId) stat.threadIds.add(record.threadId);
     if (record.threadKey) stat.threadKeys.add(record.threadKey);
     if (record.uid && !stat.uid) stat.uid = record.uid;
-    if (record['作者name'] && !stat.authorName) stat.authorName = record['作者name'];
-    if (record['采集时间'] && (!stat.firstSeenAt || record['采集时间'] < stat.firstSeenAt)) stat.firstSeenAt = record['采集时间'];
-    if (record['采集时间'] && (!stat.lastSeenAt || record['采集时间'] > stat.lastSeenAt)) stat.lastSeenAt = record['采集时间'];
+    if (record.authorName && !stat.authorName) stat.authorName = record.authorName;
+    if (record.collectedAt && (!stat.firstSeenAt || record.collectedAt < stat.firstSeenAt)) stat.firstSeenAt = record.collectedAt;
+    if (record.collectedAt && (!stat.lastSeenAt || record.collectedAt > stat.lastSeenAt)) stat.lastSeenAt = record.collectedAt;
   }
 
   return Array.from(authorMap.values()).map((stat) => ({
@@ -153,7 +153,7 @@ export class ReplyRepository {
     return records.filter((record) => {
       const authorKey = String(record.authorKey || '').toLowerCase();
       const uid = String(record.uid || '').toLowerCase();
-      const authorName = String(record['作者name'] || '').toLowerCase();
+      const authorName = String(record.authorName || '').toLowerCase();
       return authorKey === normalizedQuery || uid.includes(normalizedQuery) || authorName.includes(normalizedQuery);
     });
   }
@@ -166,7 +166,7 @@ export class ReplyRepository {
     return records.filter((record) => {
       const authorKey = String(record.authorKey || '').toLowerCase();
       const uid = String(record.uid || '').toLowerCase();
-      const authorName = String(record['作者name'] || '').toLowerCase();
+      const authorName = String(record.authorName || '').toLowerCase();
       return authorKey === queryLower || uid === queryLower || authorName === queryLower;
     });
   }
@@ -251,7 +251,7 @@ export class ReplyRepository {
     if (!normalizedKeyword) return [];
     const records = await this.readAllRecords();
     return records.filter((record) =>
-      ['threadTitle', 'forumName', '作者name', 'uid', '发帖时间', '回复内容', '引用内容', '回复全文'].some((key) =>
+      ['threadTitle', 'forumName', 'authorName', 'uid', 'postTime', 'replyContent', 'quoteContent', 'replyFullText'].some((key) =>
         String(record[key] || '').toLowerCase().includes(normalizedKeyword)
       )
     );

@@ -8,7 +8,7 @@ import {
 } from '../utils';
 
 type AuthorInfo = {
-  '作者name': string;
+  authorName: string;
   uid: string;
 };
 
@@ -130,7 +130,7 @@ function getAuthorInfo(container: Element): AuthorInfo {
   }
 
   return {
-    '作者name': author,
+    authorName: author,
     uid,
   };
 }
@@ -183,12 +183,12 @@ function extractFromS1Dom(): ReplyRecord[] {
       floor: getFloor(container),
       pid: getPid(container),
       ...getAuthorInfo(container),
-      '发帖时间': postTime,
-      '回复内容': replyContent || fullContent,
-      '引用内容': quoteContent,
-      '回复全文': fullContent,
-      '来源URL': sourceUrl,
-      '采集时间': collectedAt,
+      postTime,
+      replyContent: replyContent || fullContent,
+      quoteContent,
+      replyFullText: fullContent,
+      sourceUrl,
+      collectedAt,
     });
 
     if (seen.has(row._key)) continue;
@@ -225,12 +225,12 @@ function extractReplies(): ReplyRecord[] {
       floor: getFloor(container),
       pid: getPid(container),
       ...getAuthorInfo(container),
-      '发帖时间': postTime,
-      '回复内容': contentNode ? textFromNode(contentNode, { removeQuotes: true, extraRemoveSelector: '.aimg_tip' }) || fullContent : fullContent,
-      '引用内容': contentNode ? getQuoteText(contentNode) : '',
-      '回复全文': fullContent,
-      '来源URL': sourceUrl,
-      '采集时间': collectedAt,
+      postTime,
+      replyContent: contentNode ? textFromNode(contentNode, { removeQuotes: true, extraRemoveSelector: '.aimg_tip' }) || fullContent : fullContent,
+      quoteContent: contentNode ? getQuoteText(contentNode) : '',
+      replyFullText: fullContent,
+      sourceUrl,
+      collectedAt,
     });
 
     if (seen.has(row._key)) continue;
